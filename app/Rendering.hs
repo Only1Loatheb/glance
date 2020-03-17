@@ -38,7 +38,7 @@ import GHC.Stack(HasCallStack)
 --import Data.GraphViz.Commands
 
 import Icons(colorScheme, iconToDiagram, defaultLineWidth, ColorStyle(..)
-            , getPortAngles, TransformParams(..), circleRadius
+            , getPortAngles, TransformParams(..), sizeUnit
             , findIconFromName)
 import TranslateCore(nodeToIcon)
 import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
@@ -420,12 +420,12 @@ drawLambdaRegions iconInfo placedNodes
         $ lc lightgreen (lwG defaultLineWidth contentsRect)
       where
         combinedDia = mconcat dias
-        rectPadding = 3 * circleRadius
-        contentsRect = dashingG [0.4 * circleRadius, 0.8 * circleRadius] 0
+        rectPadding = 3 * sizeUnit
+        contentsRect = dashingG [0.4 * sizeUnit, 0.8 * sizeUnit] 0
                        $ roundedRect
                        (rectPadding + width combinedDia)
                        (rectPadding + height combinedDia)
-                       (3 * circleRadius)
+                       (3 * sizeUnit)
 
 placeNodes :: SpecialBackend b Double =>
   IconInfo

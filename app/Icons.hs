@@ -23,7 +23,7 @@ module Icons
     ColorStyle(..),
     colorScheme,
     coloredTextBox,
-    circleRadius,
+    sizeUnit,
     findIconFromName
     ) where
 
@@ -65,8 +65,8 @@ type TransformableDia b n = TransformParams n -> SpecialQDiagram b n
 defaultLineWidth :: (Fractional a) => a
 defaultLineWidth = 0.15
 
-circleRadius :: (Fractional a) => a
-circleRadius = 0.5
+sizeUnit :: (Fractional a) => a
+sizeUnit = 0.5
 
 defaultOpacity :: (Fractional a) => a
 defaultOpacity = 0.4
@@ -344,17 +344,19 @@ makeLabelledPort name reflect angle str portNum = case str of
 
 apply0Triangle :: SpecialBackend b n => Colour Double -> SpecialQDiagram b n
 apply0Triangle col
-  = fc col $ lw none $ rotateBy (-1/12) $ eqTriangle (2 * circleRadius)
+  = fc col $ lw none $ rotateBy (-1/12) $ eqTriangle (2 * sizeUnit)
 
 composeSemiCircle :: SpecialBackend b n => Colour Double -> SpecialQDiagram b n
 composeSemiCircle col
-  = lc col $ lwG defaultLineWidth $ wedge circleRadius yDir halfTurn
+  = lc col $ lwG defaultLineWidth $ wedge sizeUnit yDir halfTurn
 
+-- in simplified function view
 portCircle :: SpecialBackend b n => SpecialQDiagram b n
-portCircle = lw none $ fc lineCol $ circle (circleRadius * 0.5)
+portCircle = lw none $ fc lineCol $ circle (sizeUnit * 0.5)
 
+-- in simplified function view
 resultIcon :: SpecialBackend b n => SpecialQDiagram b n
-resultIcon =  lw none $ fc (lamArgResC colorScheme) unitSquare
+resultIcon = lw none $ fc (lamArgResC colorScheme) unitSquare
 
 -- END Sub-diagrams
 
@@ -396,12 +398,11 @@ appArgBox :: (HasStyle a, Typeable (N a)
           => Colour Double -> N a -> N a -> a
 appArgBox borderCol topAndBottomLineWidth portHeight
   = lwG defaultLineWidth $ lcA (withOpacity borderCol defaultOpacity)
-    $ roundedRect
+    $ rect 
     topAndBottomLineWidth
     (portHeight + verticalSeparation)
-    (circleRadius * 0.5)
   where
-    verticalSeparation = circleRadius
+    verticalSeparation = sizeUnit
 
 nestedPAppDia :: SpecialBackend b n
   => IconInfo
@@ -420,12 +421,12 @@ nestedPAppDia
   where
     borderCol = borderCols !! nestingLevel
     transformedText = makeTransformedText iconInfo tp maybeFunText
-    separation = circleRadius * 1.5
+    separation = sizeUnit * 1.5
     resultCircleAndPort
       = makeQualifiedPort name ResultPortConst
         <> alignR
         (lc borderCol
-          $ lwG defaultLineWidth $ fc borderCol $ circle circleRadius)
+          $ lwG defaultLineWidth $ fc borderCol $ circle sizeUnit)
     triangleAndPorts
       = vsep separation $
         rotate quarterTurn (apply0Triangle borderCol) :
@@ -461,26 +462,27 @@ generalNestedDia
   maybeFunText
   args
   tp@(TransformParams name nestingLevel _ _)
-  = named name $ centerXY $ beside' unitX transformedText finalDia
+  -- beside Place two monoidal objects (i.e. diagrams, paths, animations...) next to each other along the given vector.
+  = named name $ beside unitY transformedText finalDia 
     where
       borderCol = borderCols !! nestingLevel
-      transformedText = makeTransformedText iconInfo tp (pure maybeFunText)
-      separation = circleRadius * 1.5
+      transformedText = centerXY $ alignL $ makeTransformedText iconInfo tp (pure maybeFunText)
+      separation = sizeUnit * 1.5
       trianglePortsCircle = hsep separation $
-        reflectX (dia borderCol) :
+        -- reflectX (dia borderCol) : -- draw diagram symbol e.g. function aplication triangle 
         zipWith (makeAppInnerIcon iconInfo tp False) argPortsConst (fmap pure args) ++
         [makeQualifiedPort name ResultPortConst
          <> alignR
           (lc borderCol $ lwG defaultLineWidth $ fc borderCol
-            $ circle circleRadius)
+            $ circle sizeUnit)
         ]
       allPorts
         = makeQualifiedPort name InputPortConst <> alignL trianglePortsCircle
       argBox = alignL $ appArgBox
                borderCol
-               (width allPorts - circleRadius)
+               (width allPorts - sizeUnit)
                (height allPorts)
-      finalDia = argBox <> allPorts
+      finalDia = centerXY $ argBox <> allPorts
 
 
 nestedApplyDia :: SpecialBackend b n
@@ -559,7 +561,7 @@ coloredTextBox textColor boxColor t =
   <> lwG
   (0.6 * defaultLineWidth)
   (lcA boxColor
-    $ fcA (withOpacity (backgroundC colorScheme) 0.5)
+    $ fcA (withOpacity (backgroundC colorScheme) 0) -- last param is radius of circular rounded corners 
     $ rectForText (length t))
 
 transformCorrectedTextBox :: SpecialBackend b n =>
@@ -708,7 +710,7 @@ nestedMultiIfDia iconInfo = generalNestedMultiIf iconInfo lineCol multiIfLBracke
 -- TODO Improve design to be more than a circle.
 caseResult :: SpecialBackend b n =>
   SpecialQDiagram b n
-caseResult = lw none $ lc caseCColor $ fc caseCColor $ circle circleRadius
+caseResult = apply0Triangle caseCColor
   where
     caseCColor = caseRhsC colorScheme
 
@@ -745,7 +747,7 @@ nestedLambda iconInfo paramNames mBodyExp (TransformParams name level reflect an
   lambdaCircle
     = lwG defaultLineWidth
       $ lc (regionPerimC colorScheme)
-      $ fc (regionPerimC colorScheme) $ circle (1.85 * circleRadius)
+      $ fc (regionPerimC colorScheme) $ circle (1.85 * sizeUnit)
   lambdaParts
     = (makeQualifiedPort name InputPortConst <> resultIcon)
       :
@@ -762,7 +764,7 @@ nestedLambda iconInfo paramNames mBodyExp (TransformParams name level reflect an
   portIcons
     = zipWith (makeLabelledPort name reflect angle) paramNames argPortsConst
   middle = alignL (hsep 0.5 lambdaParts)
-  topAndBottomLineWidth = width middle - (circleRadius + defaultLineWidth)
+  topAndBottomLineWidth = width middle - (sizeUnit + defaultLineWidth)
   topAndBottomLine
     = alignL
       $ lwG defaultLineWidth
