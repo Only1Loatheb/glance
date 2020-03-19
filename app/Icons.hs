@@ -33,6 +33,7 @@ import qualified Control.Arrow as Arrow
 import Data.Either(partitionEithers)
 import qualified Data.IntMap as IM
 import Data.List(find)
+import Data.List.Split(chunksOf)
 import Data.Maybe(listToMaybe, isJust, fromJust, mapMaybe)
 import Data.Typeable(Typeable)
 
@@ -613,12 +614,10 @@ textBox t (TransformParams name _ reflect angle)
 multiIfSize :: (Fractional a) => a
 multiIfSize = 0.7
 
-multiIfDiaPorts portConstDia portArgDia =
-  portConstDia ||| coloredSymbol ||| portArgDia
-  where
-    symbol = square multiIfSize
-    coloredSymbol 
-      = rotateBy (1/8) $ lwG defaultLineWidth $ lc (boolC colorScheme) (strokeLine symbol)
+multiIfSymbol  
+      = rotateBy (1/8) $ lwG defaultLineWidth $ lc (boolC colorScheme) (strokeLine symbol) where
+        symbol = square multiIfSize
+      
 
 multiIfTriangle :: SpecialBackend b n =>
   SpecialQDiagram b n -> SpecialQDiagram b n
@@ -632,13 +631,30 @@ multiIfTriangle portDia =
       (polyType .~ PolySides [90 @@ deg, 45 @@ deg] [multiIfSize, multiIfSize]
        $ with)
 
+multiIfDecisionDia :: SpecialBackend b n =>
+  SpecialQDiagram b n
+multiIfDecisionDia 
+  = coloredSymbol where
+    symbol = square (2 * sizeUnit)
+    coloredSymbol 
+      = centerXY $ rotateBy (1/8) $ lwG defaultLineWidth $ lc (boolC colorScheme) (strokeLine symbol)
+
 multiIfConstDia :: SpecialBackend b n =>
   SpecialQDiagram b n -> SpecialQDiagram b n
 multiIfConstDia portDia = coloredSymbol ||| portDia
   where
-    symbol = square multiIfSize
+    line = strokeLine $ hrule (2 * sizeUnit) 
     coloredSymbol 
-      = rotateBy (1/8) $ lwG defaultLineWidth $ lc (boolC colorScheme) (strokeLine symbol)
+      = lwG defaultLineWidth $ lc (boolC colorScheme) line
+
+multiIfVarDia :: SpecialBackend b n =>
+  SpecialQDiagram b n -> SpecialQDiagram b n
+multiIfVarDia portDia = coloredSymbol ||| portDia
+  where
+    symbol = hrule (2 * sizeUnit)
+    coloredSymbol 
+      = lwG defaultLineWidth $ lc (boolC colorScheme) (strokeLine symbol)
+
 -- | generalNestedMultiIf port layout:
 -- 0 -> top
 -- 1 -> bottom
@@ -651,45 +667,43 @@ generalNestedMultiIf :: SpecialBackend b n
                    -> SpecialQDiagram b n
                    -> [Maybe NamedIcon]
                    -> TransformableDia b n
-generalNestedMultiIf iconInfo triangleColor eqDia bottomDia inputAndArgs
+generalNestedMultiIf iconInfo triangleColor iFConstDia bottomDia inputAndArgs
   (TransformParams name nestingLevel reflect angle)
   = named name $ case inputAndArgs of
   [] -> mempty
-  input : args -> centerXY finalDia where
+  input : subicons -> centerXY finalDia where
     finalDia = alignT (bottomDia <> makeQualifiedPort name ResultPortConst)
                <> alignB
                (inputIcon === (bigVerticalLine
                                <> multiIfDia
                                <> makeQualifiedPort name InputPortConst))
 
-    iconMapper (Port portNum) arg
-      | even portNum = Right $ multiIfTriangle port ||| makeInnerIcon True arg
-      | otherwise = Left $ makeInnerIcon False arg ||| eqDia port
+    inputIcon = placeSubIcon False input
+
+    (iFConstIcons, iFVarIcons)
+      = partitionEithers $ zipWith iconMapper argPortsConst subicons
+
+    iconMapper (Port portNum) subicon
+      | even portNum = Right ${- middle -} multiIfVarDia port ||| placeSubIcon True subicon
+      | otherwise = Left $ placeSubIcon False subicon |||  iFConstDia port {- middle -}
       where
         port = makeQualifiedPort name (Port portNum)
 
-    (lBrackets, trianglesWithPorts)
-      = partitionEithers $ zipWith iconMapper argPortsConst args
+    iFVarAndConstIcons =
+      zipWith combineIfIcons iFVarIcons iFConstIcons
 
-    trianglesAndBrackets =
-      zipWith zipper trianglesWithPorts lBrackets
-
-    zipper thisTriangle lBrack
-      = verticalLine
-        ===
-        (alignR (extrudeRight multiIfSize lBrack)
-         <> lc triangleColor (alignL thisTriangle))
-      where
+    combineIfIcons iFVarIcon iFConstIcon
+      = verticalLine === placedAtBothSides where 
+        placedAtRight = beside unitX multiIfDecisionDia (lc triangleColor (alignL iFVarIcon))
+        placedAtBothSides = beside (-unitX) placedAtRight (alignR iFConstIcon)
         verticalLine = strutY 0.4
 
-    inputIcon = makeInnerIcon False input
-
-    multiIfDia = vcat (alignT trianglesAndBrackets)
+    multiIfDia = vcat (alignT iFVarAndConstIcons)
     bigVerticalLine
       = alignT
         $ lwG defaultLineWidth $ lc triangleColor $ vrule (height multiIfDia)
 
-    makeInnerIcon innerReflected mNameAndIcon = case mNameAndIcon of
+    placeSubIcon innerReflected mNameAndIcon = case mNameAndIcon of
       Nothing -> mempty
       Just (Named iconNodeName icon) -> if innerReflected
         then reflectX dia
