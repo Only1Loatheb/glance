@@ -555,14 +555,17 @@ coloredTextBox :: SpecialBackend b n =>
   Colour Double
   -> AlphaColour Double -> String -> SpecialQDiagram b n
 coloredTextBox textColor boxColor t =
-  fontSize
-  (local textBoxFontSize)
-  (bold $ font textFont $ fc textColor $ text t)
-  <> lwG
-  (0.6 * defaultLineWidth)
-  (lcA boxColor
-    $ fcA (withOpacity (backgroundC colorScheme) 0) -- last param is radius of circular rounded corners 
-    $ rectForText (length t))
+  textLabel <> boxAroundText where
+    textLabel =
+      fontSize
+      (local textBoxFontSize)
+      (font textFont $ fillColor textColor $ text t)
+    boxAroundText =
+      lwG -- A convenient synonym for 'lineWidth (global w)'.
+      (0.6 * defaultLineWidth)
+      (lcA boxColor -- A synonym for lineColor, specialized to AlphaColour Double (i.e. colors with transparency)
+        $ fcA (withOpacity (backgroundC colorScheme) 0) -- last param is radius of circular rounded corners 
+        $ rectForText (length t))
 
 transformCorrectedTextBox :: SpecialBackend b n =>
   String
@@ -610,6 +613,13 @@ textBox t (TransformParams name _ reflect angle)
 multiIfSize :: (Fractional a) => a
 multiIfSize = 0.7
 
+multiIfDiaPorts portConstDia portArgDia =
+  portConstDia ||| coloredSymbol ||| portArgDia
+  where
+    symbol = square multiIfSize
+    coloredSymbol 
+      = rotateBy (1/8) $ lwG defaultLineWidth $ lc (boolC colorScheme) (strokeLine symbol)
+
 multiIfTriangle :: SpecialBackend b n =>
   SpecialQDiagram b n -> SpecialQDiagram b n
 multiIfTriangle portDia =
@@ -622,6 +632,13 @@ multiIfTriangle portDia =
       (polyType .~ PolySides [90 @@ deg, 45 @@ deg] [multiIfSize, multiIfSize]
        $ with)
 
+multiIfConstDia :: SpecialBackend b n =>
+  SpecialQDiagram b n -> SpecialQDiagram b n
+multiIfConstDia portDia = coloredSymbol ||| portDia
+  where
+    symbol = square multiIfSize
+    coloredSymbol 
+      = rotateBy (1/8) $ lwG defaultLineWidth $ lc (boolC colorScheme) (strokeLine symbol)
 -- | generalNestedMultiIf port layout:
 -- 0 -> top
 -- 1 -> bottom
@@ -634,7 +651,7 @@ generalNestedMultiIf :: SpecialBackend b n
                    -> SpecialQDiagram b n
                    -> [Maybe NamedIcon]
                    -> TransformableDia b n
-generalNestedMultiIf iconInfo triangleColor lBracket bottomDia inputAndArgs
+generalNestedMultiIf iconInfo triangleColor eqDia bottomDia inputAndArgs
   (TransformParams name nestingLevel reflect angle)
   = named name $ case inputAndArgs of
   [] -> mempty
@@ -647,7 +664,7 @@ generalNestedMultiIf iconInfo triangleColor lBracket bottomDia inputAndArgs
 
     iconMapper (Port portNum) arg
       | even portNum = Right $ multiIfTriangle port ||| makeInnerIcon True arg
-      | otherwise = Left $ makeInnerIcon False arg ||| lBracket port
+      | otherwise = Left $ makeInnerIcon False arg ||| eqDia port
       where
         port = makeQualifiedPort name (Port portNum)
 
@@ -687,15 +704,6 @@ generalNestedMultiIf iconInfo triangleColor lBracket bottomDia inputAndArgs
                   (innerReflected /= reflect)
                   angle)
 
-multiIfLBracket :: SpecialBackend b n =>
-  SpecialQDiagram b n -> SpecialQDiagram b n
-multiIfLBracket portDia = alignL (alignT ell) <> portDia
-  where
-    ellShape = fromOffsets $ map r2 [(0, multiIfSize), (-multiIfSize, 0)]
-    ell
-      = lineJoin LineJoinRound
-      $ lwG defaultLineWidth $ lc (boolC colorScheme) (strokeLine ellShape)
-
 -- | The ports of the multiIf icon are as follows:
 -- InputPortConst: Top result port (not used)
 -- ResultPortConst: Bottom result port
@@ -705,7 +713,7 @@ nestedMultiIfDia :: SpecialBackend b n =>
   IconInfo
   -> [Maybe NamedIcon]
   -> TransformableDia b n
-nestedMultiIfDia iconInfo = generalNestedMultiIf iconInfo lineCol multiIfLBracket mempty
+nestedMultiIfDia iconInfo = generalNestedMultiIf iconInfo lineCol multiIfConstDia mempty
 
 -- TODO Improve design to be more than a circle.
 caseResult :: SpecialBackend b n =>
