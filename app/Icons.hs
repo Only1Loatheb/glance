@@ -33,7 +33,6 @@ import qualified Control.Arrow as Arrow
 import Data.Either(partitionEithers)
 import qualified Data.IntMap as IM
 import Data.List(find)
-import Data.List.Split(chunksOf)
 import Data.Maybe(listToMaybe, isJust, fromJust, mapMaybe)
 import Data.Typeable(Typeable)
 
@@ -73,9 +72,59 @@ defaultOpacity :: (Fractional a) => a
 defaultOpacity = 0.4
 
 -- COLORS --
-lineCol :: Colour Double
-lineCol = lineC colorScheme
+lineColorValue :: Colour Double
+lineColorValue = lineC colorScheme
 
+-- BEGIN diagram basic symbols --
+lineStartingSymbol ::  SpecialBackend b n
+  => Colour Double -> SpecialQDiagram b n
+lineStartingSymbol borderColor 
+  = lc borderColor $ lwG defaultLineWidth $ fc borderColor $ circle defaultLineWidth
+
+applySymbol :: SpecialBackend b n => Colour Double -> SpecialQDiagram b n
+applySymbol col
+  = fc col $ lw none $ rotateBy (-1/12) $ eqTriangle (2 * sizeUnit)
+
+composeSymbol :: SpecialBackend b n => Colour Double -> SpecialQDiagram b n
+composeSymbol col
+  = lc col $ lwG defaultLineWidth $ wedge sizeUnit yDir halfTurn
+
+portSymbol :: SpecialBackend b n => SpecialQDiagram b n
+portSymbol = lw none $ fc lineColorValue $ circle (sizeUnit * 0.5)
+
+inputSymbol :: SpecialBackend b n => SpecialQDiagram b n
+inputSymbol = lw none $ fc (lamArgResC colorScheme) unitSquare
+
+multiIfDecisionSymbol :: SpecialBackend b n =>
+  SpecialQDiagram b n
+multiIfDecisionSymbol 
+  = coloredSymbol where
+    symbol = square (2 * sizeUnit)
+    coloredSymbol 
+      = centerXY $ rotateBy (1/8) $ lwG defaultLineWidth $ lc (boolC colorScheme) (strokeLine symbol)
+
+multiIfConstSymbol :: SpecialBackend b n =>
+  SpecialQDiagram b n -> SpecialQDiagram b n
+multiIfConstSymbol portDia = coloredSymbol ||| portDia
+  where
+    line = strokeLine $ hrule (2 * sizeUnit) 
+    coloredSymbol 
+      = lwG defaultLineWidth $ lc (boolC colorScheme) line
+
+multiIfVarSymbol :: SpecialBackend b n =>
+  SpecialQDiagram b n -> SpecialQDiagram b n
+multiIfVarSymbol portDia = coloredSymbol ||| portDia
+  where
+    symbol = hrule (2 * sizeUnit)
+    coloredSymbol 
+      = lwG defaultLineWidth $ lc (boolC colorScheme) (strokeLine symbol)
+
+resultSymbol :: SpecialBackend b n =>
+  SpecialQDiagram b n
+resultSymbol
+  = lwG defaultLineWidth
+    $ lc (regionPerimC colorScheme)
+    $ fc (regionPerimC colorScheme) $ circle (1.85 * sizeUnit)
 
 -- BEGIN Exported icon functions --
 
@@ -333,33 +382,13 @@ makeLabelledPort name reflect angle str portNum = case str of
   (_:_:_) -> portAndCircle ||| label
   _ -> portAndCircle
   where
-    portAndCircle = makeQualifiedPort name portNum <> portCircle
+    portAndCircle = makeQualifiedPort name portNum <> portSymbol
     label = transformableBindTextBox str reflect angle
 
 -- END Diagram helper functions
 
 
 -- BEGIN Icons --
-
--- BEGIN Sub-diagrams --
-
-apply0Triangle :: SpecialBackend b n => Colour Double -> SpecialQDiagram b n
-apply0Triangle col
-  = fc col $ lw none $ rotateBy (-1/12) $ eqTriangle (2 * sizeUnit)
-
-composeSemiCircle :: SpecialBackend b n => Colour Double -> SpecialQDiagram b n
-composeSemiCircle col
-  = lc col $ lwG defaultLineWidth $ wedge sizeUnit yDir halfTurn
-
--- in simplified function view
-portCircle :: SpecialBackend b n => SpecialQDiagram b n
-portCircle = lw none $ fc lineCol $ circle (sizeUnit * 0.5)
-
--- in simplified function view
-resultIcon :: SpecialBackend b n => SpecialQDiagram b n
-resultIcon = lw none $ fc (lamArgResC colorScheme) unitSquare
-
--- END Sub-diagrams
 
 -- BEGIN Main icons
 
@@ -397,12 +426,10 @@ makeTransformedText iconInfo tp maybeFunText = case laValue maybeFunText of
 appArgBox :: (HasStyle a, Typeable (N a)
              , TrailLike a, RealFloat (N a), V a ~ V2)
           => Colour Double -> N a -> N a -> a
-appArgBox borderCol topAndBottomLineWidth portHeight
-  = lwG defaultLineWidth $ lcA (withOpacity borderCol defaultOpacity)
-    $ rect 
-    topAndBottomLineWidth
-    (portHeight + verticalSeparation)
-  where
+appArgBox borderColor topAndBottomWidth portHeight
+  = coloredArgBox where 
+    coloredArgBox = lwG defaultLineWidth $ lcA (withOpacity borderColor defaultOpacity) argBox
+    argBox = rect topAndBottomWidth (portHeight + verticalSeparation)
     verticalSeparation = sizeUnit
 
 nestedPAppDia :: SpecialBackend b n
@@ -413,37 +440,31 @@ nestedPAppDia :: SpecialBackend b n
   -> TransformableDia b n
 nestedPAppDia
   iconInfo
-  borderCols
+  borderColors
   maybeFunText
-  args
+  subIcons
   tp@(TransformParams name nestingLevel _ _)
   = named name $ centerXY
-    $ centerY finalDia ||| beside' unitX transformedText resultCircleAndPort
+    $ centerY finalDia ||| beside' unitX transformedText resultDia
   where
-    borderCol = borderCols !! nestingLevel
+    borderColor = borderColors !! nestingLevel
     transformedText = makeTransformedText iconInfo tp maybeFunText
+    resultDia = makeQualifiedPort name ResultPortConst
     separation = sizeUnit * 1.5
-    resultCircleAndPort
-      = makeQualifiedPort name ResultPortConst
-        <> alignR
-        (lc borderCol
-          $ lwG defaultLineWidth $ fc borderCol $ circle sizeUnit)
-    triangleAndPorts
-      = vsep separation $
-        rotate quarterTurn (apply0Triangle borderCol) :
-        zipWith (makeAppInnerIcon iconInfo tp False) argPortsConst args
-    allPorts
-      = makeQualifiedPort name InputPortConst <> alignT triangleAndPorts
+    casesDia = vsep separation paternCases
+    paternCases = zipWith (makeAppInnerIcon iconInfo tp False) argPortsConst subIcons   
+    inputPortAndCases = makeQualifiedPort name InputPortConst <> alignT casesDia
     argBox = alignT $ appArgBox
-             borderCol
-             (width allPorts)
-             (height allPorts)
-    finalDia = argBox <> allPorts
+             borderColor
+             (width inputPortAndCases)
+             (height inputPortAndCases)
+    finalDia = argBox <> inputPortAndCases
 
 
 -- | Like beside, but it puts the second dia atop the first dia
 beside' :: (Semigroup a, Juxtaposable a) => V a (N a) -> a -> a -> a
 beside' dir dia1 dia2 = juxtapose dir dia1 dia2 <> dia1
+
 
 -- | apply port locations:
 -- InputPortConst: Function
@@ -458,32 +479,29 @@ generalNestedDia :: SpecialBackend b n
   -> TransformableDia b n
 generalNestedDia
   iconInfo
-  dia
-  borderCols
+  aplicationDia
+  borderColors
   maybeFunText
   args
   tp@(TransformParams name nestingLevel _ _)
   -- beside Place two monoidal objects (i.e. diagrams, paths, animations...) next to each other along the given vector.
   = named name $ beside unitY transformedText finalDia 
     where
-      borderCol = borderCols !! nestingLevel
+      borderColor = borderColors !! nestingLevel
       transformedText = centerXY $ alignL $ makeTransformedText iconInfo tp (pure maybeFunText)
       separation = sizeUnit * 1.5
-      trianglePortsCircle = hsep separation $
+      argsAndResoultPorts = hsep separation $
         -- reflectX (dia borderCol) : -- draw diagram symbol e.g. function aplication triangle 
         zipWith (makeAppInnerIcon iconInfo tp False) argPortsConst (fmap pure args) ++
         [makeQualifiedPort name ResultPortConst
-         <> alignR
-          (lc borderCol $ lwG defaultLineWidth $ fc borderCol
-            $ circle sizeUnit)
+        <> alignR (lineStartingSymbol borderColor)
         ]
-      allPorts
-        = makeQualifiedPort name InputPortConst <> alignL trianglePortsCircle
-      argBox = alignL $ appArgBox
-               borderCol
-               (width allPorts - sizeUnit)
-               (height allPorts)
-      finalDia = centerXY $ argBox <> allPorts
+      argsResoultAndInputPorts = makeQualifiedPort name InputPortConst <> alignL argsAndResoultPorts
+      argBox  = alignL $ appArgBox
+                borderColor
+                (width argsResoultAndInputPorts - sizeUnit)
+                (height argsResoultAndInputPorts)
+      finalDia = centerXY $ argBox <> argsResoultAndInputPorts
 
 
 nestedApplyDia :: SpecialBackend b n
@@ -494,9 +512,9 @@ nestedApplyDia :: SpecialBackend b n
   -> TransformableDia b n
 nestedApplyDia iconInfo flavor = case flavor of
   ApplyNodeFlavor
-    -> generalNestedDia iconInfo apply0Triangle (nestingC colorScheme)
+    -> generalNestedDia iconInfo applySymbol (nestingC colorScheme)
   ComposeNodeFlavor
-    -> generalNestedDia iconInfo composeSemiCircle (repeat $ apply1C colorScheme)
+    -> generalNestedDia iconInfo composeSymbol (repeat $ apply1C colorScheme)
 
 -- END Apply like diagrams
 
@@ -575,10 +593,10 @@ transformCorrectedTextBox :: SpecialBackend b n =>
   -> Bool
   -> Angle n
   -> SpecialQDiagram b n
-transformCorrectedTextBox str textCol borderCol reflect angle =
+transformCorrectedTextBox str textColor borderColor reflect angle =
   rotateBy
   textBoxRotation
-  (reflectIfTrue reflect (coloredTextBox textCol (opaque borderCol) str))
+  (reflectIfTrue reflect (coloredTextBox textColor (opaque borderColor) str))
   where
     -- If normalizeAngle is slow, the commented out function reduceAngleRange
     -- might be faster.
@@ -611,49 +629,6 @@ textBox t (TransformParams name _ reflect angle)
 -- END Text boxes and icons
 
 -- BEGIN MultiIf and case icons --
-multiIfSize :: (Fractional a) => a
-multiIfSize = 0.7
-
-multiIfSymbol  
-      = rotateBy (1/8) $ lwG defaultLineWidth $ lc (boolC colorScheme) (strokeLine symbol) where
-        symbol = square multiIfSize
-      
-
-multiIfTriangle :: SpecialBackend b n =>
-  SpecialQDiagram b n -> SpecialQDiagram b n
-multiIfTriangle portDia =
-  alignL
-  $ alignR (triangleAndPort ||| lwG defaultLineWidth (hrule (multiIfSize * 0.8)))
-  <> portDia
-  where
-    triangleAndPort = alignR $ alignT $ lwG defaultLineWidth $ rotateBy (1/8) $
-      polygon
-      (polyType .~ PolySides [90 @@ deg, 45 @@ deg] [multiIfSize, multiIfSize]
-       $ with)
-
-multiIfDecisionDia :: SpecialBackend b n =>
-  SpecialQDiagram b n
-multiIfDecisionDia 
-  = coloredSymbol where
-    symbol = square (2 * sizeUnit)
-    coloredSymbol 
-      = centerXY $ rotateBy (1/8) $ lwG defaultLineWidth $ lc (boolC colorScheme) (strokeLine symbol)
-
-multiIfConstDia :: SpecialBackend b n =>
-  SpecialQDiagram b n -> SpecialQDiagram b n
-multiIfConstDia portDia = coloredSymbol ||| portDia
-  where
-    line = strokeLine $ hrule (2 * sizeUnit) 
-    coloredSymbol 
-      = lwG defaultLineWidth $ lc (boolC colorScheme) line
-
-multiIfVarDia :: SpecialBackend b n =>
-  SpecialQDiagram b n -> SpecialQDiagram b n
-multiIfVarDia portDia = coloredSymbol ||| portDia
-  where
-    symbol = hrule (2 * sizeUnit)
-    coloredSymbol 
-      = lwG defaultLineWidth $ lc (boolC colorScheme) (strokeLine symbol)
 
 -- | generalNestedMultiIf port layout:
 -- 0 -> top
@@ -684,7 +659,7 @@ generalNestedMultiIf iconInfo triangleColor iFConstDia bottomDia inputAndArgs
       = partitionEithers $ zipWith iconMapper argPortsConst subicons
 
     iconMapper (Port portNum) subicon
-      | even portNum = Right ${- middle -} multiIfVarDia port ||| placeSubIcon True subicon
+      | even portNum = Right ${- middle -} multiIfVarSymbol port ||| placeSubIcon True subicon
       | otherwise = Left $ placeSubIcon False subicon |||  iFConstDia port {- middle -}
       where
         port = makeQualifiedPort name (Port portNum)
@@ -694,7 +669,7 @@ generalNestedMultiIf iconInfo triangleColor iFConstDia bottomDia inputAndArgs
 
     combineIfIcons iFVarIcon iFConstIcon
       = verticalLine === placedAtBothSides where 
-        placedAtRight = beside unitX multiIfDecisionDia (lc triangleColor (alignL iFVarIcon))
+        placedAtRight = beside unitX multiIfDecisionSymbol (lc triangleColor (alignL iFVarIcon))
         placedAtBothSides = beside (-unitX) placedAtRight (alignR iFConstIcon)
         verticalLine = strutY 0.4
 
@@ -727,12 +702,12 @@ nestedMultiIfDia :: SpecialBackend b n =>
   IconInfo
   -> [Maybe NamedIcon]
   -> TransformableDia b n
-nestedMultiIfDia iconInfo = generalNestedMultiIf iconInfo lineCol multiIfConstDia mempty
+nestedMultiIfDia iconInfo = generalNestedMultiIf iconInfo lineColorValue multiIfConstSymbol mempty
 
 -- TODO Improve design to be more than a circle.
 caseResult :: SpecialBackend b n =>
   SpecialQDiagram b n
-caseResult = apply0Triangle caseCColor
+caseResult = applySymbol caseCColor
   where
     caseCColor = caseRhsC colorScheme
 
@@ -759,40 +734,32 @@ nestedCaseDia iconInfo
 -- 1: The lambda function value
 -- 2,3.. : The parameters
 nestedLambda :: SpecialBackend b n
-           => IconInfo
-           -> [String]
-           -> Maybe NamedIcon
-           -> TransformableDia b n
+  => IconInfo
+  -> [String]
+  -> Maybe NamedIcon
+  -> TransformableDia b n
 nestedLambda iconInfo paramNames mBodyExp (TransformParams name level reflect angle)
-  = centerXY $ bodyExpIcon ||| centerY (named name finalDia)
+  = centerXY $ lambdaBodyDiagram ||| centerY (named name inputOutputDiagram)
   where
-  lambdaCircle
-    = lwG defaultLineWidth
-      $ lc (regionPerimC colorScheme)
-      $ fc (regionPerimC colorScheme) $ circle (1.85 * sizeUnit)
-  lambdaParts
-    = (makeQualifiedPort name InputPortConst <> resultIcon)
+  inputOutputDiagram = alignL (hsep 0.5 inputOutputIcons)
+
+  inputOutputIcons
+    = (makeQualifiedPort name InputPortConst <> inputSymbol)
       :
       (portIcons
-        ++ [makeQualifiedPort name ResultPortConst <> alignR lambdaCircle])
-  bodyExpIcon = case mBodyExp of
+        ++ [makeQualifiedPort name ResultPortConst <> alignR resultSymbol])
+  
+  portIcons
+    = zipWith (makeLabelledPort name reflect angle) paramNames argPortsConst
+      
+
+  lambdaBodyDiagram = case mBodyExp of
     Nothing -> mempty
     Just (Named bodyNodeName bodyIcon)
       -> iconToDiagram
          iconInfo
          bodyIcon
          (TransformParams bodyNodeName level reflect angle)
-
-  portIcons
-    = zipWith (makeLabelledPort name reflect angle) paramNames argPortsConst
-  middle = alignL (hsep 0.5 lambdaParts)
-  topAndBottomLineWidth = width middle - (sizeUnit + defaultLineWidth)
-  topAndBottomLine
-    = alignL
-      $ lwG defaultLineWidth
-      $ lcA (withOpacity (regionPerimC colorScheme) defaultOpacity)
-      $ hrule topAndBottomLineWidth
-  finalDia = vcat [topAndBottomLine, middle, topAndBottomLine]
 
 -- END Main icons
 -- END Icons
