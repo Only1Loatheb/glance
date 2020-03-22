@@ -78,7 +78,7 @@ lineColorValue = lineC colorScheme
 -- BEGIN diagram basic symbols --
 lineStartingSymbol ::  SpecialBackend b n
   => Colour Double -> SpecialQDiagram b n
-lineStartingSymbol borderColor 
+lineStartingSymbol borderColor
   = lc borderColor $ lwG defaultLineWidth $ fc borderColor $ circle defaultLineWidth
 
 applySymbol :: SpecialBackend b n => Colour Double -> SpecialQDiagram b n
@@ -97,18 +97,18 @@ inputSymbol = lw none $ fc (lamArgResC colorScheme) unitSquare
 
 multiIfDecisionSymbol :: SpecialBackend b n =>
   SpecialQDiagram b n
-multiIfDecisionSymbol 
+multiIfDecisionSymbol
   = coloredSymbol where
     symbol = square (2 * sizeUnit)
-    coloredSymbol 
+    coloredSymbol
       = centerXY $ rotateBy (1/8) $ lwG defaultLineWidth $ lc (boolC colorScheme) (strokeLine symbol)
 
 multiIfConstSymbol :: SpecialBackend b n =>
   SpecialQDiagram b n -> SpecialQDiagram b n
 multiIfConstSymbol portDia = coloredSymbol ||| portDia
   where
-    line = strokeLine $ hrule (2 * sizeUnit) 
-    coloredSymbol 
+    line = strokeLine $ hrule (2 * sizeUnit)
+    coloredSymbol
       = lwG defaultLineWidth $ lc (boolC colorScheme) line
 
 multiIfVarSymbol :: SpecialBackend b n =>
@@ -116,7 +116,7 @@ multiIfVarSymbol :: SpecialBackend b n =>
 multiIfVarSymbol portDia = coloredSymbol ||| portDia
   where
     symbol = hrule (2 * sizeUnit)
-    coloredSymbol 
+    coloredSymbol
       = lwG defaultLineWidth $ lc (boolC colorScheme) (strokeLine symbol)
 
 resultSymbol :: SpecialBackend b n =>
@@ -427,7 +427,7 @@ appArgBox :: (HasStyle a, Typeable (N a)
              , TrailLike a, RealFloat (N a), V a ~ V2)
           => Colour Double -> N a -> N a -> a
 appArgBox borderColor topAndBottomWidth portHeight
-  = coloredArgBox where 
+  = coloredArgBox where
     coloredArgBox = lwG defaultLineWidth $ lcA (withOpacity borderColor defaultOpacity) argBox
     argBox = rect topAndBottomWidth (portHeight + verticalSeparation)
     verticalSeparation = sizeUnit
@@ -452,9 +452,9 @@ nestedPAppDia
     resultDia = makeQualifiedPort name ResultPortConst
     separation = sizeUnit * 1.5
     casesDia = vsep separation paternCases
-    paternCases = zipWith (makeAppInnerIcon iconInfo tp False) argPortsConst subIcons   
+    paternCases = zipWith (makeAppInnerIcon iconInfo tp False) argPortsConst subIcons
     inputPortAndCases = makeQualifiedPort name InputPortConst <> alignT casesDia
-    argBox = alignT $ appArgBox
+    argBox = alignT $ appArgBox -- TODO consider this alignment
              borderColor
              (width inputPortAndCases)
              (height inputPortAndCases)
@@ -485,23 +485,23 @@ generalNestedDia
   args
   tp@(TransformParams name nestingLevel _ _)
   -- beside Place two monoidal objects (i.e. diagrams, paths, animations...) next to each other along the given vector.
-  = named name $ beside unitY transformedText finalDia 
+  = named name $ beside unitY transformedText finalDia
     where
       borderColor = borderColors !! nestingLevel
-      transformedText = centerXY $ alignL $ makeTransformedText iconInfo tp (pure maybeFunText)
-      separation = sizeUnit * 1.5
-      argsAndResoultPorts = hsep separation $
+      transformedText = centerY $ makeTransformedText iconInfo tp (pure maybeFunText)
+      argPorts = hsep sizeUnit $
         -- reflectX (dia borderCol) : -- draw diagram symbol e.g. function aplication triangle 
-        zipWith (makeAppInnerIcon iconInfo tp False) argPortsConst (fmap pure args) ++
-        [makeQualifiedPort name ResultPortConst
-        <> alignR (lineStartingSymbol borderColor)
-        ]
-      argsResoultAndInputPorts = makeQualifiedPort name InputPortConst <> alignL argsAndResoultPorts
-      argBox  = alignL $ appArgBox
+        zipWith (makeAppInnerIcon iconInfo tp False) argPortsConst (fmap pure args)
+      argsInputPorts = centerY $ makeQualifiedPort name InputPortConst <> alignR argPorts
+
+      argBox  = alignR $ appArgBox
                 borderColor
-                (width argsResoultAndInputPorts - sizeUnit)
-                (height argsResoultAndInputPorts)
-      finalDia = centerXY $ argBox <> argsResoultAndInputPorts
+                (width argsInputPorts)
+                (height argsInputPorts)
+
+      resultPortAtRight = makeQualifiedPort name ResultPortConst <> alignL (lineStartingSymbol borderColor)
+      argBoxAndResoultPort = argBox <> resultPortAtRight
+      finalDia = centerXY $ argBoxAndResoultPort <> argsInputPorts
 
 
 nestedApplyDia :: SpecialBackend b n
@@ -668,7 +668,7 @@ generalNestedMultiIf iconInfo triangleColor iFConstDia bottomDia inputAndArgs
       zipWith combineIfIcons iFVarIcons iFConstIcons
 
     combineIfIcons iFVarIcon iFConstIcon
-      = verticalLine === placedAtBothSides where 
+      = verticalLine === placedAtBothSides where
         placedAtRight = beside unitX multiIfDecisionSymbol (lc triangleColor (alignL iFVarIcon))
         placedAtBothSides = beside (-unitX) placedAtRight (alignR iFConstIcon)
         verticalLine = strutY 0.4
@@ -748,10 +748,10 @@ nestedLambda iconInfo paramNames mBodyExp (TransformParams name level reflect an
       :
       (portIcons
         ++ [makeQualifiedPort name ResultPortConst <> alignR resultSymbol])
-  
+
   portIcons
     = zipWith (makeLabelledPort name reflect angle) paramNames argPortsConst
-      
+
 
   lambdaBodyDiagram = case mBodyExp of
     Nothing -> mempty
