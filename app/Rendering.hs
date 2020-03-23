@@ -12,7 +12,7 @@ import Diagrams.Prelude(toName, shaftStyle, global, arrowShaft, noTail
                        , fromSegments, Angle, P2, V2, Point, Name, ArrowOpts, N
                        , TrailLike, V, height, width, (*^), reflectX, rotate
                        , centerXY, place
-                       , roundedRect, dashingG, lwG, lightgreen, lc, centerPoint
+                       , rect, dashingG, lwG, lightgreen, lc, centerPoint
                        , moveTo, turn, (@@), unitX, signedAngleBetween, (.-.)
                        , applyAll, names, angleV, rad, (^.), angleBetween, (.>)
                        , connectOutside', connect', with, (%~), lengths, (^+^)
@@ -421,11 +421,10 @@ drawLambdaRegions iconInfo placedNodes
       where
         combinedDia = mconcat dias
         rectPadding = 3 * sizeUnit
-        contentsRect = dashingG [0.4 * sizeUnit, 0.8 * sizeUnit] 0
-                       $ roundedRect
+        contentsRect = dashingG [0.7 * sizeUnit, 0.3 * sizeUnit] 0
+                       $ rect
                        (rectPadding + width combinedDia)
                        (rectPadding + height combinedDia)
-                       (3 * sizeUnit)
 
 placeNodes :: SpecialBackend b Double =>
   IconInfo

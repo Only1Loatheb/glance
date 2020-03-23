@@ -124,7 +124,7 @@ resultSymbol :: SpecialBackend b n =>
 resultSymbol
   = lwG defaultLineWidth
     $ lc (regionPerimC colorScheme)
-    $ fc (regionPerimC colorScheme) $ circle (1.85 * sizeUnit)
+    $ fc (regionPerimC colorScheme) $ circle sizeUnit
 
 -- BEGIN Exported icon functions --
 
@@ -165,25 +165,24 @@ iconToDiagram iconInfo icon = case icon of
                             iconInfo
                             ((fmap . fmap) (findIconFromName iconInfo) args)
 
--- BEGIN getPortAngles --
+-- BEGIN getPortAngles line goes out in that direction--
 
 applyPortAngles :: Floating n => Port -> [Angle n]
 applyPortAngles (Port x) = fmap (@@ turn) $ case x of
   0 -> [3/8, 1/2, 5/8] -- TODO Don't use angle of 1/2 for nested icons here
-  --1 -> [1/8, 7/8, 0]
-  1 -> [0]
-  _ -> [1/4, 3/4]
+  1 -> [3/4] -- line goes out with value to label
+  _ -> [1/4, 1/4] -- [idk, side fromline comes with value like in lambda]
 
 lambdaPortAngles :: Floating n => Bool -> Port -> [Angle n]
 lambdaPortAngles embedded (Port x) = fmap (@@ turn) $ case x of
   -- 0 == lambda return value Icon
   0 -> if embedded
-       then [1/4, 3/4]
-       else [3/8, 1/2, 5/8]
+       then [3/4, 3/4]
+       else [1/4, 1/4, 1/4]
   -- 1 == value port
   --1 -> [1/8, 7/8, 0]
-  1 -> [0]
-  _ -> [1/4, 3/4]
+  1 -> [3/4]
+  _ -> [3/4, 3/4]
 
 pAppPortAngles :: Floating n => Port -> [Angle n]
 pAppPortAngles (Port x) = fmap (@@ turn) $ case x of
@@ -485,24 +484,28 @@ generalNestedDia
   args
   tp@(TransformParams name nestingLevel _ _)
   -- beside Place two monoidal objects (i.e. diagrams, paths, animations...) next to each other along the given vector.
-  = named name $ beside unitY transformedText finalDia
+  = named name finalDia
     where
       borderColor = borderColors !! nestingLevel
-      transformedText = centerY $ makeTransformedText iconInfo tp (pure maybeFunText)
-      argPorts = hsep sizeUnit $
-        -- reflectX (dia borderCol) : -- draw diagram symbol e.g. function aplication triangle 
-        zipWith (makeAppInnerIcon iconInfo tp False) argPortsConst (fmap pure args)
-      argsInputPorts = centerY $ makeQualifiedPort name InputPortConst <> alignR argPorts
 
-      argBox  = alignR $ appArgBox
+      argPortsUncentred =  zipWith ( makeAppInnerIcon iconInfo tp False) argPortsConst (fmap pure args)
+      argPortsCentred  = fmap centerY argPortsUncentred
+      argPorts = centerX $ hsep sizeUnit argPortsCentred
+
+      argsInputPorts =  makeQualifiedPort name InputPortConst <> argPorts
+      argBox  = appArgBox
                 borderColor
                 (width argsInputPorts)
                 (height argsInputPorts)
+      argsInputDiagram = argBox <> argsInputPorts
 
-      resultPortAtRight = makeQualifiedPort name ResultPortConst <> alignL (lineStartingSymbol borderColor)
-      argBoxAndResoultPort = argBox <> resultPortAtRight
-      finalDia = centerXY $ argBoxAndResoultPort <> argsInputPorts
+      transformedName = centerX $ makeTransformedText iconInfo tp (pure maybeFunText)
 
+      nameUnderArgsDia = beside (-unitY) argsInputDiagram transformedName
+
+      resultPortDia =  (makeQualifiedPort name ResultPortConst) <> (lineStartingSymbol borderColor)
+
+      finalDia = beside (-unitY) nameUnderArgsDia resultPortDia
 
 nestedApplyDia :: SpecialBackend b n
   => IconInfo
@@ -555,8 +558,7 @@ rectForText n = rect rectangleWidth (textBoxFontSize * textBoxHeightFactor)
 commentTextArea :: SpecialBackend b n =>
   Colour Double -> String -> SpecialQDiagram b n
 commentTextArea textColor t =
-  alignL
-  $ fontSize
+  alignL $ fontSize
   (local textBoxFontSize)
   (font textFont $ fc textColor $ topLeftText t)
   <>  alignTL (lw none $ rectForText (length t))
@@ -573,8 +575,8 @@ multilineComment textColor _boxColor t = lwG (0.6 * defaultLineWidth) textDia
 coloredTextBox :: SpecialBackend b n =>
   Colour Double
   -> AlphaColour Double -> String -> SpecialQDiagram b n
-coloredTextBox textColor boxColor t =
-  textLabel <> boxAroundText where
+coloredTextBox textColor boxColor t 
+  = boxAroundText <> textLabel  where
     textLabel =
       fontSize
       (local textBoxFontSize)
@@ -739,19 +741,22 @@ nestedLambda :: SpecialBackend b n
   -> Maybe NamedIcon
   -> TransformableDia b n
 nestedLambda iconInfo paramNames mBodyExp (TransformParams name level reflect angle)
-  = centerXY $ lambdaBodyDiagram ||| centerY (named name inputOutputDiagram)
+  -- = centerXY $ lambdaBodyDiagram ||| centerY (named name inputOutputDiagram)
+  = centerXY (named name inputsResultAndBodyDia)
+  -- centerY (named name inputOutputDiagram)
   where
-  inputOutputDiagram = alignL (hsep 0.5 inputOutputIcons)
+  inputsResultAndBodyDia = (alignB inputsAndBodyDia) <> (alignT resultDiagram)
+  inputsAndBodyDia = (alignB inputDiagram) <> (alignT lambdaBodyDiagram)
 
-  inputOutputIcons
-    = (makeQualifiedPort name InputPortConst <> inputSymbol)
-      :
-      (portIcons
-        ++ [makeQualifiedPort name ResultPortConst <> alignR resultSymbol])
+  inputDiagram =  hsep sizeUnit portIcons
+  portIcons = zipWith (makeLabelledPort name reflect (0 @@ turn)) paramNames argPortsConst
 
-  portIcons
-    = zipWith (makeLabelledPort name reflect angle) paramNames argPortsConst
-
+  resultDiagram = makeQualifiedPort name ResultPortConst <> resultSymbol
+  -- inputIcons
+  --   = (makeQualifiedPort name InputPortConst <> inputSymbol)
+  --     :
+  --     (portIcons
+  --       ++ [makeQualifiedPort name ResultPortConst <> alignR resultSymbol])
 
   lambdaBodyDiagram = case mBodyExp of
     Nothing -> mempty
@@ -759,7 +764,8 @@ nestedLambda iconInfo paramNames mBodyExp (TransformParams name level reflect an
       -> iconToDiagram
          iconInfo
          bodyIcon
-         (TransformParams bodyNodeName level reflect angle)
+         (TransformParams bodyNodeName level reflect (0 @@ turn))
+
 
 -- END Main icons
 -- END Icons
