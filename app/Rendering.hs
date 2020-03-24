@@ -9,12 +9,12 @@ module Rendering (
 import qualified Diagrams.Prelude as DIA
 import Diagrams.Prelude(toName, shaftStyle, global, arrowShaft, noTail
                        , arrowTail, arrowHead, scale, r2, bezier3
-                       , fromSegments, Angle, P2, V2, Point, Name, ArrowOpts, N
+                       , fromSegments, Angle, P2, V2, Point, ArrowOpts, N
                        , TrailLike, V, height, width, (*^), reflectX, rotate
                        , centerXY, place
                        , rect, dashingG, lwG, lightgreen, lc, centerPoint
                        , moveTo, turn, (@@), unitX, signedAngleBetween, (.-.)
-                       , applyAll, names, angleV, rad, (^.), angleBetween, (.>)
+                       , applyAll, angleV, rad, (^.), angleBetween, (.>)
                        , connectOutside', connect', with, (%~), lengths, (^+^)
                        , (.~))
 import Diagrams.TwoD.GraphViz(mkGraph, getGraph, layoutGraph')
@@ -114,8 +114,8 @@ getArrowOpts
     namePortHash = mod (portNum + (503 * nodeNum)) (length edgeColors)
     shaftColor = edgeColors !! namePortHash
     arrowOptions =
-      arrowHead .~ DIA.noHead
-      -- arrowHead .~ DIA.tri
+      -- arrowHead .~ DIA.noHead
+      arrowHead .~ DIA.tri
       $ DIA.headStyle %~ DIA.fc shaftColor
       $ arrowTail .~ noTail
       $ arrowShaft .~ bezierShaft fromAngle toAngle
@@ -178,125 +178,20 @@ connectMaybePorts portAngles
 
 
 -- START addEdges --
-nameAndPortToName :: NameAndPort -> Name
-nameAndPortToName (NameAndPort name mPort) = case mPort of
-  Nothing -> toName name
-  Just port -> name .> port
 
-findPortAngles :: SpecialNum n
-  => IconInfo -> NamedIcon -> NameAndPort -> [Angle n]
-findPortAngles iconInfo (Named nodeName nodeIcon) (NameAndPort diaName mPort)
-  = case mPort of
-      Nothing -> []
-      Just port -> foundAngles where
-        mName = if nodeName == diaName then Nothing else Just diaName
-        foundAngles = getPortAngles iconInfo nodeIcon port mName
-
--- TODO Clean up the Angle arithmatic
-pickClosestAngle :: SpecialNum n =>
-  (Bool, Angle n)
-  -> Angle n
-  -> Angle n
-  -> Angle n
-  -> [Angle n]
-  -> Angle n
-pickClosestAngle (nodeFlip, nodeAngle) emptyCase target shaftAngle angles
-  = case angles of
-      [] -> emptyCase
-      _ -> (-) <$>
-        fst (minimumBy (compare `on` snd) $ fmap angleDiff adjustedAngles)
-        <*>
-        shaftAngle
-        where
-          adjustedAngles = fmap adjustAngle angles
-          angleDiff angle = (angle, angleBetween (angleV target) (angleV angle))
-
-          adjustAngle angle = if nodeFlip
-                              then signedAngleBetween
-                                   (rotate nodeAngle $ reflectX (angleV angle))
-                                   unitX
-                              else (+) <$> angle <*> nodeAngle
-
-
--- TODO Refactor with pickClosestAngle
-smallestAngleDiff :: SpecialNum n =>
-  (Bool, Angle n) -> Angle n -> [Angle n] -> n
-smallestAngleDiff (nodeFlip, nodeAngle) target angles = case angles of
-  [] -> 0
-  _ -> minimum $ fmap angleDiff adjustedAngles
-    where
-      adjustedAngles = fmap adjustAngle angles
-      angleDiff angle = angleBetween (angleV target) (angleV angle) ^. rad
-
-      adjustAngle angle = if nodeFlip then
-        signedAngleBetween (rotate nodeAngle $ reflectX (angleV angle)) unitX
-        else
-        (+) <$> angle <*> nodeAngle
-
-
-lookupNodeAngle ::  Show n =>
-  [(NamedIcon, (Bool, Angle n))] -> NamedIcon -> (Bool, Angle n)
-lookupNodeAngle rotationMap key
-  = fromMaybeError
-  ("nodeVector: key not in rotaionMap. key = " ++ show key
-    ++ "\n\n rotationMap = " ++ show rotationMap)
-  $ lookup key rotationMap
-
-makeEdge :: (HasCallStack, SpecialBackend b n, ING.Graph gr) =>
-  String  -- ^ Debugging information
-  -> IconInfo
-  -> gr NamedIcon (EmbedInfo Edge)
-  -> SpecialQDiagram b n
-  -> [(NamedIcon, (Bool, Angle n))]
-  -> ING.LEdge (EmbedInfo Edge)
+makeEdge :: (HasCallStack, SpecialBackend b n) 
+  => ING.LEdge (EmbedInfo Edge)
   -> SpecialQDiagram b n
   -> SpecialQDiagram b n
-makeEdge debugInfo iconInfo graph dia rotationMap
-  (node0, node1, edge@(EmbedInfo _ (Edge _ (namePort0, namePort1))))
+makeEdge 
+  (_node0, _node1, edge@(EmbedInfo _ (Edge _ (_namePort0, _namePort1))))
   = connectMaybePorts portAngles edge
   where
-    node0label = fromMaybeError
-                 ("makeEdge: node0 is not in graph. node0: " ++ show node0)
-                 $ ING.lab graph node0
-    node1label = fromMaybeError
-                 ("makeEdge: node1 is not in graph. node1: " ++ show node1)
-                 $ ING.lab graph node1
+    -- this function was much more complicated
+    portAngleAtBottom = 3/4 @@ turn
+    portAngleAtTop = 1/4 @@ turn
+    portAngles = (portAngleAtBottom, portAngleAtTop)
 
-    node0Angle = lookupNodeAngle rotationMap node0label
-    node1Angle = lookupNodeAngle rotationMap node1label
-
-    diaNodeNamePointMap = names dia
-    port0Point = getPortPoint $ nameAndPortToName namePort0
-    port1Point = getPortPoint $ nameAndPortToName namePort1
-    shaftVector = if port0Point == port1Point
-                  then error "makeEdge: points are equal!"
-                  else port1Point .-. port0Point
-    shaftAngle = signedAngleBetween shaftVector unitX
-
-    icon0PortAngle = pickClosestAngle node0Angle mempty shaftAngle shaftAngle
-                     $ findPortAngles iconInfo node0label namePort0
-
-    shaftAnglePlusOneHalf = (+) <$> shaftAngle <*> (1/2 @@ turn)
-    icon1PortAngle = pickClosestAngle
-                     node1Angle
-                     (1/2 @@ turn)
-                     shaftAnglePlusOneHalf
-                     shaftAngle
-                     (findPortAngles iconInfo node1label namePort1)
-
-    getPortPoint n = case foundPoints of
-      [point] -> point
-      -- (p1:_) -> p1
-      _ -> error $ "Multiple points. Debug info: " <> debugInfo
-                     <> "\nn: " <> show n
-      where
-        foundPoints = fromMaybeError
-          ( "makeEdge: port not found. Debug info: " <> debugInfo
-            <> "\nPort: " ++ show n ++ "\nValid ports: "
-            ++ show diaNodeNamePointMap)
-          (lookup n diaNodeNamePointMap)
-
-    portAngles = (icon0PortAngle, icon1PortAngle)
 
 -- | addEdges draws the edges underneath the nodes.
 addEdges :: (HasCallStack, SpecialBackend b n, ING.Graph gr) =>
@@ -304,90 +199,11 @@ addEdges :: (HasCallStack, SpecialBackend b n, ING.Graph gr) =>
   -> IconInfo
   -> gr NamedIcon (EmbedInfo Edge)
   -> SpecialQDiagram b n
-  -> [(NamedIcon, (Bool, Angle n))]
   -> SpecialQDiagram b n
-addEdges debugInfo iconInfo graph dia rotationMap = applyAll connections dia
+addEdges _debugInfo _iconInfo graph = applyAll connections
   where
     connections
-      = makeEdge debugInfo iconInfo graph dia rotationMap <$> ING.labEdges graph
-
--- BEGIN rotateNodes --
-
--- TODO May want to use a power other than 2 for the edgeAngleDiffs
-scoreAngle :: SpecialNum n =>
-  Point V2 n
-  -> [(Point V2 n, [Angle n])]
-  -> Bool
-  -> Angle n
-  -> n
-scoreAngle iconPosition edges reflected angle
-  = sum $ (^(2 :: Int)) <$> fmap edgeAngleDiff edges
-  where
-    edgeAngleDiff (otherNodePosition, portAngles) = angleDiff
-      where
-        shaftVector = otherNodePosition .-. iconPosition
-        shaftAngle = signedAngleBetween shaftVector unitX
-        angleDiff = smallestAngleDiff (reflected, angle) shaftAngle portAngles
-
-bestAngleForIcon :: (HasCallStack, SpecialNum n, ING.Graph gr) =>
-  IconInfo
-  -> Map.Map NamedIcon (Point V2 n)
-  -> gr NamedIcon (EmbedInfo Edge)
-  -> NamedIcon
-  -> Bool
-  -> (Angle n, n)
-bestAngleForIcon iconInfo positionMap graph key@(Named (NodeName nodeId) _) reflected
-  = minimumBy (compare `on` snd)
-    ( (\angle -> (angle
-                 , scoreAngle iconPosition edges reflected angle))
-      <$> fmap (@@ turn) possibleAngles)
-  where
-    possibleAngles = [0,(1/24)..1]
-    -- possibleAngles = [0, 1/2] -- (uncomment this line and comment out the line above to disable rotation)
-    iconPosition = positionMap Map.! key
-    edges = getPositionAndAngles
-            <$> ( fmap getSucEdge (ING.lsuc graph nodeId)
-                  <> fmap getPreEdge (ING.lpre graph nodeId))
-
-    getPositionAndAngles (node, nameAndPort)
-      = (positionMap Map.! nodeLabel, portAngles)
-      where
-        nodeLabel = fromMaybeError
-                    "getPositionAndAngles: node not found"
-                    (ING.lab graph node)
-        portAngles = findPortAngles iconInfo key nameAndPort
-
-  -- Edge points from id to otherNode
-    getSucEdge (otherNode, EmbedInfo _ edge) = (otherNode, nameAndPort) where
-      (nameAndPort, _) = edgeConnection edge
-
-  -- Edge points from otherNode to id
-    getPreEdge (otherNode, EmbedInfo _ edge) = (otherNode, nameAndPort) where
-      (_, nameAndPort) = edgeConnection edge
-
-findIconRotation :: (HasCallStack, SpecialNum n, ING.Graph gr) =>
-  IconInfo
-  -> Map.Map NamedIcon (Point V2 n)
-  -> gr NamedIcon (EmbedInfo Edge)
-  -> NamedIcon
-  -> (NamedIcon, (Bool, Angle n))
-findIconRotation iconInfo positionMap graph key = (key, (reflected, angle)) where
-  -- Smaller scores are better
-  (reflectedAngle, reflectedScore) = bestAngleForIcon iconInfo positionMap graph key True
-  (nonReflectedAngle, nonReflectedScore)
-    = bestAngleForIcon iconInfo positionMap graph key False
-  reflected = reflectedScore < nonReflectedScore
-  angle = if reflected then reflectedAngle else nonReflectedAngle
-
-rotateNodes :: (HasCallStack, SpecialNum n, ING.Graph gr) =>
-  IconInfo
-  -> Map.Map NamedIcon (Point V2 n)
-  -> gr NamedIcon (EmbedInfo Edge)
-  -> [(NamedIcon, (Bool, Angle n))]
-rotateNodes iconInfo positionMap graph
-  = findIconRotation iconInfo positionMap graph <$> Map.keys positionMap
-
--- END rotateNodes --
+      = makeEdge  <$> ING.labEdges graph
 
 drawLambdaRegions :: forall b . SpecialBackend b Double =>
   IconInfo
@@ -426,25 +242,22 @@ drawLambdaRegions iconInfo placedNodes
                        (rectPadding + width combinedDia)
                        (rectPadding + height combinedDia)
 
-placeNodes :: SpecialBackend b Double =>
-  IconInfo
-  -> Map.Map NamedIcon (P2 Double)
-  -> [(NamedIcon, (Bool, Angle Double))]
-  -> [(NamedIcon, SpecialQDiagram b Double)]
-placeNodes namedIcons positionMap = fmap placeNode
-  where
-    placeNode (key@(Named name icon), (reflected, angle))
-      = (key, place transformedDia diaPosition)
-      where
-        origDia = centerXY
-                  $ iconToDiagram
-                  namedIcons
-                  icon
-                  (TransformParams name 0 reflected angle)
-        transformedDia = centerXY $ rotate angle
-                         $ (if reflected then reflectX else id) origDia
-        diaPosition = graphvizScaleFactor *^ (positionMap Map.! key)
-
+-- placeNode :: SpecialBackend b Double 
+--   => IconInfo
+--   -> Icon
+--   -> SpecialQDiagram b Double
+placeNode :: SpecialBackend b Double
+  => IconInfo 
+  -> (NamedIcon, P2 Double) 
+  -> (NamedIcon, SpecialQDiagram b Double)
+placeNode namedIcons (key@(Named name icon), value)
+  = (key, place transformedDia diaPosition) where
+      origDia = iconToDiagram
+                namedIcons
+                icon
+                (TransformParams name 0 False (0 @@ turn))
+      transformedDia = centerXY $ origDia
+      diaPosition = graphvizScaleFactor *^ value
 
 customLayoutParams :: GV.GraphvizParams n v e () v
 customLayoutParams = GV.defaultParams{
@@ -476,10 +289,11 @@ renderIconGraph debugInfo fullGraphWithInfo = do
   --  layoutResult <- layoutGraph' layoutParams GVA.Fdp graph
   let
     positionMap = fst $ getGraph layoutResult
-    rotationMap = rotateNodes iconInfo positionMap parentGraph
-    placedNodeList = placeNodes iconInfo positionMap rotationMap
+    -- rotationMap = rotateNodes iconInfo positionMap parentGraph
+    placedNodeList :: [(NamedIcon,SpecialQDiagram b Double)]
+    placedNodeList = fmap (placeNode iconInfo) (Map.toList $ positionMap)
     placedNodes = mconcat $ fmap snd placedNodeList
-    edges = addEdges debugInfo iconInfo parentGraph placedNodes rotationMap
+    edges = addEdges debugInfo iconInfo parentGraph placedNodes
     placedRegions = drawLambdaRegions iconInfo placedNodeList
   pure (placedNodes <> edges <> placedRegions)
   where

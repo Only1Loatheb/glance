@@ -749,7 +749,7 @@ nestedLambda iconInfo paramNames mBodyExp (TransformParams name level reflect an
   inputsAndBodyDia = (alignB inputDiagram) <> (alignT lambdaBodyDiagram)
 
   inputDiagram =  hsep sizeUnit portIcons
-  portIcons = zipWith (makeLabelledPort name reflect (0 @@ turn)) paramNames argPortsConst
+  portIcons = zipWith (makeLabelledPort name reflect angle) paramNames argPortsConst
 
   resultDiagram = makeQualifiedPort name ResultPortConst <> resultSymbol
   -- inputIcons
@@ -764,7 +764,7 @@ nestedLambda iconInfo paramNames mBodyExp (TransformParams name level reflect an
       -> iconToDiagram
          iconInfo
          bodyIcon
-         (TransformParams bodyNodeName level reflect (0 @@ turn))
+         (TransformParams bodyNodeName level reflect angle)
 
 
 -- END Main icons

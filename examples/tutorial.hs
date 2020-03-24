@@ -14,7 +14,7 @@ Function Application:
 Let's start with y = f x.
 The function f is applied to the argument x, and the result is bound to y.
 -}
-y = f x
+y = f x o p
 
 {-More explicitly-}
 result = function argument
