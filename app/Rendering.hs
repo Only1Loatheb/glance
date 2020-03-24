@@ -16,9 +16,8 @@ import Diagrams.Prelude(toName, shaftStyle, global, arrowShaft, noTail
                        , moveTo, turn, (@@), unitX, signedAngleBetween, (.-.)
                        , applyAll, angleV, rad, (^.), angleBetween, (.>)
                        , connectOutside', connect', with, (%~), lengths, (^+^)
-                       , (.~))
+                       , (.~), scaleX, (*^))
 import Diagrams.TwoD.GraphViz(mkGraph, getGraph, layoutGraph')
-
 import qualified Data.GraphViz as GV
 import qualified Data.GraphViz.Attributes.Complete as GVA
 import qualified Data.IntMap as IM

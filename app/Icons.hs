@@ -92,17 +92,6 @@ composeSymbol col
 portSymbol :: SpecialBackend b n => SpecialQDiagram b n
 portSymbol = lw none $ fc lineColorValue $ circle (sizeUnit * 0.5)
 
-inputSymbol :: SpecialBackend b n => SpecialQDiagram b n
-inputSymbol = lw none $ fc (lamArgResC colorScheme) unitSquare
-
-multiIfDecisionSymbol :: SpecialBackend b n =>
-  SpecialQDiagram b n
-multiIfDecisionSymbol
-  = coloredSymbol where
-    symbol = square (2 * sizeUnit)
-    coloredSymbol
-      = centerXY $ rotateBy (1/8) $ lwG defaultLineWidth $ lc (boolC colorScheme) (strokeLine symbol)
-
 multiIfConstSymbol :: SpecialBackend b n =>
   SpecialQDiagram b n -> SpecialQDiagram b n
 multiIfConstSymbol portDia = coloredSymbol ||| portDia
@@ -111,13 +100,14 @@ multiIfConstSymbol portDia = coloredSymbol ||| portDia
     coloredSymbol
       = lwG defaultLineWidth $ lc (boolC colorScheme) line
 
-multiIfVarSymbol :: SpecialBackend b n =>
-  SpecialQDiagram b n -> SpecialQDiagram b n
-multiIfVarSymbol portDia = coloredSymbol ||| portDia
+multiIfVarSymbol :: SpecialBackend b n
+  => Colour Double
+  ->  SpecialQDiagram b n
+multiIfVarSymbol color = coloredSymbol
   where
     symbol = hrule (2 * sizeUnit)
     coloredSymbol
-      = lwG defaultLineWidth $ lc (boolC colorScheme) (strokeLine symbol)
+      = lwG defaultLineWidth $ lc color (strokeLine symbol)
 
 resultSymbol :: SpecialBackend b n =>
   SpecialQDiagram b n
@@ -125,6 +115,22 @@ resultSymbol
   = lwG defaultLineWidth
     $ lc (regionPerimC colorScheme)
     $ fc (regionPerimC colorScheme) $ circle sizeUnit
+
+inIfConstBox :: SpecialBackend b n
+  => Colour Double
+  -> SpecialQDiagram b n
+  -> SpecialQDiagram b n
+inIfConstBox borderColor diagram  =
+  finalDiagram where
+    line = hrule (width diagram)
+    coloredLine = lwG defaultLineWidth $  lc borderColor line
+    triangleToRight = centerY $ fromOffsets triangleOfssets
+    halfHeight = (height diagram) / 2
+    triangleOfssets = [halfHeight *^ (unitY+unitX), halfHeight *^ (unitY-unitX)]
+    coloredTriangleToRight =  lwG defaultLineWidth $  lc borderColor $ triangleToRight
+    diagramWithLines = centerY $ vcat [coloredLine, diagram, coloredLine]
+    finalDiagram = centerX $ hcat [reflectX coloredTriangleToRight, diagramWithLines, coloredTriangleToRight]
+
 
 -- BEGIN Exported icon functions --
 
@@ -575,7 +581,7 @@ multilineComment textColor _boxColor t = lwG (0.6 * defaultLineWidth) textDia
 coloredTextBox :: SpecialBackend b n =>
   Colour Double
   -> AlphaColour Double -> String -> SpecialQDiagram b n
-coloredTextBox textColor boxColor t 
+coloredTextBox textColor boxColor t
   = boxAroundText <> textLabel  where
     textLabel =
       fontSize
@@ -644,7 +650,7 @@ generalNestedMultiIf :: SpecialBackend b n
                    -> SpecialQDiagram b n
                    -> [Maybe NamedIcon]
                    -> TransformableDia b n
-generalNestedMultiIf iconInfo triangleColor iFConstDia bottomDia inputAndArgs
+generalNestedMultiIf iconInfo triangleColor _ bottomDia inputAndArgs
   (TransformParams name nestingLevel reflect angle)
   = named name $ case inputAndArgs of
   [] -> mempty
@@ -661,8 +667,8 @@ generalNestedMultiIf iconInfo triangleColor iFConstDia bottomDia inputAndArgs
       = partitionEithers $ zipWith iconMapper argPortsConst subicons
 
     iconMapper (Port portNum) subicon
-      | even portNum = Right ${- middle -} multiIfVarSymbol port ||| placeSubIcon True subicon
-      | otherwise = Left $ placeSubIcon False subicon |||  iFConstDia port {- middle -}
+      | even portNum = Right ${- middle -} multiIfVarSymbol triangleColor ||| port ||| placeSubIcon True subicon
+      | otherwise = Left $ inIfConstBox triangleColor $ placeSubIcon False subicon ||| port {- middle -}
       where
         port = makeQualifiedPort name (Port portNum)
 
@@ -670,9 +676,8 @@ generalNestedMultiIf iconInfo triangleColor iFConstDia bottomDia inputAndArgs
       zipWith combineIfIcons iFVarIcons iFConstIcons
 
     combineIfIcons iFVarIcon iFConstIcon
-      = verticalLine === placedAtBothSides where
-        placedAtRight = beside unitX multiIfDecisionSymbol (lc triangleColor (alignL iFVarIcon))
-        placedAtBothSides = beside (-unitX) placedAtRight (alignR iFConstIcon)
+      = verticalLine === placedAtRight where
+        placedAtRight = (alignR iFConstIcon) <>  (alignL iFVarIcon)
         verticalLine = strutY 0.4
 
     multiIfDia = vcat (alignT iFVarAndConstIcons)
