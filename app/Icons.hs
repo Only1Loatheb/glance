@@ -533,6 +533,12 @@ nestedApplyDia iconInfo flavor = case flavor of
 textBoxFontSize :: (Num a) => a
 textBoxFontSize = 1
 
+letterWidth :: Fractional a => a
+letterWidth = textBoxFontSize * monoLetterWidthToHeightFraction
+
+letterHeight :: Fractional a => a
+letterHeight = textBoxFontSize * textBoxHeightFactor
+
 monoLetterWidthToHeightFraction :: (Fractional a) => a
 monoLetterWidthToHeightFraction = 0.61
 
@@ -553,11 +559,11 @@ textFont = "monospace"
 -- enclose the text box. Since the normal SVG text has no size, some hackery is
 -- needed to determine the size of the text's bounding box.
 rectForText :: (InSpace V2 n t, TrailLike t) => Int -> t
-rectForText n = rect rectangleWidth (textBoxFontSize * textBoxHeightFactor)
+rectForText n = rect textWidth textHeight
   where
-    rectangleWidth
-      = (fromIntegral n * textBoxFontSize * monoLetterWidthToHeightFraction)
-        + (textBoxFontSize * 0.3)
+    textHeight = letterHeight
+    textWidth = (fromIntegral n * letterWidth) + sidePadding
+    sidePadding = textBoxFontSize * 0.3
 
 -- END Text helper functions
 
@@ -583,10 +589,11 @@ coloredTextBox :: SpecialBackend b n =>
   -> AlphaColour Double -> String -> SpecialQDiagram b n
 coloredTextBox textColor boxColor t
   = boxAroundText <> textLabel  where
-    textLabel =
+    textLabel = alignT $ padOverText <> 
       fontSize
       (local textBoxFontSize)
-      (font textFont $ fillColor textColor $ text t)
+      (font textFont $ fillColor textColor $ text t) -- dont have size
+    padOverText = strutY (textBoxFontSize * textBoxHeightFactor /2)
     boxAroundText =
       lwG -- A convenient synonym for 'lineWidth (global w)'.
       (0.6 * defaultLineWidth)
@@ -753,7 +760,7 @@ nestedLambda iconInfo paramNames mBodyExp (TransformParams name level reflect an
   inputsResultAndBodyDia = (alignB inputsAndBodyDia) <> (alignT resultDiagram)
   inputsAndBodyDia = (alignB inputDiagram) <> (alignT lambdaBodyDiagram)
 
-  inputDiagram =  hsep sizeUnit portIcons
+  inputDiagram =  vsep (5 * sizeUnit) portIcons
   portIcons = zipWith (makeLabelledPort name reflect angle) paramNames argPortsConst
 
   resultDiagram = makeQualifiedPort name ResultPortConst <> resultSymbol

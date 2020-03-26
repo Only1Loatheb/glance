@@ -201,8 +201,7 @@ addEdges :: (HasCallStack, SpecialBackend b n, ING.Graph gr) =>
   -> SpecialQDiagram b n
 addEdges _debugInfo _iconInfo graph = applyAll connections
   where
-    connections
-      = makeEdge  <$> ING.labEdges graph
+    connections = makeEdge  <$> ING.labEdges graph
 
 drawLambdaRegions :: forall b . SpecialBackend b Double =>
   IconInfo
@@ -219,8 +218,11 @@ drawLambdaRegions iconInfo placedNodes
     -- Also draw the region around the icon the lambda is in.
     drawRegion :: Set.Set NodeName -> NamedIcon -> SpecialQDiagram b Double
     drawRegion parentNames icon = case icon of
-      Named _ (LambdaIcon _ _ enclosedNames)
-        -> regionRect $ findDia <$> Set.toList (parentNames <> enclosedNames)
+      Named lambdaName (LambdaIcon _ _ enclosedNames)
+        -> regionRect parent enclosed  where
+            parent =  findDia lambdaName
+            enclosedWithoutParent = Set.delete lambdaName enclosedNames 
+            enclosed =  findDia <$> Set.toList enclosedWithoutParent
       Named parentName (NestedApply _ headIcon icons)
         -> mconcat
            $ drawRegion (Set.insert parentName parentNames)
@@ -229,17 +231,21 @@ drawLambdaRegions iconInfo placedNodes
            (headIcon:icons)
       _ -> mempty
 
-    -- TODO Use something better than a rectangle
-    regionRect dias
-      = moveTo (centerPoint combinedDia)
-        $ lc lightgreen (lwG defaultLineWidth contentsRect)
+    regionRect :: forall b . SpecialBackend b Double =>
+      SpecialQDiagram b Double
+      -> [SpecialQDiagram b Double]
+      -> SpecialQDiagram b Double
+    regionRect lambdaDiagram enclosedDiagarms
+      = moveTo (centerPoint combinedDia) coloredContentsRect
       where
-        combinedDia = mconcat dias
+        combinedDia = mconcat enclosedDiagarms
         rectPadding = 3 * sizeUnit
         contentsRect = dashingG [0.7 * sizeUnit, 0.3 * sizeUnit] 0
                        $ rect
                        (rectPadding + width combinedDia)
                        (rectPadding + height combinedDia)
+        coloredContentsRect = lc lightgreen (lwG defaultLineWidth contentsRect)
+
 
 -- placeNode :: SpecialBackend b Double 
 --   => IconInfo
