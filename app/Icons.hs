@@ -8,7 +8,6 @@ module Icons
     (
     TransformParams(..),
     TransformableDia,
-    getPortAngles,
     iconToDiagram,
     inputPort,
     resultPort,
@@ -83,7 +82,7 @@ lineStartingSymbol borderColor
 
 applySymbol :: SpecialBackend b n => Colour Double -> SpecialQDiagram b n
 applySymbol col
-  = fc col $ lw none $ rotateBy (-1/12) $ eqTriangle (2 * sizeUnit)
+  = fc col $ lw none $ rotateBy (1/2) $ eqTriangle (2 * sizeUnit)
 
 composeSymbol :: SpecialBackend b n => Colour Double -> SpecialQDiagram b n
 composeSymbol col
@@ -109,12 +108,10 @@ multiIfVarSymbol color = coloredSymbol
     coloredSymbol
       = lwG defaultLineWidth $ lc color (strokeLine symbol)
 
-resultSymbol :: SpecialBackend b n =>
+lambdaSymbol :: SpecialBackend b n =>
   SpecialQDiagram b n
-resultSymbol
-  = lwG defaultLineWidth
-    $ lc (regionPerimC colorScheme)
-    $ fc (regionPerimC colorScheme) $ circle sizeUnit
+lambdaSymbol
+  = coloredTextBox (regionPerimC colorScheme) (opaque (bindTextBoxC colorScheme)) "lambda"
 
 inIfConstBox :: SpecialBackend b n
   => Colour Double
@@ -170,148 +167,6 @@ iconToDiagram iconInfo icon = case icon of
   NestedMultiIfIcon args -> nestedMultiIfDia
                             iconInfo
                             ((fmap . fmap) (findIconFromName iconInfo) args)
-
--- BEGIN getPortAngles line goes out in that direction--
-
-applyPortAngles :: Floating n => Port -> [Angle n]
-applyPortAngles (Port x) = fmap (@@ turn) $ case x of
-  0 -> [3/8, 1/2, 5/8] -- TODO Don't use angle of 1/2 for nested icons here
-  1 -> [3/4] -- line goes out with value to label
-  _ -> [1/4, 1/4] -- [idk, side fromline comes with value like in lambda]
-
-lambdaPortAngles :: Floating n => Bool -> Port -> [Angle n]
-lambdaPortAngles embedded (Port x) = fmap (@@ turn) $ case x of
-  -- 0 == lambda return value Icon
-  0 -> if embedded
-       then [3/4, 3/4]
-       else [1/4, 1/4, 1/4]
-  -- 1 == value port
-  --1 -> [1/8, 7/8, 0]
-  1 -> [3/4]
-  _ -> [3/4, 3/4]
-
-pAppPortAngles :: Floating n => Port -> [Angle n]
-pAppPortAngles (Port x) = fmap (@@ turn) $ case x of
-  0 -> [0]
-  1 -> [0]
-  _ -> [0]
-
-multiIfPortAngles :: Floating n => Port -> [Angle n]
-multiIfPortAngles (Port port) = case port of
-  0 -> [1/4 @@ turn]
-  1 -> [3/4 @@ turn]
-  _ -> otherAngles where otherAngles
-                           | even port = [1/4 @@ turn]
-                           | otherwise = [3/4 @@ turn]
-
-findNestedIcon :: IconInfo -> NodeName -> Icon -> Maybe Icon
-findNestedIcon iconInfo name icon = case icon of
-  NestedApply _ headIcon args
-    -> snd
-       <$> findIcon
-       iconInfo
-       name
-       ((fmap . fmap) (findIconFromName iconInfo) (headIcon : args))
-  NestedPApp constructor args ->
-    snd <$> findIcon iconInfo name (fmap laValue (constructor:args))
-  _ -> Nothing
-
-findIcon :: IconInfo -> NodeName -> [Maybe NamedIcon] -> Maybe (Int, Icon)
-findIcon iconInfo name args = icon where
-  numberedArgs = zip ([0,1..] :: [Int]) args
-  filteredArgs = Arrow.second fromJust <$> filter (isJust . snd) numberedArgs
-  nameMatches (_, Named n _) = n == name
-  icon = case find nameMatches filteredArgs of
-    Nothing -> listToMaybe $ mapMaybe findSubSubIcon filteredArgs
-    Just (argNum, Named _ finalIcon) -> Just (argNum, finalIcon)
-    where
-      findSubSubIcon (argNum, Named _ subIcon)
-        = case findNestedIcon iconInfo name subIcon of
-            Nothing -> Nothing
-            Just x -> Just (argNum, x)
-
-generalNestedPortAngles :: SpecialNum n
-  => IconInfo
-  -> (Port -> [Angle n])
-  -> Maybe NamedIcon
-  -> [Maybe NamedIcon]
-  -> Port -> Maybe NodeName -> [Angle n]
-generalNestedPortAngles iconInfo defaultAngles headIcon args port maybeNodeName =
-  case maybeNodeName of
-    Nothing -> defaultAngles port
-    Just name -> case findIcon iconInfo name (headIcon : args) of
-      Nothing -> []
-      Just (_, icon) -> getPortAnglesHelper True iconInfo icon port Nothing
-
-reflectXAngle :: SpecialNum n => Angle n -> Angle n
-reflectXAngle x = reflectedAngle where
-  normalizedAngle = normalizeAngle x
-  reflectedAngle = (-) <$> halfTurn <*> normalizedAngle
-
--- TODO reflect the angles for the right side sub-icons
-nestedMultiIfPortAngles :: SpecialNum n
-  => IconInfo
-  -> [Maybe NamedIcon]
-  -> Port
-  -> Maybe NodeName
-  -> [Angle n]
-nestedMultiIfPortAngles iconInfo args port maybeNodeName = case maybeNodeName of
-  Nothing -> multiIfPortAngles port
-  Just name -> case findIcon iconInfo name args of
-    Nothing -> []
-    -- TODO Don't use hardcoded numbers
-    -- The arguments correspond to ports [0, 2, 3, 4 ...]
-    Just (argNum, icon) -> if odd argNum && argNum >= 1
-      -- The icon will be reflected
-      then fmap reflectXAngle subAngles
-      else subAngles
-      where
-        subAngles = getPortAnglesHelper True iconInfo icon port Nothing
-
-getPortAngles :: SpecialNum n
-  => IconInfo -> Icon -> Port -> Maybe NodeName -> [Angle n]
-getPortAngles = getPortAnglesHelper False
-
-getPortAnglesHelper :: SpecialNum n
-  => Bool -> IconInfo -> Icon -> Port -> Maybe NodeName -> [Angle n]
-getPortAnglesHelper embedded iconInfo icon port maybeNodeName = case icon of
-  TextBoxIcon _ -> []
-  BindTextBoxIcon _ -> []
-  MultiIfIcon _ -> multiIfPortAngles port
-  CaseIcon _ -> multiIfPortAngles port
-  CaseResultIcon -> []
-  LambdaIcon _ _ _ -> lambdaPortAngles embedded port
-  NestedApply _ headIcon args
-    -> generalNestedPortAngles
-       iconInfo
-       applyPortAngles
-       -- TODO Refactor with iconToDiagram
-       (fmap (findIconFromName iconInfo) headIcon)
-       ((fmap . fmap) (findIconFromName iconInfo) args)
-       port
-       maybeNodeName
-  NestedPApp headIcon args
-    -> generalNestedPortAngles
-       iconInfo
-       pAppPortAngles
-       (laValue headIcon)
-       (fmap laValue args)
-       port
-       maybeNodeName
-  NestedCaseIcon args
-    -> nestedMultiIfPortAngles
-       iconInfo
-       ((fmap . fmap) (findIconFromName iconInfo) args)
-       port
-       maybeNodeName
-  NestedMultiIfIcon args
-    -> nestedMultiIfPortAngles
-       iconInfo
-       ((fmap . fmap) (findIconFromName iconInfo) args)
-       port
-       maybeNodeName
-
--- END getPortAngles --
 
 -- BEGIN Port numbers
 
@@ -747,7 +602,7 @@ nestedCaseDia iconInfo
 -- 0: Result icon
 -- 1: The lambda function value
 -- 2,3.. : The parameters
-nestedLambda :: SpecialBackend b n
+nestedLambda ::  SpecialBackend b n
   => IconInfo
   -> [String]
   -> Maybe NamedIcon
@@ -757,18 +612,9 @@ nestedLambda iconInfo paramNames mBodyExp (TransformParams name level reflect an
   = centerXY (named name inputsResultAndBodyDia)
   -- centerY (named name inputOutputDiagram)
   where
-  inputsResultAndBodyDia = (alignB inputsAndBodyDia) <> (alignT resultDiagram)
-  inputsAndBodyDia = (alignB inputDiagram) <> (alignT lambdaBodyDiagram)
-
-  inputDiagram =  vsep (5 * sizeUnit) portIcons
-  portIcons = zipWith (makeLabelledPort name reflect angle) paramNames argPortsConst
-
-  resultDiagram = makeQualifiedPort name ResultPortConst <> resultSymbol
-  -- inputIcons
-  --   = (makeQualifiedPort name InputPortConst <> inputSymbol)
-  --     :
-  --     (portIcons
-  --       ++ [makeQualifiedPort name ResultPortConst <> alignR resultSymbol])
+  portPorts = zipWith (makeLabelledPort name reflect angle) paramNames argPortsConst
+  placedImputPorts = centerX $ hsep (1 * sizeUnit) portPorts
+  inputDiagram = placedImputPorts <> appArgBox (lamArgResC colorScheme) (width placedImputPorts) (height placedImputPorts)
 
   lambdaBodyDiagram = case mBodyExp of
     Nothing -> mempty
@@ -778,6 +624,9 @@ nestedLambda iconInfo paramNames mBodyExp (TransformParams name level reflect an
          bodyIcon
          (TransformParams bodyNodeName level reflect angle)
 
+  resultDiagram = (alignB lambdaSymbol ) <> (alignT $ makeQualifiedPort name ResultPortConst)
+         
+  inputsResultAndBodyDia = vcat [inputDiagram,lambdaBodyDiagram, resultDiagram]
 
 -- END Main icons
 -- END Icons

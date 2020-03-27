@@ -14,6 +14,28 @@ Function Application:
 Let's start with y = f x.
 The function f is applied to the argument x, and the result is bound to y.
 -}
+
+a = 1
+{--}
+b = 1.1
+{--}
+
+c = 'a'
+{--}
+
+d = "a"
+{--}
+
+
+e = [1,2,3,4]
+{--}
+
+f = (1,2,3)
+{--}
+
+g = True 
+{--}
+
 y = f x o p
 
 {-More explicitly-}
@@ -151,6 +173,7 @@ Here are two examples of nested functions:
 f1 = (\x1 -> (\x2 -> (\x3 -> sum [x1, x2, x3])))
 -}
 f1 = (\x1 -> (\x2 -> (\x3 -> sum [x1, x2, x3])))
+f1 = \x1 x2 x3 -> sum [x1, x2, x3]
 
 {-
 f1 x y = (\z -> x + z) y
@@ -227,8 +250,17 @@ Guards and if expressions look like this:
 y | x == 0 = 1
   | otherwise = x + 1
 -}
-y | x == 0 = 1
-  | otherwise = x + 1
+a = y 1 where 
+  y | x == 0 = 1
+    | otherwise = x + 1
+
+
+b = y 1 where
+    y = case x of
+      0 -> 0
+      _ -> x + 1
+    
+
 
 {-The Boolean expressions (e.g. x == 0) connect to the orange Ls, and the
 corresponding result expressions (e.g. x + 1) connect to the triangles on the
@@ -302,3 +334,9 @@ factorial x =
   if x == 0
     then 1
     else x * factorial (x - 1)
+
+
+-- lambda used
+
+lambdaUsage a = 
+  map (\x -> x+2) a

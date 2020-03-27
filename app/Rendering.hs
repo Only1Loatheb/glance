@@ -37,7 +37,7 @@ import GHC.Stack(HasCallStack)
 --import Data.GraphViz.Commands
 
 import Icons(colorScheme, iconToDiagram, defaultLineWidth, ColorStyle(..)
-            , getPortAngles, TransformParams(..), sizeUnit
+            , TransformParams(..), sizeUnit
             , findIconFromName)
 import TranslateCore(nodeToIcon)
 import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
@@ -95,8 +95,8 @@ drawingToIconGraph (Drawing nodes edges) =
 bezierShaft form to = fromSegments [bezier3 offsetToControl1 offsetToControl2 offsetToEnd] where
   scaleFactor = sizeUnit * 10
   offsetToEnd = to .-. form
-  offsetToControl1 = (scale scaleFactor (-unitY))
-  offsetToControl2 = (scale scaleFactor (unitY)) ^+^ offsetToEnd
+  offsetToControl1 = scale scaleFactor (-unitY)
+  offsetToControl2 = (scale scaleFactor unitY) ^+^ offsetToEnd
 
 getArrowOpts :: (RealFloat n, Typeable n) =>
   (Maybe (Point V2 n),Maybe (Point V2 n))
@@ -241,7 +241,7 @@ drawLambdaRegions iconInfo placedNodes
                        (rectPadding + width combinedDia)
                        (rectPadding + height combinedDia)
         coloredContentsRect = lc lightgreen (lwG defaultLineWidth contentsRect)
-
+-- TODO place nodes from top to bottom 
 -- placeNode :: SpecialBackend b Double 
 --   => IconInfo
 --   -> Icon
@@ -250,14 +250,14 @@ placeNode :: SpecialBackend b Double
   => IconInfo 
   -> (NamedIcon, P2 Double) 
   -> (NamedIcon, SpecialQDiagram b Double)
-placeNode namedIcons (key@(Named name icon), value)
+placeNode namedIcons (key@(Named name icon), targetPosition)
   = (key, place transformedDia diaPosition) where
       origDia = iconToDiagram
                 namedIcons
                 icon
                 (TransformParams name 0 False (0 @@ turn))
-      transformedDia = centerXY $ origDia
-      diaPosition = graphvizScaleFactor *^ value
+      transformedDia = centerXY origDia
+      diaPosition = graphvizScaleFactor *^ targetPosition
 
 customLayoutParams :: GV.GraphvizParams n v e () v
 customLayoutParams = GV.defaultParams{
@@ -291,7 +291,7 @@ renderIconGraph debugInfo fullGraphWithInfo = do
     positionMap = fst $ getGraph layoutResult
     -- rotationMap = rotateNodes iconInfo positionMap parentGraph
     placedNodeList :: [(NamedIcon,SpecialQDiagram b Double)]
-    placedNodeList = fmap (placeNode iconInfo) (Map.toList $ positionMap)
+    placedNodeList = fmap (placeNode iconInfo) (Map.toList positionMap)
     placedNodes = mconcat $ fmap snd placedNodeList
     edges = addEdges debugInfo iconInfo parentGraph placedNodes
     placedRegions = drawLambdaRegions iconInfo placedNodeList
