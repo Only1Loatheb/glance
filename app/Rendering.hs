@@ -16,7 +16,7 @@ import Diagrams.Prelude(toName, shaftStyle, global, arrowShaft, noTail
                        , moveTo, turn, (@@), unitX, signedAngleBetween, (.-.)
                        , applyAll, angleV, rad, (^.), angleBetween, (.>)
                        , connectOutside', connect', with, (%~), lengths, (^+^)
-                       , (.~), scaleX, (*^))
+                       , (.~), scaleX, (*^), unitX, unitY)
 import Diagrams.TwoD.GraphViz(mkGraph, getGraph, layoutGraph')
 import qualified Data.GraphViz as GV
 import qualified Data.GraphViz.Attributes.Complete as GVA
@@ -90,21 +90,20 @@ drawingToIconGraph (Drawing nodes edges) =
               "syntaxGraphToFglGraph edge connects to non-existent node. Node NodeName ="
               ++ show name ++ " Edge=" ++ show e
 
+-- https://archives.haskell.org/projects.haskell.org/diagrams/doc/arrow.html
 
-bezierShaft :: (V t ~ V2, TrailLike t) =>
-  Angle (N t) -> Angle (N t) -> t
-bezierShaft angle1 angle2 = fromSegments [bezier3 c1 c2 x] where
-  scaleFactor = 0.5
-  x = r2 (1,0)
-  c1 = rotate angle1 (scale scaleFactor unitX)
-  c2 = rotate angle2 (scale scaleFactor unitX) ^+^ x
+bezierShaft form to = fromSegments [bezier3 offsetToControl1 offsetToControl2 offsetToEnd] where
+  scaleFactor = sizeUnit * 10
+  offsetToEnd = to .-. form
+  offsetToControl1 = (scale scaleFactor (-unitY))
+  offsetToControl2 = (scale scaleFactor (unitY)) ^+^ offsetToEnd
 
 getArrowOpts :: (RealFloat n, Typeable n) =>
-  (Angle n, Angle n)
+  (Maybe (Point V2 n),Maybe (Point V2 n))
   -> NameAndPort
   -> (ArrowOpts n, DIA.Colour Double)
 getArrowOpts
-  (fromAngle, toAngle)
+  (formPoint, toPoint)
   (NameAndPort (NodeName nodeNum) mPort)
   = (arrowOptions, shaftColor)
   where
@@ -112,23 +111,24 @@ getArrowOpts
     Port portNum = fromMaybe (Port 0) mPort
     namePortHash = mod (portNum + (503 * nodeNum)) (length edgeColors)
     shaftColor = edgeColors !! namePortHash
+    form = fromMaybe (DIA.p2 (0.0,0.0)) formPoint
+    to = fromMaybe (DIA.p2  (0.0,-1.0)) toPoint
     arrowOptions =
       -- arrowHead .~ DIA.noHead
       arrowHead .~ DIA.tri
       $ DIA.headStyle %~ DIA.fc shaftColor
       $ arrowTail .~ noTail
-      $ arrowShaft .~ bezierShaft fromAngle toAngle
+      $ arrowShaft .~ bezierShaft form to
       -- TODO Don't use a magic number for lengths (headLength and tailLength)
       $ lengths .~ global 0.5
       $ with
 
 -- | Given an Edge, return a transformation on Diagrams that will draw a line.
 connectMaybePorts :: SpecialBackend b n =>
-  (Angle n, Angle n)
-  -> EmbedInfo Edge
+  EmbedInfo Edge
   -> SpecialQDiagram b n
   -> SpecialQDiagram b n
-connectMaybePorts portAngles
+connectMaybePorts
   (EmbedInfo embedDir
     (Edge
       _
@@ -159,7 +159,10 @@ connectMaybePorts portAngles
 
 
     lineWidth = 2 * defaultLineWidth
-    (baseArrOpts, shaftCol) = getArrowOpts portAngles fromNamePort
+    
+    from = nameToPoint qPort0
+    to = nameToPoint qPort1
+    (baseArrOpts, shaftCol) = getArrowOpts (from,to) fromNamePort
     -- TODO Use a color from the color scheme for un-embedded shafts.
     shaftCol' = if isNothing embedDir then shaftCol else DIA.lime
     normalOpts = (shaftStyle %~ (lwG lineWidth . lc shaftCol'))
@@ -184,12 +187,7 @@ makeEdge :: (HasCallStack, SpecialBackend b n)
   -> SpecialQDiagram b n
 makeEdge 
   (_node0, _node1, edge@(EmbedInfo _ (Edge _ (_namePort0, _namePort1))))
-  = connectMaybePorts portAngles edge
-  where
-    -- this function was much more complicated
-    portAngleAtBottom = 3/4 @@ turn
-    portAngleAtTop = 1/4 @@ turn
-    portAngles = (portAngleAtBottom, portAngleAtTop)
+  = connectMaybePorts edge
 
 
 -- | addEdges draws the edges underneath the nodes.
@@ -219,10 +217,9 @@ drawLambdaRegions iconInfo placedNodes
     drawRegion :: Set.Set NodeName -> NamedIcon -> SpecialQDiagram b Double
     drawRegion parentNames icon = case icon of
       Named lambdaName (LambdaIcon _ _ enclosedNames)
-        -> regionRect parent enclosed  where
-            parent =  findDia lambdaName
+        -> regionRect enclosed  where
             enclosedWithoutParent = Set.delete lambdaName enclosedNames 
-            enclosed =  findDia <$> Set.toList enclosedWithoutParent
+            enclosed =  findDia <$> Set.toList {-enclosedNames -} enclosedWithoutParent
       Named parentName (NestedApply _ headIcon icons)
         -> mconcat
            $ drawRegion (Set.insert parentName parentNames)
@@ -231,21 +228,19 @@ drawLambdaRegions iconInfo placedNodes
            (headIcon:icons)
       _ -> mempty
 
-    regionRect :: forall b . SpecialBackend b Double =>
-      SpecialQDiagram b Double
-      -> [SpecialQDiagram b Double]
+    regionRect :: forall b . SpecialBackend b Double
+      => [SpecialQDiagram b Double]
       -> SpecialQDiagram b Double
-    regionRect lambdaDiagram enclosedDiagarms
+    regionRect enclosedDiagarms
       = moveTo (centerPoint combinedDia) coloredContentsRect
       where
         combinedDia = mconcat enclosedDiagarms
-        rectPadding = 3 * sizeUnit
+        rectPadding = 2 * sizeUnit
         contentsRect = dashingG [0.7 * sizeUnit, 0.3 * sizeUnit] 0
                        $ rect
                        (rectPadding + width combinedDia)
                        (rectPadding + height combinedDia)
         coloredContentsRect = lc lightgreen (lwG defaultLineWidth contentsRect)
-
 
 -- placeNode :: SpecialBackend b Double 
 --   => IconInfo

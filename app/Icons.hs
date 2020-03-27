@@ -192,17 +192,17 @@ lambdaPortAngles embedded (Port x) = fmap (@@ turn) $ case x of
 
 pAppPortAngles :: Floating n => Port -> [Angle n]
 pAppPortAngles (Port x) = fmap (@@ turn) $ case x of
-  0 -> [1/4]
+  0 -> [0]
   1 -> [0]
-  _ -> [1/2]
+  _ -> [0]
 
 multiIfPortAngles :: Floating n => Port -> [Angle n]
 multiIfPortAngles (Port port) = case port of
   0 -> [1/4 @@ turn]
   1 -> [3/4 @@ turn]
   _ -> otherAngles where otherAngles
-                           | even port = [0 @@ turn]
-                           | otherwise = [1/2 @@ turn]
+                           | even port = [1/4 @@ turn]
+                           | otherwise = [3/4 @@ turn]
 
 findNestedIcon :: IconInfo -> NodeName -> Icon -> Maybe Icon
 findNestedIcon iconInfo name icon = case icon of
