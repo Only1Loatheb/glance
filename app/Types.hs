@@ -30,9 +30,11 @@ module Types (
   Embedder(..),
   mkEmbedder,
   EmbedderSyntaxNode,
+  TransformParams(..),
+  TransformableDia
 ) where
 
-import Diagrams.Prelude(QDiagram, V2, Any, Renderable, Path, IsName)
+import Diagrams.Prelude(QDiagram, V2, Any, Renderable, Path, IsName, Angle)
 import Diagrams.TwoD.Text(Text)
 
 import Control.Applicative(Applicative(..))
@@ -170,3 +172,15 @@ data NodeInfo a = NodeInfo {
   , niVal :: a
   }
   deriving (Show, Eq, Functor, Ord)
+
+data TransformParams n = TransformParams {
+  tpName :: NodeName  -- The icon's name
+  , tpNestingDepth :: Int  -- The icon's nesting depth
+  , tpIsReflected :: Bool  -- If the icon will be reflected
+  , tpAngle :: Angle n  -- By what angle will the icon be rotated
+  }
+
+-- | A TransformableDia is a function that returns a diagram for an icon when
+-- given the icon's name, its nesting depth, whether it will be reflected, and
+-- by what angle it will be rotated.
+type TransformableDia b n = TransformParams n -> SpecialQDiagram b n

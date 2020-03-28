@@ -36,15 +36,15 @@ import GHC.Stack(HasCallStack)
 --import qualified Data.GraphViz.Types
 --import Data.GraphViz.Commands
 
-import Icons(colorScheme, iconToDiagram, defaultLineWidth, ColorStyle(..)
-            , TransformParams(..), sizeUnit
-            , findIconFromName)
+import Icons(findIconFromName)
+import Symbols(colorScheme, iconToDiagram, defaultLineWidth, ColorStyle(..), sizeUnit)
 import TranslateCore(nodeToIcon)
 import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
             , Drawing(..), NameAndPort(..)
             , SpecialQDiagram, SpecialBackend, SpecialNum, NodeName(..)
             , Port(..), NamedIcon, Icon(..), NodeInfo(..), IconInfo
-            , Named(..))
+            , Named(..)
+            , TransformParams(..))
 
 import Util(nodeNameToInt, fromMaybeError, namedToTuple)
 

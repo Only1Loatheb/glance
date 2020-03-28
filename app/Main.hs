@@ -18,7 +18,7 @@ import Options.Applicative(header, progDesc, fullDesc, helper, info
                           , metavar, auto, argument, str, prefShowHelpOnError
                           , Parser)
 
-import Icons(ColorStyle(..), colorScheme, multilineComment)
+import Symbols(ColorStyle(..), colorScheme, multilineComment)
 import Rendering(renderIngSyntaxGraph)
 import Translate(translateModuleToCollapsedGraphs)
 import Util(customRenderSVG)
