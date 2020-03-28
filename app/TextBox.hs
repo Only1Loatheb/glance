@@ -16,21 +16,10 @@ where
 
 import Diagrams.Prelude hiding ((&), (#), Name)
 
-import qualified Control.Arrow as Arrow
-import Data.Either(partitionEithers)
-import qualified Data.IntMap as IM
-import Data.List(find)
-import Data.Maybe(listToMaybe, isJust, fromJust, mapMaybe)
-import Data.Typeable(Typeable)
-
-import Constants(pattern InputPortConst, pattern ResultPortConst)
 import DrawingColors(colorScheme, ColorStyle(..))
-import Types(Icon(..), SpecialQDiagram, SpecialBackend, SpecialNum
-            , NodeName(..), Port(..), LikeApplyFlavor(..),
-            SyntaxNode(..), NamedIcon, Labeled(..), IconInfo
-            , Named(..)
-            ,TransformParams(..),TransformableDia)
-
+import           Types  ( SpecialQDiagram
+                        , SpecialBackend
+                        )
 {-# ANN module "HLint: ignore Use record patterns" #-}
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 

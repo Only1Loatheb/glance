@@ -8,20 +8,16 @@ module Symbols
   ( ColorStyle(..)
   , colorScheme
   , defaultLineWidth
-  , sizeUnit
   , iconToDiagram
-  , defaultLineWidth
   , multilineComment
+  , lambdaRegionSymbol
+  , getArrowOpts
   )
 where
 
 import Diagrams.Prelude hiding ((&), (#), Name)
-
-import qualified Control.Arrow as Arrow
+import Data.Maybe(fromMaybe)
 import Data.Either(partitionEithers)
-import qualified Data.IntMap as IM
-import Data.List(find)
-import Data.Maybe(listToMaybe, isJust, fromJust, mapMaybe)
 import Data.Typeable(Typeable)
 
 import Icons(findIconFromName,argPortsConst)
@@ -35,9 +31,9 @@ import           TextBox  ( bindTextBox
 import Constants(pattern InputPortConst, pattern ResultPortConst)
 import DrawingColors(colorScheme, ColorStyle(..))
 import Types(Icon(..), SpecialQDiagram, SpecialBackend, SpecialNum
-            , NodeName(..), Port(..), LikeApplyFlavor(..),
-            SyntaxNode(..), NamedIcon, Labeled(..), IconInfo
-            , Named(..)
+            , NodeName(..), Port(..), LikeApplyFlavor(..)
+            , NamedIcon, Labeled(..), IconInfo
+            , Named(..), NameAndPort(..)
             ,TransformParams(..),TransformableDia)
 
 {-# ANN module "HLint: ignore Use record patterns" #-}
@@ -210,7 +206,7 @@ makeLabelledPort :: SpecialBackend b n =>
 makeLabelledPort name reflect angle str portNum = case str of
   -- Don't display " tempvar" from Translate.hs/matchesToCase
   (' ':_) -> portAndCircle
-  (_:_:_) -> portAndCircle ||| label
+  (_:_:_) -> label ||| portAndCircle
   _ -> portAndCircle
   where
     portAndCircle = makeQualifiedPort name portNum <> portSymbol
@@ -435,7 +431,7 @@ nestedLambda iconInfo paramNames mBodyExp (TransformParams name level reflect an
   -- centerY (named name inputOutputDiagram)
   where
   portPorts = zipWith (makeLabelledPort name reflect angle) paramNames argPortsConst
-  placedImputPorts = centerX $ hsep (1 * sizeUnit) portPorts
+  placedImputPorts = centerXY $ vsep (1 * sizeUnit) portPorts
   inputDiagram = placedImputPorts <> appArgBox (lamArgResC colorScheme) (width placedImputPorts) (height placedImputPorts)
 
   lambdaBodyDiagram = case mBodyExp of
@@ -448,7 +444,53 @@ nestedLambda iconInfo paramNames mBodyExp (TransformParams name level reflect an
 
   resultDiagram = (alignB lambdaSymbol ) <> (alignT $ makeQualifiedPort name ResultPortConst)
          
-  inputsResultAndBodyDia = vcat [inputDiagram,lambdaBodyDiagram, resultDiagram]
+  inputsResultAndBodyDia = vcat [lambdaBodyDiagram,inputDiagram, resultDiagram]
 
+lambdaRegionSymbol :: forall b . SpecialBackend b Double
+  => [SpecialQDiagram b Double]
+  -> SpecialQDiagram b Double
+lambdaRegionSymbol enclosedDiagarms
+  = moveTo (centerPoint combinedDia) coloredContentsRect
+  where
+    combinedDia = mconcat enclosedDiagarms
+    rectPadding = 2 * sizeUnit
+    contentsRect = dashingG [0.7 * sizeUnit, 0.3 * sizeUnit] 0
+                   $ rect
+                   (rectPadding + width combinedDia)
+                   (rectPadding + height combinedDia)
+    coloredContentsRect = lc lightgreen (lwG defaultLineWidth contentsRect)
 -- END Main icons
 -- END Icons
+
+-- https://archives.haskell.org/projects.haskell.org/diagrams/doc/arrow.html
+
+getArrowOpts :: (RealFloat n, Typeable n) =>
+  (Maybe (Point V2 n),Maybe (Point V2 n))
+  -> NameAndPort
+  -> (ArrowOpts n, Colour Double)
+getArrowOpts
+  (formMaybePoint, toMaybePoint)
+  (NameAndPort (NodeName nodeNum) mPort)
+  = (arrowOptions, shaftColor)
+  where
+    edgeColors = edgeListC colorScheme
+    Port portNum = fromMaybe (Port 0) mPort
+    namePortHash = mod (portNum + (503 * nodeNum)) (length edgeColors)
+    shaftColor = edgeColors !! namePortHash
+    formPoint = fromMaybe (p2 (0.0,0.0)) formMaybePoint
+    toPoint = fromMaybe (p2  (0.0,-1.0)) toMaybePoint
+    arrowOptions =
+      -- arrowHead .~ DIA.noHead
+      arrowHead .~ tri
+      $ headStyle %~ fc shaftColor
+      $ arrowTail .~ noTail
+      $ arrowShaft .~ edgeSymbol formPoint toPoint
+      -- TODO Don't use a magic number for lengths (headLength and tailLength)
+      $ lengths .~ global 0.5
+      $ with
+
+edgeSymbol formPoint toPoint = fromSegments [bezier3 offsetToControl1 offsetToControl2 offsetToEnd] where
+  scaleFactor = sizeUnit * 10.0
+  offsetToEnd = toPoint .-. formPoint
+  offsetToControl1 = scale scaleFactor (-unitY)
+  offsetToControl2 = (scale scaleFactor unitY) ^+^ offsetToEnd

@@ -37,7 +37,13 @@ import GHC.Stack(HasCallStack)
 --import Data.GraphViz.Commands
 
 import Icons(findIconFromName)
-import Symbols(colorScheme, iconToDiagram, defaultLineWidth, ColorStyle(..), sizeUnit)
+import Symbols  ( colorScheme
+                , iconToDiagram
+                , defaultLineWidth
+                , ColorStyle(..)
+                , lambdaRegionSymbol
+                , getArrowOpts
+                )
 import TranslateCore(nodeToIcon)
 import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
             , Drawing(..), NameAndPort(..)
@@ -89,39 +95,6 @@ drawingToIconGraph (Drawing nodes edges) =
             errorString =
               "syntaxGraphToFglGraph edge connects to non-existent node. Node NodeName ="
               ++ show name ++ " Edge=" ++ show e
-
--- https://archives.haskell.org/projects.haskell.org/diagrams/doc/arrow.html
-
-bezierShaft form to = fromSegments [bezier3 offsetToControl1 offsetToControl2 offsetToEnd] where
-  scaleFactor = sizeUnit * 10
-  offsetToEnd = to .-. form
-  offsetToControl1 = scale scaleFactor (-unitY)
-  offsetToControl2 = (scale scaleFactor unitY) ^+^ offsetToEnd
-
-getArrowOpts :: (RealFloat n, Typeable n) =>
-  (Maybe (Point V2 n),Maybe (Point V2 n))
-  -> NameAndPort
-  -> (ArrowOpts n, DIA.Colour Double)
-getArrowOpts
-  (formPoint, toPoint)
-  (NameAndPort (NodeName nodeNum) mPort)
-  = (arrowOptions, shaftColor)
-  where
-    edgeColors = edgeListC colorScheme
-    Port portNum = fromMaybe (Port 0) mPort
-    namePortHash = mod (portNum + (503 * nodeNum)) (length edgeColors)
-    shaftColor = edgeColors !! namePortHash
-    form = fromMaybe (DIA.p2 (0.0,0.0)) formPoint
-    to = fromMaybe (DIA.p2  (0.0,-1.0)) toPoint
-    arrowOptions =
-      -- arrowHead .~ DIA.noHead
-      arrowHead .~ DIA.tri
-      $ DIA.headStyle %~ DIA.fc shaftColor
-      $ arrowTail .~ noTail
-      $ arrowShaft .~ bezierShaft form to
-      -- TODO Don't use a magic number for lengths (headLength and tailLength)
-      $ lengths .~ global 0.5
-      $ with
 
 -- | Given an Edge, return a transformation on Diagrams that will draw a line.
 connectMaybePorts :: SpecialBackend b n =>
@@ -217,7 +190,7 @@ drawLambdaRegions iconInfo placedNodes
     drawRegion :: Set.Set NodeName -> NamedIcon -> SpecialQDiagram b Double
     drawRegion parentNames icon = case icon of
       Named lambdaName (LambdaIcon _ _ enclosedNames)
-        -> regionRect enclosed  where
+        -> lambdaRegionSymbol enclosed  where
             enclosedWithoutParent = Set.delete lambdaName enclosedNames 
             enclosed =  findDia <$> Set.toList {-enclosedNames -} enclosedWithoutParent
       Named parentName (NestedApply _ headIcon icons)
@@ -228,19 +201,7 @@ drawLambdaRegions iconInfo placedNodes
            (headIcon:icons)
       _ -> mempty
 
-    regionRect :: forall b . SpecialBackend b Double
-      => [SpecialQDiagram b Double]
-      -> SpecialQDiagram b Double
-    regionRect enclosedDiagarms
-      = moveTo (centerPoint combinedDia) coloredContentsRect
-      where
-        combinedDia = mconcat enclosedDiagarms
-        rectPadding = 2 * sizeUnit
-        contentsRect = dashingG [0.7 * sizeUnit, 0.3 * sizeUnit] 0
-                       $ rect
-                       (rectPadding + width combinedDia)
-                       (rectPadding + height combinedDia)
-        coloredContentsRect = lc lightgreen (lwG defaultLineWidth contentsRect)
+
 -- TODO place nodes from top to bottom 
 -- placeNode :: SpecialBackend b Double 
 --   => IconInfo

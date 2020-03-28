@@ -29,7 +29,6 @@ import Icons(findIconFromName,findIcon)
 {-# ANN module "HLint: ignore Use record patterns" #-}
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
-
 applyPortAngles :: Floating n => Port -> [Angle n]
 applyPortAngles (Port x) = fmap (@@ turn) $ case x of
   0 -> [3/8, 1/2, 5/8] -- TODO Don't use angle of 1/2 for nested icons here
