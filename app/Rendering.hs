@@ -44,7 +44,7 @@ import Symbols  ( colorScheme
                 , lambdaRegionSymbol
                 , getArrowOpts
                 )
-import EdgeAngles(getPortAngles)
+import EdgeAngles(getPortAngle)
 
 import TranslateCore(nodeToIcon)
 import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
@@ -188,13 +188,13 @@ connectMaybePorts
       (_, _) -> (connectOutside', toName name0, toName name1)
 
 findPortAngles :: SpecialNum n
-  => IconInfo -> NamedIcon -> NameAndPort -> [Angle n]
+  => IconInfo -> NamedIcon -> NameAndPort -> Maybe (Angle n)
 findPortAngles iconInfo (Named nodeName nodeIcon) (NameAndPort diaName mPort)
   = case mPort of
-      Nothing -> []
+      Nothing -> Nothing
       Just port -> foundAngles where
         mName = if nodeName == diaName then Nothing else Just diaName
-        foundAngles = getPortAngles iconInfo nodeIcon port mName
+        foundAngles = Just $ getPortAngle iconInfo nodeIcon port mName
 -- End addEdges --
 
 drawLambdaRegions :: forall b . SpecialBackend b Double =>

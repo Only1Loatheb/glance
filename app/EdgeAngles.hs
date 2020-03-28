@@ -6,7 +6,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module EdgeAngles
     (
-      getPortAngles
+      getPortAngle
     ) where
 
 import Diagrams.Prelude hiding ((&), (#), Name)
@@ -29,113 +29,108 @@ import Icons(findIconFromName,findIcon)
 {-# ANN module "HLint: ignore Use record patterns" #-}
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
-applyPortAngles :: Floating n => Port -> [Angle n]
-applyPortAngles (Port x) = fmap (@@ turn) $ case x of
-  0 -> [3/8, 1/2, 5/8] -- TODO Don't use angle of 1/2 for nested icons here
-  1 -> [3/4] -- line goes out with value to label
-  _ -> [1/4, 1/4] -- [idk, side fromline comes with value like in lambda]
+applyPortAngle :: Floating n => Port -> Angle n
+applyPortAngle (Port x) =  case x of
+  0 -> 1/4 @@ turn -- input
+  1 -> 3/4 @@ turn -- output
+  _ -> 1/4 @@ turn -- [idk, side fromline comes with value like in lambda]
 
-lambdaPortAngles :: Floating n => Bool -> Port -> [Angle n]
-lambdaPortAngles embedded (Port x) = fmap (@@ turn) $ case x of
-  -- 0 == lambda return value Icon
-  0 -> if embedded
-       then [3/4, 3/4]
-       else [1/4, 1/4, 1/4]
-  -- 1 == value port
-  --1 -> [1/8, 7/8, 0]
-  1 -> [3/4]
-  _ -> [3/4, 3/4]
+lambdaPortAngle :: Floating n => Port -> Angle n
+lambdaPortAngle (Port x) =  case x of
+  0 -> 1/4 @@ turn -- input
+  1 -> 3/4 @@ turn-- output
+  _ -> 0 @@ turn -- value placement
 
-pAppPortAngles :: Floating n => Port -> [Angle n]
-pAppPortAngles (Port x) = fmap (@@ turn) $ case x of
-  0 -> [1/4]
-  1 -> [0]
-  _ -> [1/2]
+pAppPortAngle :: Floating n => Port -> Angle n
+pAppPortAngle (Port x) = case x of
+  0 -> 1/4 @@ turn -- input
+  1 -> 3/4 @@ turn -- result label input
+  _ -> 3/4 @@ turn -- other itermidiate results
 
-multiIfPortAngles :: Floating n => Port -> [Angle n]
-multiIfPortAngles (Port port) = case port of
-  0 -> [1/4 @@ turn]
-  1 -> [3/4 @@ turn]
-  _ -> otherAngles where otherAngles
-                           | even port = [0 @@ turn]
-                           | otherwise = [1/2 @@ turn]
+multiIfPortAngle :: Floating n => Port -> Angle n
+multiIfPortAngle (Port port) = case port of
+  0 -> 1/4 @@ turn -- input
+  1 -> 3/4 @@ turn -- output 
+  _ -> otherAngle where otherAngle -- options, may get fliped
+                           | even port = 0 @@ turn
+                           | otherwise = 0 @@ turn
 
-nestedMultiIfPortAngles :: SpecialNum n
+nestedMultiIfPortAngle :: SpecialNum n
   => IconInfo
   -> [Maybe NamedIcon]
   -> Port
   -> Maybe NodeName
-  -> [Angle n]
-nestedMultiIfPortAngles iconInfo args port maybeNodeName = case maybeNodeName of
-  Nothing -> multiIfPortAngles port
+  -> Angle n
+nestedMultiIfPortAngle iconInfo args port maybeNodeName = case maybeNodeName of
+  Nothing -> multiIfPortAngle port
   Just name -> case findIcon iconInfo name args of
-    Nothing -> []
+    Nothing -> 0 @@ turn
     -- TODO Don't use hardcoded numbers
     -- The arguments correspond to ports [0, 2, 3, 4 ...]
     Just (argNum, icon) -> if odd argNum && argNum >= 1
       -- The icon will be reflected
-      then fmap reflectXAngle subAngles
-      else subAngles
+      then reflectXAngle subAngle
+      else subAngle
       where
-        subAngles = getPortAnglesHelper True iconInfo icon port Nothing
+        subAngle = getPortAngleHelper True iconInfo icon port Nothing
 
 
-generalNestedPortAngles :: SpecialNum n
+generalNestedPortAngle :: SpecialNum n
   => IconInfo
-  -> (Port -> [Angle n])
+  -> (Port -> Angle n)
   -> Maybe NamedIcon
   -> [Maybe NamedIcon]
-  -> Port -> Maybe NodeName -> [Angle n]
-generalNestedPortAngles iconInfo defaultAngles headIcon args port maybeNodeName =
+  -> Port -> Maybe NodeName -> Angle n
+generalNestedPortAngle iconInfo defaultAngle headIcon args port maybeNodeName =
   case maybeNodeName of
-    Nothing -> defaultAngles port
+    Nothing -> defaultAngle port
     Just name -> case findIcon iconInfo name (headIcon : args) of
-      Nothing -> []
-      Just (_, icon) -> getPortAnglesHelper True iconInfo icon port Nothing
+      Nothing -> 0 @@ turn
+      Just (_, icon) -> getPortAngleHelper True iconInfo icon port Nothing
 
 reflectXAngle :: SpecialNum n => Angle n -> Angle n
 reflectXAngle x = reflectedAngle where
   normalizedAngle = normalizeAngle x
   reflectedAngle = (-) <$> halfTurn <*> normalizedAngle
 
-getPortAngles :: SpecialNum n
-  => IconInfo -> Icon -> Port -> Maybe NodeName -> [Angle n]
-getPortAngles = getPortAnglesHelper False
+getPortAngle :: SpecialNum n
+  => IconInfo -> Icon -> Port -> Maybe NodeName -> Angle n
+getPortAngle = getPortAngleHelper False
 
-getPortAnglesHelper :: SpecialNum n
-  => Bool -> IconInfo -> Icon -> Port -> Maybe NodeName -> [Angle n]
-getPortAnglesHelper embedded iconInfo icon port maybeNodeName = case icon of
-  TextBoxIcon _ -> []
-  BindTextBoxIcon _ -> []
-  MultiIfIcon _ -> multiIfPortAngles port
-  CaseIcon _ -> multiIfPortAngles port
-  CaseResultIcon -> []
-  LambdaIcon _ _ _ -> lambdaPortAngles embedded port
+getPortAngleHelper :: SpecialNum n
+  => Bool -> IconInfo -> Icon -> Port -> Maybe NodeName -> Angle n
+getPortAngleHelper _embedded iconInfo icon port maybeNodeName = case icon of
+  TextBoxIcon _ -> 1/4 @@ turn
+  BindTextBoxIcon _ -> 1/4 @@ turn
+  MultiIfIcon _ -> multiIfPortAngle port
+  CaseIcon _ -> multiIfPortAngle port
+  CaseResultIcon -> 1/4 @@ turn
+  LambdaIcon _ _ _ -> lambdaPortAngle port
   NestedApply _ headIcon args
-    -> generalNestedPortAngles
+    -> generalNestedPortAngle
       iconInfo
-      applyPortAngles
+      applyPortAngle
       -- TODO Refactor with iconToDiagram
       (fmap (findIconFromName iconInfo) headIcon)
       ((fmap . fmap) (findIconFromName iconInfo) args)
       port
       maybeNodeName
   NestedPApp headIcon args
-    -> generalNestedPortAngles
+    -> generalNestedPortAngle
       iconInfo
-      pAppPortAngles
+      pAppPortAngle
       (laValue headIcon)
       (fmap laValue args)
       port
       maybeNodeName
   NestedCaseIcon args
-    -> nestedMultiIfPortAngles
+    -> nestedMultiIfPortAngle
       iconInfo
       ((fmap . fmap) (findIconFromName iconInfo) args)
       port
       maybeNodeName
   NestedMultiIfIcon args
-    -> nestedMultiIfPortAngles
+    -> nestedMultiIfPortAngle
       iconInfo
       ((fmap . fmap) (findIconFromName iconInfo) args)
       port

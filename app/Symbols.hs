@@ -462,12 +462,11 @@ lambdaRegionSymbol enclosedDiagarms
 -- END Main icons
 -- END Icons
 
--- https://archives.haskell.org/projects.haskell.org/diagrams/doc/arrow.html
 
 getArrowOpts :: (RealFloat n, Typeable n) =>
   (Maybe (Point V2 n),Maybe (Point V2 n))
   -> NameAndPort
-  -> ([Angle n], [Angle n])
+  -> (Maybe (Angle n), Maybe (Angle n))
   -> (ArrowOpts n, Colour Double)
 getArrowOpts
   (formMaybePoint, toMaybePoint)
@@ -491,8 +490,20 @@ getArrowOpts
       $ lengths .~ global 0.5
       $ with
 
-edgeSymbol formPoint toPoint angleFrom angleTo = fromSegments [bezier3 offsetToControl1 offsetToControl2 offsetToEnd] where
+-- https://archives.haskell.org/projects.haskell.org/diagrams/doc/arrow.html
+
+edgeSymbol :: (R1 (Diff p), Affine p, Transformable (Diff p (N t)),
+                 TrailLike t, Floating (N (Diff p (N t))), Eq (N (Diff p (N t))),
+                 V (Diff p (N t)) ~ V2, V t ~ Diff p) =>
+                p (N t)
+                -> p (N t)
+                -> Maybe (Angle (N (Diff p (N t))))
+                -> Maybe (Angle (N (Diff p (N t))))
+                -> t
+edgeSymbol formPoint toPoint anglesFrom anglesTo = fromSegments [bezier3 offsetToControl1 offsetToControl2 offsetToEnd] where
+  angleFrom = fromMaybe (3/4 @@ turn) anglesFrom  -- } edges defaults to go down for unnamed nodes
+  angleTo = fromMaybe (1/4 @@ turn) anglesTo  -- }
   scaleFactor = sizeUnit * 10.0
   offsetToEnd = toPoint .-. formPoint
-  offsetToControl1 = scale scaleFactor (-unitY)
-  offsetToControl2 = (scale scaleFactor unitY) ^+^ offsetToEnd
+  offsetToControl1 = rotate angleFrom (scale scaleFactor unitX)
+  offsetToControl2 = rotate angleTo (scale scaleFactor unitX) ^+^ offsetToEnd
