@@ -10,12 +10,12 @@ import qualified Data.Graph.Inductive.Graph as ING
 import Data.List(intercalate)
 import GHC.Stack(HasCallStack)
 
-import Types(SpecialQDiagram, SpecialBackend, NodeName(..))
+import Types(SpecialQDiagram, SpecialBackend, NodeName(..),TransformParams(..))
 import Translate(translateStringToCollapsedGraphAndDecl
                 , translateStringToSyntaxGraph)
 import TranslateCore(syntaxGraphToFglGraph, SyntaxGraph(..))
 import Rendering(renderIngSyntaxGraph)
-import Icons(textBox, TransformParams(..))
+import Symbols(textBox)
 
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
@@ -352,7 +352,7 @@ visualTranslateTests = do
     textDrawings
       = fmap
         (\t ->
-           alignL $ textBox t (TransformParams (NodeName (-1)) 0 False mempty))
+           alignL $ textBox t (TransformParams (NodeName (-1)) 0))
         testDecls
     vCattedDrawings = vsep 1 $ zipWith (===) (fmap alignL drawings) textDrawings
   pure vCattedDrawings

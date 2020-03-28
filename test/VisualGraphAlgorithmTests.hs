@@ -19,7 +19,7 @@ import Translate(translateStringToSyntaxGraph)
 import TranslateCore(syntaxGraphToFglGraph)
 import GraphAlgorithms(annotateGraph, collapseAnnotatedGraph)
 import Rendering(customLayoutParams)
-import Icons(coloredTextBox)
+import TextBox(coloredTextBox)
 
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 

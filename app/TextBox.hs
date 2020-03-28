@@ -101,24 +101,13 @@ transformCorrectedTextBox :: SpecialBackend b n =>
   String
   -> Colour Double
   -> Colour Double
-  -> Bool
-  -> Angle n
   -> SpecialQDiagram b n
-transformCorrectedTextBox str textColor borderColor reflect angle =
-  rotateBy
-  textBoxRotation
-  (reflectIfTrue reflect (coloredTextBox textColor (opaque borderColor) str))
-  where
-    -- If normalizeAngle is slow, the commented out function reduceAngleRange
-    -- might be faster.
-    reducedAngle = normalizeAngle angle ^. turn
-    textBoxRotation
-      = if (reducedAngle > (1/4)) && (reducedAngle < (3/4)) then 1 / 2 else 0
-    reflectIfTrue shouldReflect dia
-      = if shouldReflect then reflectX dia else dia
+transformCorrectedTextBox str textColor borderColor
+  = coloredTextBox textColor (opaque borderColor) str
+
 
 transformableBindTextBox :: SpecialBackend b n =>
-  String -> Bool -> Angle n -> SpecialQDiagram b n
+  String  -> SpecialQDiagram b n
 transformableBindTextBox str
   = transformCorrectedTextBox
     str

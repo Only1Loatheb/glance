@@ -239,7 +239,7 @@ placeNode namedIcons (key@(Named name icon), targetPosition)
       origDia = iconToDiagram
                 namedIcons
                 icon
-                (TransformParams name 0 False (0 @@ turn))
+                (TransformParams name 0)
       transformedDia = centerXY origDia
       diaPosition = graphvizScaleFactor *^ targetPosition
 
@@ -306,7 +306,7 @@ renderIconGraph debugInfo fullGraphWithInfo = do
         dia = iconToDiagram
               iconInfo
               nodeIcon
-              (TransformParams (NodeName (-1)) 0 False mempty)
+              (TransformParams (NodeName (-1)) 0)
 
         diaWidth = drawingToGraphvizScaleFactor * width dia
         diaHeight = drawingToGraphvizScaleFactor * height dia

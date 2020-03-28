@@ -1,4 +1,4 @@
--- import           Data.Char
+import           Data.Char
 
 middle :: [a] -> a
 middle a = a !! (div (length a)  2)
@@ -25,9 +25,10 @@ removeThis (x : xs) toRemove | x == toRemove = removeThis xs toRemove
 
 string2int :: String -> Int
 string2int []         = 0
-string2int ('-' : xs) = -1 * parsePositiveInt xs 0
+string2int ('-' : xs) = (-1) * parsePositiveInt xs 0
 string2int xs         = parsePositiveInt xs 0
 
+parsePositiveInt :: String -> Int -> Int
 parsePositiveInt [x     ] sum = sum * 10 + digitToInt x
 parsePositiveInt (x : xs) sum = parsePositiveInt xs (sum * 10 + digitToInt x)
 

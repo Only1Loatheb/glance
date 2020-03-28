@@ -11,19 +11,15 @@ module EdgeAngles
 
 import Diagrams.Prelude hiding ((&), (#), Name)
 
-import qualified Control.Arrow as Arrow
-import Data.Either(partitionEithers)
-import qualified Data.IntMap as IM
-import Data.List(find)
-import Data.Maybe(listToMaybe, isJust, fromJust, mapMaybe)
-import Data.Typeable(Typeable)
 
-import Constants(pattern InputPortConst, pattern ResultPortConst)
-import DrawingColors(colorScheme, ColorStyle(..))
-import Types(Icon(..), SpecialQDiagram, SpecialBackend, SpecialNum
-            , NodeName(..), Port(..), LikeApplyFlavor(..),
-            SyntaxNode(..), NamedIcon, Labeled(..), IconInfo
-            , Named(..))
+import Types  ( Icon(..)
+              , SpecialNum
+              , NodeName(..)
+              , Port(..)
+              , NamedIcon
+              , Labeled(..)
+              , IconInfo
+              )                         
 import Icons(findIconFromName,findIcon)
 
 {-# ANN module "HLint: ignore Use record patterns" #-}
@@ -52,8 +48,8 @@ multiIfPortAngle (Port port) = case port of
   0 -> 1/4 @@ turn -- input
   1 -> 3/4 @@ turn -- output 
   _ -> otherAngle where otherAngle -- options, may get fliped
-                           | even port = 0 @@ turn
-                           | otherwise = 0 @@ turn
+                           | even port = 1/4 @@ turn -- then side
+                           | otherwise = 1/2 @@ turn -- if side
 
 nestedMultiIfPortAngle :: SpecialNum n
   => IconInfo

@@ -7,7 +7,7 @@ import Diagrams.Prelude hiding ((#), (&))
 import GHC.Stack(HasCallStack)
 import Test.HUnit
 
-import Icons(colorScheme, ColorStyle(..))
+import Symbols(colorScheme, ColorStyle(..))
 import Util(customRenderSVG)
 
 import UnitTests(allUnitTests)

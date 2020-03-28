@@ -12,6 +12,7 @@ module Symbols
   , multilineComment
   , lambdaRegionSymbol
   , getArrowOpts
+  , textBox
   )
 where
 
@@ -19,6 +20,7 @@ import Diagrams.Prelude hiding ((&), (#), Name)
 import Data.Maybe(fromMaybe)
 import Data.Either(partitionEithers)
 import Data.Typeable(Typeable)
+import           Data.List                      ( isPrefixOf )
 
 import Icons(findIconFromName,argPortsConst)
 import           TextBox  ( bindTextBox
@@ -79,7 +81,9 @@ multiIfConstSymbol portDia = coloredSymbol ||| portDia
 multiIfVarSymbol :: SpecialBackend b n
   => Colour Double
   ->  SpecialQDiagram b n
-multiIfVarSymbol color = coloredSymbol
+  ->  SpecialQDiagram b n
+multiIfVarSymbol color portDiagram = 
+  (alignR coloredSymbol) <> portDiagram
   where
     symbol = hrule (2 * sizeUnit)
     coloredSymbol
@@ -167,9 +171,9 @@ beside' dir dia1 dia2 = juxtapose dir dia1 dia2 <> dia1
 -- TODO REMOVE TEXT FROM HERE
 textBox :: SpecialBackend b n =>
   String -> TransformableDia b n
-textBox t (TransformParams name _ reflect angle)
+textBox t (TransformParams name _)
   = nameDiagram name $ transformCorrectedTextBox
-    t (textBoxTextC colorScheme) (textBoxC colorScheme) reflect angle
+    t (textBoxTextC colorScheme) (textBoxC colorScheme)
 
 -- | Names the diagram and puts all sub-names in the namespace of the top level
 -- name.
@@ -201,16 +205,16 @@ makePort x = named x mempty
 makeQualifiedPort :: SpecialNum n => NodeName -> Port -> SpecialQDiagram b n
 makeQualifiedPort n x = n .>> makePort x
 
+-- Don't display " tempvar" from Translate.hs/matchesToCase
 makeLabelledPort :: SpecialBackend b n =>
-  NodeName -> Bool -> Angle n -> String -> Port -> SpecialQDiagram b n
-makeLabelledPort name reflect angle str portNum = case str of
-  -- Don't display " tempvar" from Translate.hs/matchesToCase
-  (' ':_) -> portAndCircle
-  (_:_:_) -> label ||| portAndCircle
-  _ -> portAndCircle
+  NodeName -> String -> Port -> SpecialQDiagram b n
+makeLabelledPort name str portNum 
+  | " tempvar" `isPrefixOf` str  = portAndCircle
+  | not (null str) = label ||| portAndCircle
+  | otherwise = portAndCircle
   where
     portAndCircle = makeQualifiedPort name portNum <> portSymbol
-    label = transformableBindTextBox str reflect angle
+    label = transformableBindTextBox str 
 
 -- END Diagram helper functions
 
@@ -227,15 +231,15 @@ makeAppInnerIcon :: SpecialBackend b n =>
   Port ->  -- Port number (if the NamedIcon is Nothing)
   Labeled (Maybe NamedIcon) ->  -- The icon
   SpecialQDiagram b n
-makeAppInnerIcon _iconInfo (TransformParams name _ reflect angle) _ portNum
+makeAppInnerIcon _iconInfo (TransformParams name _) _ portNum
   (Labeled Nothing str)
-  = centerX $ makeLabelledPort name reflect angle str portNum
-makeAppInnerIcon iconInfo (TransformParams _ nestingLevel reflect angle) func _
+  = centerX $ makeLabelledPort name str portNum
+makeAppInnerIcon iconInfo (TransformParams _ nestingLevel ) func _
   (Labeled (Just (Named iconNodeName icon)) _)
   = iconToDiagram
     iconInfo
     icon
-    (TransformParams iconNodeName innerLevel reflect angle)
+    (TransformParams iconNodeName innerLevel)
   where
     innerLevel = if func then nestingLevel else nestingLevel + 1
 
@@ -250,7 +254,7 @@ nestedPAppDia
   borderColors
   maybeFunText
   subIcons
-  tp@(TransformParams name nestingLevel _ _)
+  tp@(TransformParams name nestingLevel)
   = named name $ centerXY
     $ centerY finalDia ||| beside' unitX transformedText resultDia
   where
@@ -286,7 +290,7 @@ generalNestedDia
   borderColors
   maybeFunText
   args
-  tp@(TransformParams name nestingLevel _ _)
+  tp@(TransformParams name nestingLevel)
   -- beside Place two monoidal objects (i.e. diagrams, paths, animations...) next to each other along the given vector.
   = named name finalDia
     where
@@ -332,7 +336,7 @@ nestedApplyDia iconInfo flavor = case flavor of
 -- 1 -> bottom
 -- odds -> left
 -- evens -> right
-generalNestedMultiIf :: SpecialBackend b n
+generalNestedMultiIf ::forall b n. SpecialBackend b n
                    => IconInfo
                    -> Colour Double
                    -> (SpecialQDiagram b n -> SpecialQDiagram b n)
@@ -340,7 +344,7 @@ generalNestedMultiIf :: SpecialBackend b n
                    -> [Maybe NamedIcon]
                    -> TransformableDia b n
 generalNestedMultiIf iconInfo triangleColor _ bottomDia inputAndArgs
-  (TransformParams name nestingLevel reflect angle)
+  (TransformParams name nestingLevel)
   = named name $ case inputAndArgs of
   [] -> mempty
   input : subicons -> centerXY finalDia where
@@ -356,8 +360,8 @@ generalNestedMultiIf iconInfo triangleColor _ bottomDia inputAndArgs
       = partitionEithers $ zipWith iconMapper argPortsConst subicons
 
     iconMapper (Port portNum) subicon
-      | even portNum = Right ${- middle -} multiIfVarSymbol triangleColor ||| port ||| placeSubIcon True subicon
-      | otherwise = Left $ inIfConstBox triangleColor $ placeSubIcon False subicon ||| port {- middle -}
+      | even portNum = Right ${- middle -} hcat [multiIfVarSymbol triangleColor port ,placeSubIcon True subicon]
+      | otherwise = Left $ hcat [inIfConstBox triangleColor $ placeSubIcon False subicon , port] {- middle -}
       where
         port = makeQualifiedPort name (Port portNum)
 
@@ -365,8 +369,8 @@ generalNestedMultiIf iconInfo triangleColor _ bottomDia inputAndArgs
       zipWith combineIfIcons iFVarIcons iFConstIcons
 
     combineIfIcons iFVarIcon iFConstIcon
-      = verticalLine === placedAtRight where
-        placedAtRight = (alignR iFConstIcon) <>  (alignL iFVarIcon)
+      = verticalLine === decisionDiagram where
+        decisionDiagram = (alignR iFConstIcon) <>  (alignL iFVarIcon)
         verticalLine = strutY 0.4
 
     multiIfDia = vcat (alignT iFVarAndConstIcons)
@@ -374,20 +378,17 @@ generalNestedMultiIf iconInfo triangleColor _ bottomDia inputAndArgs
       = alignT
         $ lwG defaultLineWidth $ lc triangleColor $ vrule (height multiIfDia)
 
-    placeSubIcon innerReflected mNameAndIcon = case mNameAndIcon of
+    placeSubIcon::(SpecialBackend b n) => Bool -> Maybe (Named Icon) -> SpecialQDiagram b n
+    placeSubIcon _ mNameAndIcon = case mNameAndIcon of
       Nothing -> mempty
-      Just (Named iconNodeName icon) -> if innerReflected
-        then reflectX dia
-        else dia
-        where
-          dia = iconToDiagram
+      Just (Named iconNodeName icon) -> 
+                iconToDiagram
                 iconInfo
                 icon
                 (TransformParams
                   iconNodeName
                   nestingLevel
-                  (innerReflected /= reflect)
-                  angle)
+                  )
 
 -- | The ports of the multiIf icon are as follows:
 -- InputPortConst: Top result port (not used)
@@ -425,12 +426,12 @@ nestedLambda ::  SpecialBackend b n
   -> [String]
   -> Maybe NamedIcon
   -> TransformableDia b n
-nestedLambda iconInfo paramNames mBodyExp (TransformParams name level reflect angle)
+nestedLambda iconInfo paramNames mBodyExp (TransformParams name level)
   -- = centerXY $ lambdaBodyDiagram ||| centerY (named name inputOutputDiagram)
   = centerXY (named name inputsResultAndBodyDia)
   -- centerY (named name inputOutputDiagram)
   where
-  portPorts = zipWith (makeLabelledPort name reflect angle) paramNames argPortsConst
+  portPorts = zipWith (makeLabelledPort name) paramNames argPortsConst
   placedImputPorts = centerXY $ vsep (1 * sizeUnit) portPorts
   inputDiagram = placedImputPorts <> appArgBox (lamArgResC colorScheme) (width placedImputPorts) (height placedImputPorts)
 
@@ -440,7 +441,7 @@ nestedLambda iconInfo paramNames mBodyExp (TransformParams name level reflect an
       -> iconToDiagram
          iconInfo
          bodyIcon
-         (TransformParams bodyNodeName level reflect angle)
+         (TransformParams bodyNodeName level)
 
   resultDiagram = (alignB lambdaSymbol ) <> (alignT $ makeQualifiedPort name ResultPortConst)
          

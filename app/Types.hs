@@ -176,8 +176,8 @@ data NodeInfo a = NodeInfo {
 data TransformParams n = TransformParams {
   tpName :: NodeName  -- The icon's name
   , tpNestingDepth :: Int  -- The icon's nesting depth
-  , tpIsReflected :: Bool  -- If the icon will be reflected
-  , tpAngle :: Angle n  -- By what angle will the icon be rotated
+  -- , tpIsReflected :: Bool  -- If the icon will be reflected
+  -- , tpAngle :: Angle n  -- By what angle will the icon be rotated
   }
 
 -- | A TransformableDia is a function that returns a diagram for an icon when
