@@ -467,10 +467,12 @@ lambdaRegionSymbol enclosedDiagarms
 getArrowOpts :: (RealFloat n, Typeable n) =>
   (Maybe (Point V2 n),Maybe (Point V2 n))
   -> NameAndPort
+  -> ([Angle n], [Angle n])
   -> (ArrowOpts n, Colour Double)
 getArrowOpts
   (formMaybePoint, toMaybePoint)
   (NameAndPort (NodeName nodeNum) mPort)
+  (anglesFrom,anglesTo)
   = (arrowOptions, shaftColor)
   where
     edgeColors = edgeListC colorScheme
@@ -484,12 +486,12 @@ getArrowOpts
       arrowHead .~ tri
       $ headStyle %~ fc shaftColor
       $ arrowTail .~ noTail
-      $ arrowShaft .~ edgeSymbol formPoint toPoint
+      $ arrowShaft .~ edgeSymbol formPoint toPoint anglesFrom anglesTo
       -- TODO Don't use a magic number for lengths (headLength and tailLength)
       $ lengths .~ global 0.5
       $ with
 
-edgeSymbol formPoint toPoint = fromSegments [bezier3 offsetToControl1 offsetToControl2 offsetToEnd] where
+edgeSymbol formPoint toPoint angleFrom angleTo = fromSegments [bezier3 offsetToControl1 offsetToControl2 offsetToEnd] where
   scaleFactor = sizeUnit * 10.0
   offsetToEnd = toPoint .-. formPoint
   offsetToControl1 = scale scaleFactor (-unitY)

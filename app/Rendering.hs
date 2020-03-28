@@ -44,6 +44,8 @@ import Symbols  ( colorScheme
                 , lambdaRegionSymbol
                 , getArrowOpts
                 )
+import EdgeAngles(getPortAngles)
+
 import TranslateCore(nodeToIcon)
 import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
             , Drawing(..), NameAndPort(..)
@@ -95,18 +97,42 @@ drawingToIconGraph (Drawing nodes edges) =
             errorString =
               "syntaxGraphToFglGraph edge connects to non-existent node. Node NodeName ="
               ++ show name ++ " Edge=" ++ show e
+-- | addEdges draws the edges underneath the nodes.
+addEdges :: (HasCallStack, SpecialBackend b n, ING.Graph gr) =>
+  String  -- ^ Debugging information
+  -> IconInfo
+  -> gr NamedIcon (EmbedInfo Edge)
+  -> SpecialQDiagram b n
+  -> SpecialQDiagram b n
+addEdges _debugInfo iconInfo graph = applyAll connections
+  where
+            connections = makeEdge  iconInfo graph <$> ING.labEdges graph
+
+makeEdge :: (ING.Graph gr,HasCallStack, SpecialBackend b n) 
+  => IconInfo
+  -> gr NamedIcon (EmbedInfo Edge)
+  -> ING.LEdge (EmbedInfo Edge)
+  -> SpecialQDiagram b n
+  -> SpecialQDiagram b n
+makeEdge iconInfo graph lEdge
+  = connectMaybePorts iconInfo graph lEdge
 
 -- | Given an Edge, return a transformation on Diagrams that will draw a line.
-connectMaybePorts :: SpecialBackend b n =>
-  EmbedInfo Edge
+connectMaybePorts ::  (ING.Graph gr,SpecialBackend b n)
+  => IconInfo 
+  -> gr NamedIcon (EmbedInfo Edge)
+  -> ING.LEdge (EmbedInfo Edge)
   -> SpecialQDiagram b n
   -> SpecialQDiagram b n
 connectMaybePorts
-  (EmbedInfo embedDir
+  iconInfo
+  graph
+  (node0, node1, 
+  (EmbedInfo embedDir --edge@(EmbedInfo _ (Edge _ (_namePort0, _namePort1)))
     (Edge
       _
       (fromNamePort@(NameAndPort name0 mPort1)
-      , NameAndPort name1 mPort2)))
+      ,toNamePort@(NameAndPort name1 mPort2)))))
   origDia
   -- In order to give arrows a "shadow" effect, draw a thicker semi-transparent
   -- line shaft the same color as the background underneath the normal line
@@ -132,10 +158,20 @@ connectMaybePorts
 
 
     lineWidth = 2 * defaultLineWidth
-    
+
+    node0NameAndPort = fromMaybeError
+                 ("makeEdge: node0 is not in graph. node0: " ++ show node0)
+                 $ ING.lab graph node0
+    node1NameAndPort = fromMaybeError
+                 ("makeEdge: node1 is not in graph. node1: " ++ show node1)
+                 $ ING.lab graph node1
+
     from = nameToPoint qPort0
     to = nameToPoint qPort1
-    (baseArrOpts, shaftCol) = getArrowOpts (from,to) fromNamePort
+    portAngle0 = findPortAngles iconInfo node0NameAndPort fromNamePort
+    portAngle1 = findPortAngles iconInfo node1NameAndPort toNamePort
+
+    (baseArrOpts, shaftCol) = getArrowOpts (from,to) fromNamePort (portAngle0,portAngle1) 
     -- TODO Use a color from the color scheme for un-embedded shafts.
     shaftCol' = if isNothing embedDir then shaftCol else DIA.lime
     normalOpts = (shaftStyle %~ (lwG lineWidth . lc shaftCol'))
@@ -151,28 +187,15 @@ connectMaybePorts
       (Just port0, Nothing) -> (connectOutside', name0 .> port0, toName name1)
       (_, _) -> (connectOutside', toName name0, toName name1)
 
-
--- START addEdges --
-
-makeEdge :: (HasCallStack, SpecialBackend b n) 
-  => ING.LEdge (EmbedInfo Edge)
-  -> SpecialQDiagram b n
-  -> SpecialQDiagram b n
-makeEdge 
-  (_node0, _node1, edge@(EmbedInfo _ (Edge _ (_namePort0, _namePort1))))
-  = connectMaybePorts edge
-
-
--- | addEdges draws the edges underneath the nodes.
-addEdges :: (HasCallStack, SpecialBackend b n, ING.Graph gr) =>
-  String  -- ^ Debugging information
-  -> IconInfo
-  -> gr NamedIcon (EmbedInfo Edge)
-  -> SpecialQDiagram b n
-  -> SpecialQDiagram b n
-addEdges _debugInfo _iconInfo graph = applyAll connections
-  where
-    connections = makeEdge  <$> ING.labEdges graph
+findPortAngles :: SpecialNum n
+  => IconInfo -> NamedIcon -> NameAndPort -> [Angle n]
+findPortAngles iconInfo (Named nodeName nodeIcon) (NameAndPort diaName mPort)
+  = case mPort of
+      Nothing -> []
+      Just port -> foundAngles where
+        mName = if nodeName == diaName then Nothing else Just diaName
+        foundAngles = getPortAngles iconInfo nodeIcon port mName
+-- End addEdges --
 
 drawLambdaRegions :: forall b . SpecialBackend b Double =>
   IconInfo
