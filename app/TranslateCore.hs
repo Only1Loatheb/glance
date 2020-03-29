@@ -344,7 +344,7 @@ nestedCaseOrMultiIfNodeToIcon tag numArgs args = case tag of
     argList = fmap (makeArg args) (inputPort dummyNode : argPorts)
 
 nestedPatternNodeToIcon :: String -> [Labeled (Maybe SgNamedNode)] -> Icon
-nestedPatternNodeToIcon str children = NestedPApp
+nestedPatternNodeToIcon str children = NestedPatternApp
   (pure (Just (Named (NodeName (-1)) (TextBoxIcon str))))
   -- Why so many fmaps?
   ( (fmap . fmap . fmap . fmap) nodeToIcon children)

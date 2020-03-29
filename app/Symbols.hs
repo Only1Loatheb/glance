@@ -54,6 +54,7 @@ lineColorValue :: Colour Double
 lineColorValue = lineC colorScheme
 
 -- BEGIN diagram basic symbols --
+-- TODO Why result crushes when is to big?
 lineStartingSymbol ::  SpecialBackend b n
   => Colour Double -> SpecialQDiagram b n
 lineStartingSymbol borderColor
@@ -70,14 +71,6 @@ composeSymbol col
 portSymbol :: SpecialBackend b n => SpecialQDiagram b n
 portSymbol = lw none $ fc lineColorValue $ circle (sizeUnit * 0.5)
 
-multiIfConstSymbol :: SpecialBackend b n =>
-  SpecialQDiagram b n -> SpecialQDiagram b n
-multiIfConstSymbol portDia = coloredSymbol ||| portDia
-  where
-    line = strokeLine $ hrule (2 * sizeUnit)
-    coloredSymbol
-      = lwG defaultLineWidth $ lc (boolC colorScheme) line
-
 multiIfVarSymbol :: SpecialBackend b n
   => Colour Double
   ->  SpecialQDiagram b n
@@ -89,16 +82,30 @@ multiIfVarSymbol color portDiagram =
     coloredSymbol
       = lwG defaultLineWidth $ lc color (strokeLine symbol)
 
-lambdaSymbol :: SpecialBackend b n =>
+resultSymbol :: SpecialBackend b n 
+  => SpecialQDiagram b n
+resultSymbol = symbol where
+  symbol = fc color $ lw none $ rotateBy (1/2) $ eqTriangle (2 * sizeUnit)
+  color = caseRhsC colorScheme
+
+lambdaBodySymbol :: SpecialBackend b n =>
   SpecialQDiagram b n
-lambdaSymbol
+lambdaBodySymbol
   = coloredTextBox (regionPerimC colorScheme) (opaque (bindTextBoxC colorScheme)) "lambda"
 
-inIfConstBox :: SpecialBackend b n
+inMultiIfConstBox :: SpecialBackend b n 
+  => SpecialQDiagram b n -> SpecialQDiagram b n
+inMultiIfConstBox = generalInConstBox (boolC colorScheme)
+
+inCaseConstBox :: SpecialBackend b n 
+  => SpecialQDiagram b n -> SpecialQDiagram b n
+inCaseConstBox = generalInConstBox (caseRhsC colorScheme)
+
+generalInConstBox :: SpecialBackend b n
   => Colour Double
   -> SpecialQDiagram b n
   -> SpecialQDiagram b n
-inIfConstBox borderColor diagram 
+generalInConstBox borderColor diagram 
   = finalDiagram where
     line = hrule (width diagram)
     coloredLine = lwG defaultLineWidth $  lc borderColor line
@@ -110,24 +117,16 @@ inIfConstBox borderColor diagram
     finalDiagram = centerX $ hcat [reflectX coloredTriangleToRight, diagramWithLines, coloredTriangleToRight]
 
 
-appArgBox :: (HasStyle a, Typeable (N a)
-             , TrailLike a, RealFloat (N a), V a ~ V2)
-          => Colour Double -> N a -> N a -> a
+appArgBox :: SpecialBackend b n
+  => Colour Double 
+  -> n
+  -> n
+  -> SpecialQDiagram b n
 appArgBox borderColor topAndBottomWidth portHeight
   = coloredArgBox where
     coloredArgBox = lwG defaultLineWidth $ lcA (withOpacity borderColor defaultOpacity) argBox
     argBox = rect topAndBottomWidth (portHeight + verticalSeparation)
     verticalSeparation = sizeUnit
-
--- TODO Improve design to be more than a circle.
-caseResult :: SpecialBackend b n 
-  => SpecialQDiagram b n
-caseResult = applySymbol caseCColor where
-  caseCColor = caseRhsC colorScheme
-
-caseC :: SpecialBackend b n 
-  => SpecialQDiagram b n -> SpecialQDiagram b n
-caseC portDia = caseResult <> portDia
 
 -- >>>>>>>>>>>>>>>>>>>>>> SUB Diagrams <<<<<<<<<<<<<<<<<<<<<<<<
 -- TODO Detect if we are in a loop (have called iconToDiagram on the same node
@@ -141,7 +140,7 @@ iconToDiagram iconInfo icon = case icon of
   BindTextBoxIcon s -> identDiaFunc $ bindTextBox s
   MultiIfIcon n -> nestedMultiIfDia iconInfo $ replicate (1 + (2 * n)) Nothing
   CaseIcon n -> nestedCaseDia iconInfo $ replicate (1 + (2 * n)) Nothing
-  CaseResultIcon -> identDiaFunc caseResult
+  CaseResultIcon -> identDiaFunc resultSymbol
   LambdaIcon x bodyExp _
     -> nestedLambda iconInfo x (findIconFromName iconInfo <$> bodyExp)
   NestedApply flavor headIcon args
@@ -150,8 +149,8 @@ iconToDiagram iconInfo icon = case icon of
        flavor
        (fmap (findIconFromName iconInfo) headIcon)
        ((fmap . fmap) (findIconFromName iconInfo) args)
-  NestedPApp constructor args
-    -> nestedPAppDia iconInfo (repeat $ patternC colorScheme) constructor args
+  NestedPatternApp constructor args
+    -> nestedPatternAppDia iconInfo (repeat $ patternC colorScheme) constructor args
   NestedCaseIcon args -> nestedCaseDia
                          iconInfo
                          ((fmap . fmap) (findIconFromName iconInfo) args)
@@ -168,7 +167,7 @@ identDiaFunc dia transformParams = nameDiagram (tpName transformParams) dia
 -- | Like beside, but it puts the second dia atop the first dia
 beside' :: (Semigroup a, Juxtaposable a) => V a (N a) -> a -> a -> a
 beside' dir dia1 dia2 = juxtapose dir dia1 dia2 <> dia1
--- TODO REMOVE TEXT FROM HERE
+
 textBox :: SpecialBackend b n =>
   String -> TransformableDia b n
 textBox t (TransformParams name _)
@@ -243,33 +242,41 @@ makeAppInnerIcon iconInfo (TransformParams _ nestingLevel ) func _
   where
     innerLevel = if func then nestingLevel else nestingLevel + 1
 
-nestedPAppDia :: SpecialBackend b n
+nestedPatternAppDia :: forall b n. SpecialBackend b n
   => IconInfo
   -> [Colour Double]
   -> Labeled (Maybe NamedIcon)
   -> [Labeled (Maybe NamedIcon)]
   -> TransformableDia b n
-nestedPAppDia
+nestedPatternAppDia
   iconInfo
   borderColors
-  maybeFunText
+  maybeConstructorName
   subIcons
   tp@(TransformParams name nestingLevel)
-  = named name $ centerXY
-    $ centerY finalDia ||| beside' unitX transformedText resultDia
+  = named name $ centerXY finalDia
+    -- $ centerY finalDia ||| beside' unitX transformedText resultDia
   where
     borderColor = borderColors !! nestingLevel
-    transformedText = makeTransformedText iconInfo tp maybeFunText
-    resultDia = makeQualifiedPort name ResultPortConst
-    separation = sizeUnit * 1.5
-    casesDia = vsep separation paternCases
+    separation = sizeUnit
+    
+    constructorDiagram = makeTransformedText iconInfo tp maybeConstructorName
+    
+    paternCases::[SpecialQDiagram b n]
     paternCases = zipWith (makeAppInnerIcon iconInfo tp False) argPortsConst subIcons
-    inputPortAndCases = makeQualifiedPort name InputPortConst <> alignT casesDia
-    argBox = alignT $ appArgBox -- TODO consider this alignment
+    paternCasesCentredY = fmap centerY paternCases
+    casesDia = hsep separation paternCasesCentredY
+    
+    inputPortAndCases = makeQualifiedPort name InputPortConst <> (centerX casesDia)  
+    argBox = appArgBox -- TODO consider this alignment
              borderColor
              (width inputPortAndCases)
              (height inputPortAndCases)
-    finalDia = argBox <> inputPortAndCases
+    inputPortAndCasesInBox = argBox <> inputPortAndCases
+
+    resultDia = makeQualifiedPort name ResultPortConst
+    
+    finalDia = vcat [ inputPortAndCasesInBox, constructorDiagram , resultDia ]
 
 
 
@@ -286,7 +293,7 @@ generalNestedDia :: SpecialBackend b n
   -> TransformableDia b n
 generalNestedDia
   iconInfo
-  aplicationDia
+  resultSymbol
   borderColors
   maybeFunText
   args
@@ -330,6 +337,29 @@ nestedApplyDia iconInfo flavor = case flavor of
 -- END Apply like diagrams
 
 -- BEGIN MultiIf and case icons --
+-- | The ports of the multiIf icon are as follows:
+-- InputPortConst: Top result port (not used)
+-- ResultPortConst: Bottom result port
+-- Ports 3,5...: The left ports for the booleans
+-- Ports 2,4...: The right ports for the values
+nestedMultiIfDia :: SpecialBackend b n =>
+  IconInfo
+  -> [Maybe NamedIcon]
+  -> TransformableDia b n
+nestedMultiIfDia iconInfo 
+  = generalNestedMultiIf iconInfo lineColorValue inMultiIfConstBox
+
+-- | The ports of the case icon are as follows:
+-- InputPortConst: Top input port
+-- ResultPortConst: Bottom result port
+-- Ports 3,5...: The left ports for the results
+-- Ports 2,4...: The right ports for the patterns
+nestedCaseDia :: SpecialBackend b n
+  => IconInfo
+  -> [Maybe NamedIcon]
+  -> TransformableDia b n
+nestedCaseDia iconInfo
+  = generalNestedMultiIf iconInfo (patternC colorScheme) inCaseConstBox
 
 -- | generalNestedMultiIf port layout:
 -- 0 -> top
@@ -340,15 +370,14 @@ generalNestedMultiIf ::forall b n. SpecialBackend b n
                    => IconInfo
                    -> Colour Double
                    -> (SpecialQDiagram b n -> SpecialQDiagram b n)
-                   -> SpecialQDiagram b n
                    -> [Maybe NamedIcon]
                    -> TransformableDia b n
-generalNestedMultiIf iconInfo triangleColor _ bottomDia inputAndArgs
+generalNestedMultiIf iconInfo triangleColor inConstBox inputAndArgs
   (TransformParams name nestingLevel)
   = named name $ case inputAndArgs of
   [] -> mempty
   input : subicons -> centerXY finalDia where
-    finalDia = alignT (bottomDia <> makeQualifiedPort name ResultPortConst)
+    finalDia = alignT (resultSymbol <> makeQualifiedPort name ResultPortConst)
                <> alignB
                (inputIcon === (bigVerticalLine
                                <> multiIfDia
@@ -361,7 +390,7 @@ generalNestedMultiIf iconInfo triangleColor _ bottomDia inputAndArgs
 
     iconMapper (Port portNum) subicon
       | even portNum = Right ${- middle -} hcat [multiIfVarSymbol triangleColor port ,placeSubIcon True subicon]
-      | otherwise = Left $ hcat [inIfConstBox triangleColor $ placeSubIcon False subicon , port] {- middle -}
+      | otherwise = Left $ hcat [inConstBox $ placeSubIcon False subicon , port] {- middle -}
       where
         port = makeQualifiedPort name (Port portNum)
 
@@ -389,31 +418,6 @@ generalNestedMultiIf iconInfo triangleColor _ bottomDia inputAndArgs
                   iconNodeName
                   nestingLevel
                   )
-
--- | The ports of the multiIf icon are as follows:
--- InputPortConst: Top result port (not used)
--- ResultPortConst: Bottom result port
--- Ports 3,5...: The left ports for the booleans
--- Ports 2,4...: The right ports for the values
-nestedMultiIfDia :: SpecialBackend b n =>
-  IconInfo
-  -> [Maybe NamedIcon]
-  -> TransformableDia b n
-nestedMultiIfDia iconInfo = generalNestedMultiIf iconInfo lineColorValue multiIfConstSymbol mempty
-
-
-
--- | The ports of the case icon are as follows:
--- InputPortConst: Top input port
--- ResultPortConst: Bottom result port
--- Ports 3,5...: The left ports for the results
--- Ports 2,4...: The right ports for the patterns
-nestedCaseDia :: SpecialBackend b n
-  => IconInfo
-  -> [Maybe NamedIcon]
-  -> TransformableDia b n
-nestedCaseDia iconInfo
-  = generalNestedMultiIf iconInfo (patternC colorScheme) caseC caseResult
 
 -- END MultiIf and case icons
 
@@ -443,7 +447,7 @@ nestedLambda iconInfo paramNames mBodyExp (TransformParams name level)
          bodyIcon
          (TransformParams bodyNodeName level)
 
-  resultDiagram = (alignB lambdaSymbol ) <> (alignT $ makeQualifiedPort name ResultPortConst)
+  resultDiagram = (alignB lambdaBodySymbol ) <> (alignT $ makeQualifiedPort name ResultPortConst)
          
   inputsResultAndBodyDia = vcat [lambdaBodyDiagram,inputDiagram, resultDiagram]
 

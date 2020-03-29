@@ -37,11 +37,11 @@ lambdaPortAngle (Port x) =  case x of
   1 -> 3/4 @@ turn-- output
   _ -> 0 @@ turn -- value placement
 
-pAppPortAngle :: Floating n => Port -> Angle n
-pAppPortAngle (Port x) = case x of
+patternAppPortAngle :: Floating n => Port -> Angle n
+patternAppPortAngle (Port x) = case x of
   0 -> 1/4 @@ turn -- input
-  1 -> 3/4 @@ turn -- result label input
-  _ -> 3/4 @@ turn -- other itermidiate results
+  1 -> 1/4 @@ turn -- result label input
+  _ -> 3/4 @@ turn -- output of inner constructors from pattern
 
 multiIfPortAngle :: Floating n => Port -> Angle n
 multiIfPortAngle (Port port) = case port of
@@ -111,10 +111,10 @@ getPortAngleHelper _embedded iconInfo icon port maybeNodeName = case icon of
       ((fmap . fmap) (findIconFromName iconInfo) args)
       port
       maybeNodeName
-  NestedPApp headIcon args
+  NestedPatternApp headIcon args
     -> generalNestedPortAngle
       iconInfo
-      pAppPortAngle
+      patternAppPortAngle
       (laValue headIcon)
       (fmap laValue args)
       port

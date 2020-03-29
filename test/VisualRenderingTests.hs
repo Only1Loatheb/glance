@@ -86,20 +86,20 @@ flatMultiIfDrawing = Drawing icons edges where
     ]
   edges = []
 
-nestedPAppDia :: Drawing
-nestedPAppDia = Drawing icons []
+nestedPatternAppDia :: Drawing
+nestedPatternAppDia = Drawing icons []
   where
     icons = [
-      Named n0 (NestedPApp (Labeled Nothing "baz") [])
+      Named n0 (NestedPatternApp (Labeled Nothing "baz") [])
       , Named
         (NodeName 2)
-        (NestedPApp
+        (NestedPatternApp
           (Labeled Nothing "")
           [ Labeled (Just (Named (NodeName 1) (TextBoxIcon "foo"))) "bar"
           , Labeled Nothing "bar"])
       , Named
         (NodeName 3)
-        (NestedPApp
+        (NestedPatternApp
           (Labeled (Just (Named (NodeName 4) (TextBoxIcon "foo"))) "bar")
           [Labeled Nothing "bar"])
       ]
@@ -155,7 +155,7 @@ renderTests = do
       , nestedMultiIfDrawing
       , flatCaseDrawing
       , flatMultiIfDrawing
-      , nestedPAppDia
+      , nestedPatternAppDia
       -- , nestedApplyDia
       , lambdaDia
       -- , nestedLambdaDia

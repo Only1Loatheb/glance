@@ -79,7 +79,7 @@ data Icon = TextBoxIcon String
     LikeApplyFlavor  -- apply or compose
     (Maybe NodeName)  -- The function for apply, or the argument for compose
     [Maybe NodeName]  -- list of arguments or functions
-  | NestedPApp
+  | NestedPatternApp
     (Labeled (Maybe NamedIcon))  -- Data constructor
     [Labeled (Maybe NamedIcon)]  -- Arguments
   | NestedCaseIcon [Maybe NodeName]
