@@ -70,17 +70,17 @@ composeSymbol :: SpecialBackend b n => Colour Double -> SpecialQDiagram b n
 composeSymbol col
   = lc col $ lwG defaultLineWidth $ wedge sizeUnit yDir halfTurn
 
-portSymbol :: SpecialBackend b n => SpecialQDiagram b n
-portSymbol = lw none $ fc lineColorValue $ circle (sizeUnit * 0.5)
+inputPortSymbol :: SpecialBackend b n => SpecialQDiagram b n
+inputPortSymbol = lw none $ fc lineColorValue $ circle (sizeUnit * 0.5)
 
 multiIfVarSymbol :: SpecialBackend b n
   => Colour Double
   ->  SpecialQDiagram b n
   ->  SpecialQDiagram b n
-multiIfVarSymbol color portDiagram = 
-  (alignR coloredSymbol) <> portDiagram
+multiIfVarSymbol color port = 
+  (alignB coloredSymbol) <> port -- port with no dimentions
   where
-    symbol = hrule (2 * sizeUnit)
+    symbol = vrule (2 * sizeUnit)
     coloredSymbol
       = lwG defaultLineWidth $ lc color (strokeLine symbol)
 
@@ -205,6 +205,10 @@ makePort x = named x mempty
 makeQualifiedPort :: SpecialNum n => NodeName -> Port -> SpecialQDiagram b n
 makeQualifiedPort n x = n .>> makePort x
 
+-- makeResultPort 
+
+-- makeInputPort
+
 -- Don't display " tempvar" from Translate.hs/matchesToCase
 makeLabelledPort :: SpecialBackend b n =>
   NodeName -> String -> Port -> SpecialQDiagram b n
@@ -213,7 +217,7 @@ makeLabelledPort name str portNum
   | not (null str) = label ||| portAndCircle
   | otherwise = portAndCircle
   where
-    portAndCircle = makeQualifiedPort name portNum <> portSymbol
+    portAndCircle = makeQualifiedPort name portNum <> inputPortSymbol
     label = transformableBindTextBox str 
 
 -- END Diagram helper functions
@@ -256,7 +260,6 @@ nestedPatternAppDia
   subIcons
   tp@(TransformParams name nestingLevel)
   = named name $ centerXY finalDia
-    -- $ centerY finalDia ||| beside' unitX transformedText resultDia
   where
     borderColor = borderColors !! nestingLevel
     
@@ -303,24 +306,20 @@ generalNestedDia
     where
       borderColor = borderColors !! nestingLevel
 
-      argPortsUncentred =  zipWith ( makeAppInnerIcon iconInfo tp False) argPortsConst (fmap pure args)
-      argPortsCentred  = fmap centerY argPortsUncentred
-      argPorts = centerX $ hsep portSeparationSize argPortsCentred
-
-      argsInputPorts =  makeQualifiedPort name InputPortConst <> argPorts
-      argBox  = appArgBox
-                borderColor
-                (width argsInputPorts)
-                (height argsInputPorts)
-      argsInputDiagram = argBox <> argsInputPorts
+      argsDiagram =  argBox <> centerXY argPorts where
+        argPortsUncentred =  zipWith ( makeAppInnerIcon iconInfo tp False) argPortsConst (fmap pure args)
+        argPortsCentred  = fmap centerY argPortsUncentred
+        argPorts = centerX $ hsep portSeparationSize argPortsCentred 
+        argBox  = appArgBox
+          borderColor
+          (width argPorts)
+          (height argPorts)
 
       transformedName = centerX $ makeTransformedText iconInfo tp (pure maybeFunText)
-
-      nameUnderArgsDia = beside (-unitY) argsInputDiagram transformedName
-
       resultPortDia =  (makeQualifiedPort name ResultPortConst) <> (resultSymbol)
 
-      finalDia = beside (-unitY) nameUnderArgsDia resultPortDia
+      inputPort =  ( makeQualifiedPort name InputPortConst)
+      finalDia = vcat [inputPort, argsDiagram, transformedName, resultPortDia] 
 
 nestedApplyDia :: SpecialBackend b n
   => IconInfo
@@ -377,20 +376,17 @@ generalNestedMultiIf iconInfo triangleColor inConstBox inputAndArgs
   = named name $ case inputAndArgs of
   [] -> mempty
   input : subicons -> centerXY finalDia where
-    finalDia = alignT (resultSymbol <> makeQualifiedPort name ResultPortConst)
-               <> alignB
-               (inputIcon === (bigVerticalLine
-                               <> multiIfDia
-                               <> makeQualifiedPort name InputPortConst))
+    finalDia = hcat [inputIcon, allCases ,resultPort]
 
-    inputIcon = placeSubIcon False input
+    inputIcon = alignR (placeSubIcon False input <>  makeQualifiedPort name InputPortConst <> inputPortSymbol) -- because port has no dimentions
+    resultPort = resultSymbol <> makeQualifiedPort name ResultPortConst
 
     (iFConstIcons, iFVarIcons)
       = partitionEithers $ zipWith iconMapper argPortsConst subicons
 
     iconMapper (Port portNum) subicon
-      | even portNum = Right ${- middle -} hcat [multiIfVarSymbol triangleColor port ,placeSubIcon True subicon]
-      | otherwise = Left $ hcat [inConstBox $ placeSubIcon False subicon , port] {- middle -}
+      | even portNum = Right ${- middle -} vcat [multiIfVarSymbol triangleColor port ,placeSubIcon True subicon]
+      | otherwise = Left $ vcat [inConstBox $ placeSubIcon False subicon , port] {- middle -}
       where
         port = makeQualifiedPort name (Port portNum)
 
@@ -398,14 +394,12 @@ generalNestedMultiIf iconInfo triangleColor inConstBox inputAndArgs
       zipWith combineIfIcons iFVarIcons iFConstIcons
 
     combineIfIcons iFVarIcon iFConstIcon
-      = verticalLine === decisionDiagram where
-        decisionDiagram = (alignR iFConstIcon) <>  (alignL iFVarIcon)
-        verticalLine = strutY 0.4
+      = decisionDiagram where
+        decisionDiagram = (alignB iFConstIcon) <>  (alignT iFVarIcon)
 
-    multiIfDia = vcat (alignT iFVarAndConstIcons)
-    bigVerticalLine
-      = alignT
-        $ lwG defaultLineWidth $ lc triangleColor $ vrule (height multiIfDia)
+    multiIfDia = centerX (hsep portSeparationSize (alignL iFVarAndConstIcons))
+    bigVerticalLine = lwG defaultLineWidth $ lc triangleColor $ hrule (width multiIfDia)
+    allCases = multiIfDia <> bigVerticalLine
 
     placeSubIcon::(SpecialBackend b n) => Bool -> Maybe (Named Icon) -> SpecialQDiagram b n
     placeSubIcon _ mNameAndIcon = case mNameAndIcon of
@@ -447,7 +441,7 @@ nestedLambda iconInfo paramNames mBodyExp (TransformParams name level)
          bodyIcon
          (TransformParams bodyNodeName level)
 
-  resultDiagram = (alignB lambdaBodySymbol ) <> (alignT $ makeQualifiedPort name ResultPortConst)
+  resultDiagram = (alignB lambdaBodySymbol ) <>  makeQualifiedPort name ResultPortConst -- port on 0,0
          
   inputsResultAndBodyDia = vcat [lambdaBodyDiagram,inputDiagram, resultDiagram]
 

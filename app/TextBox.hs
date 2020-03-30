@@ -89,7 +89,7 @@ coloredTextBox textColor boxColor t
       fontSize
       (local textBoxFontSize)
       (font textFont $ fillColor textColor $ text t) -- dont have size
-    padOverText = strutY (textBoxFontSize * textBoxHeightFactor /2)
+    padOverText = strutY (textBoxFontSize * textBoxHeightFactor /3)
     boxAroundText =
       lwG -- A convenient synonym for 'lineWidth (global w)'.
       (0.6 * defaultLineWidth)
