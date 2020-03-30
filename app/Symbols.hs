@@ -372,13 +372,18 @@ generalNestedMultiIf ::forall b n. SpecialBackend b n
                    -> [Maybe NamedIcon]
                    -> TransformableDia b n
 generalNestedMultiIf iconInfo triangleColor inConstBox inputAndArgs
-  (TransformParams name nestingLevel)
+  tp@(TransformParams name nestingLevel)
   = named name $ case inputAndArgs of
   [] -> mempty
   input : subicons -> centerXY finalDia where
     finalDia = hcat [inputIcon, allCases ,resultPort]
 
-    inputIcon = alignR (placeSubIcon False input <>  makeQualifiedPort name InputPortConst <> inputPortSymbol) -- because port has no dimentions
+    -- TODO aplay this pattern to do other imput diagram in places
+    inputPort = makeQualifiedPort name InputPortConst
+    inputIcon = case input of
+      Just (Named _ _) -> (alignR (alignL $ placeSubIcon False input) <> inputPort)
+      otherwise -> alignR (inputPortSymbol <> inputPort)
+
     resultPort = resultSymbol <> makeQualifiedPort name ResultPortConst
 
     (iFConstIcons, iFVarIcons)
@@ -408,10 +413,7 @@ generalNestedMultiIf iconInfo triangleColor inConstBox inputAndArgs
                 iconToDiagram
                 iconInfo
                 icon
-                (TransformParams
-                  iconNodeName
-                  nestingLevel
-                  )
+                tp
 
 -- END MultiIf and case icons
 
