@@ -45,6 +45,8 @@ import Types(Icon(..), SpecialQDiagram, SpecialBackend, SpecialNum
 
 sizeUnit :: (Fractional a) => a
 sizeUnit = 0.5
+portSeparationSize :: (Fractional a) => a
+portSeparationSize = 0.5
 
 defaultOpacity :: (Fractional a) => a
 defaultOpacity = 0.4
@@ -85,7 +87,7 @@ multiIfVarSymbol color portDiagram =
 resultSymbol :: SpecialBackend b n 
   => SpecialQDiagram b n
 resultSymbol = symbol where
-  symbol = fc color $ lw none $ rotateBy (1/2) $ eqTriangle (2 * sizeUnit)
+  symbol = fc color $ lw none $ rotateBy (1/2) $ eqTriangle (5/4 * sizeUnit) -- cant be to big to fit in diagrams
   color = caseRhsC colorScheme
 
 lambdaBodySymbol :: SpecialBackend b n =>
@@ -125,8 +127,7 @@ appArgBox :: SpecialBackend b n
 appArgBox borderColor topAndBottomWidth portHeight
   = coloredArgBox where
     coloredArgBox = lwG defaultLineWidth $ lcA (withOpacity borderColor defaultOpacity) argBox
-    argBox = rect topAndBottomWidth (portHeight + verticalSeparation)
-    verticalSeparation = sizeUnit
+    argBox = rect topAndBottomWidth (portHeight + portSeparationSize)
 
 -- >>>>>>>>>>>>>>>>>>>>>> SUB Diagrams <<<<<<<<<<<<<<<<<<<<<<<<
 -- TODO Detect if we are in a loop (have called iconToDiagram on the same node
@@ -258,14 +259,13 @@ nestedPatternAppDia
     -- $ centerY finalDia ||| beside' unitX transformedText resultDia
   where
     borderColor = borderColors !! nestingLevel
-    separation = sizeUnit
     
     constructorDiagram = makeTransformedText iconInfo tp maybeConstructorName
     
     paternCases::[SpecialQDiagram b n]
     paternCases = zipWith (makeAppInnerIcon iconInfo tp False) argPortsConst subIcons
     paternCasesCentredY = fmap centerY paternCases
-    casesDia = hsep separation paternCasesCentredY
+    casesDia = hsep portSeparationSize paternCasesCentredY
     
     inputPortAndCases = makeQualifiedPort name InputPortConst <> (centerX casesDia)  
     argBox = appArgBox -- TODO consider this alignment
@@ -293,7 +293,7 @@ generalNestedDia :: SpecialBackend b n
   -> TransformableDia b n
 generalNestedDia
   iconInfo
-  resultSymbol
+  colorResultSymbol
   borderColors
   maybeFunText
   args
@@ -305,7 +305,7 @@ generalNestedDia
 
       argPortsUncentred =  zipWith ( makeAppInnerIcon iconInfo tp False) argPortsConst (fmap pure args)
       argPortsCentred  = fmap centerY argPortsUncentred
-      argPorts = centerX $ hsep sizeUnit argPortsCentred
+      argPorts = centerX $ hsep portSeparationSize argPortsCentred
 
       argsInputPorts =  makeQualifiedPort name InputPortConst <> argPorts
       argBox  = appArgBox
@@ -318,7 +318,7 @@ generalNestedDia
 
       nameUnderArgsDia = beside (-unitY) argsInputDiagram transformedName
 
-      resultPortDia =  (makeQualifiedPort name ResultPortConst) <> (lineStartingSymbol borderColor)
+      resultPortDia =  (makeQualifiedPort name ResultPortConst) <> (resultSymbol)
 
       finalDia = beside (-unitY) nameUnderArgsDia resultPortDia
 
@@ -436,7 +436,7 @@ nestedLambda iconInfo paramNames mBodyExp (TransformParams name level)
   -- centerY (named name inputOutputDiagram)
   where
   portPorts = zipWith (makeLabelledPort name) paramNames argPortsConst
-  placedImputPorts = centerXY $ vsep (1 * sizeUnit) portPorts
+  placedImputPorts = centerXY $ vsep portSeparationSize portPorts
   inputDiagram = placedImputPorts <> appArgBox (lamArgResC colorScheme) (width placedImputPorts) (height placedImputPorts)
 
   lambdaBodyDiagram = case mBodyExp of
@@ -458,7 +458,7 @@ lambdaRegionSymbol enclosedDiagarms
   = moveTo (centerPoint combinedDia) coloredContentsRect
   where
     combinedDia = mconcat enclosedDiagarms
-    rectPadding = 2 * sizeUnit
+    rectPadding = 3 * sizeUnit -- so result symbols on edge can fit
     contentsRect = dashingG [0.7 * sizeUnit, 0.3 * sizeUnit] 0
                    $ rect
                    (rectPadding + width combinedDia)

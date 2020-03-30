@@ -213,12 +213,8 @@ drawLambdaRegions iconInfo placedNodes
     drawRegion :: Set.Set NodeName -> NamedIcon -> SpecialQDiagram b Double
     drawRegion parentNames icon = case icon of
       Named lambdaName (LambdaIcon _ _ enclosedNames)
-        -- TODO remove lambda from enclosed names
-        -> if enclosedNames == Set.fromList [lambdaName] 
-          then mempty 
-          else lambdaRegionSymbol enclosed where
-            enclosedWithoutParent = Set.delete lambdaName enclosedNames 
-            enclosed =  findDia <$> Set.toList {-enclosedNames -} enclosedWithoutParent
+        -> lambdaRegionSymbol enclosed where
+            enclosed =  findDia <$> Set.toList (parentNames <> enclosedNames)
       Named parentName (NestedApply _ headIcon icons)
         -> mconcat
            $ drawRegion (Set.insert parentName parentNames)
