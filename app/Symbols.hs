@@ -372,7 +372,7 @@ generalNestedMultiIf ::forall b n. SpecialBackend b n
                    -> [Maybe NamedIcon]
                    -> TransformableDia b n
 generalNestedMultiIf iconInfo triangleColor inConstBox inputAndArgs
-  tp@(TransformParams name nestingLevel)
+  (TransformParams name nestingLevel)
   = named name $ case inputAndArgs of
   [] -> mempty
   input : subicons -> centerXY finalDia where
@@ -413,7 +413,10 @@ generalNestedMultiIf iconInfo triangleColor inConstBox inputAndArgs
                 iconToDiagram
                 iconInfo
                 icon
-                tp
+                (TransformParams
+                iconNodeName
+                nestingLevel
+                )
 
 -- END MultiIf and case icons
 
