@@ -56,12 +56,6 @@ lineColorValue :: Colour Double
 lineColorValue = lineC colorScheme
 
 -- BEGIN diagram basic symbols --
--- TODO Why result crushes when is to big?
-lineStartingSymbol ::  SpecialBackend b n
-  => Colour Double -> SpecialQDiagram b n
-lineStartingSymbol borderColor
-  = lc borderColor $ lwG defaultLineWidth $ fc borderColor $ circle defaultLineWidth
-
 applySymbol :: SpecialBackend b n => Colour Double -> SpecialQDiagram b n
 applySymbol col
   = fc col $ lw none $ rotateBy (1/2) $ eqTriangle (2 * sizeUnit)
@@ -76,10 +70,7 @@ inputPortSymbol = lw none $ fc lineColorValue $ circle (sizeUnit * 0.5)
 multiIfVarSymbol :: SpecialBackend b n
   => Colour Double
   ->  SpecialQDiagram b n
-  ->  SpecialQDiagram b n
-multiIfVarSymbol color port = 
-  (alignB coloredSymbol) <> port -- port with no dimentions
-  where
+multiIfVarSymbol color = alignB coloredSymbol  where
     symbol = vrule (2 * sizeUnit)
     coloredSymbol
       = lwG defaultLineWidth $ lc color (strokeLine symbol)
@@ -165,10 +156,6 @@ iconToDiagram iconInfo icon = case icon of
 identDiaFunc :: SpecialNum n => SpecialQDiagram b n -> TransformableDia b n
 identDiaFunc dia transformParams = nameDiagram (tpName transformParams) dia                          
 
--- | Like beside, but it puts the second dia atop the first dia
-beside' :: (Semigroup a, Juxtaposable a) => V a (N a) -> a -> a -> a
-beside' dir dia1 dia2 = juxtapose dir dia1 dia2 <> dia1
-
 textBox :: SpecialBackend b n =>
   String -> TransformableDia b n
 textBox t (TransformParams name _)
@@ -196,29 +183,32 @@ makeTransformedText iconInfo tp maybeFunText = case laValue maybeFunText of
 -- | Make an port with an integer name. Always use <> to add a ports
 -- (not === or |||)  since mempty has no size and will not be placed where you
 -- want it.
-makePort :: SpecialNum n => Port -> SpecialQDiagram b n
+makePort ::  SpecialBackend b n => Port -> SpecialQDiagram b n
 makePort x = named x mempty
 --makePort x = circle 0.2 # fc green # named x
 -- Note, the version of makePort below seems to have a different type.
 --makePort x = textBox (show x) # fc green # named x
 
-makeQualifiedPort :: SpecialNum n => NodeName -> Port -> SpecialQDiagram b n
-makeQualifiedPort n x = n .>> makePort x
-
--- makeResultPort 
-
--- makeInputPort
+makeQualifiedPort :: SpecialBackend b n =>
+  SpecialQDiagram b n -> Port -> NodeName -> SpecialQDiagram b n
+makeQualifiedPort  symbol portNum name = portAndSymbol where 
+  port = name .>> (makePort portNum)
+  portAndSymbol = port <> symbol
 
 -- Don't display " tempvar" from Translate.hs/matchesToCase
 makeLabelledPort :: SpecialBackend b n =>
-  NodeName -> String -> Port -> SpecialQDiagram b n
-makeLabelledPort name str portNum 
-  | " tempvar" `isPrefixOf` str  = portAndCircle
-  | not (null str) = label ||| portAndCircle
-  | otherwise = portAndCircle
+  Bool -> SpecialQDiagram b n ->  NodeName -> Port -> String ->  SpecialQDiagram b n
+makeLabelledPort isInput symbol  name portNum str  
+  | " tempvar" `isPrefixOf` str  = portAndSymbol
+  | not (null str) = portSymbolAndLabel
+  | otherwise = portAndSymbol
   where
-    portAndCircle = makeQualifiedPort name portNum <> inputPortSymbol
+    portAndSymbol = makeQualifiedPort symbol  portNum name
     label = transformableBindTextBox str 
+    portSymbolAndLabel = if isInput
+      then portAndSymbol ||| label
+      else label ||| portAndSymbol
+
 
 -- END Diagram helper functions
 
@@ -237,7 +227,7 @@ makeAppInnerIcon :: SpecialBackend b n =>
   SpecialQDiagram b n
 makeAppInnerIcon _iconInfo (TransformParams name _) _ portNum
   (Labeled Nothing str)
-  = centerX $ makeLabelledPort name str portNum
+  = centerX $ makeLabelledPort True inputPortSymbol name portNum str 
 makeAppInnerIcon iconInfo (TransformParams _ nestingLevel ) func _
   (Labeled (Just (Named iconNodeName icon)) _)
   = iconToDiagram
@@ -270,14 +260,14 @@ nestedPatternAppDia
     paternCasesCentredY = fmap centerY paternCases
     casesDia = hsep portSeparationSize paternCasesCentredY
     
-    inputPortAndCases = makeQualifiedPort name InputPortConst <> (centerX casesDia)  
+    inputPortAndCases = makeLabelledPort True (centerX casesDia) name InputPortConst ""
     argBox = appArgBox -- TODO consider this alignment
              borderColor
              (width inputPortAndCases)
              (height inputPortAndCases)
     inputPortAndCasesInBox = argBox <> inputPortAndCases
 
-    resultDia = makeQualifiedPort name ResultPortConst
+    resultDia = makeQualifiedPort resultSymbol ResultPortConst name 
     
     finalDia = vcat [ inputPortAndCasesInBox, constructorDiagram , resultDia ]
 
@@ -316,9 +306,9 @@ generalNestedDia
           (height argPorts)
 
       transformedName = centerX $ makeTransformedText iconInfo tp (pure maybeFunText)
-      resultPortDia =  (makeQualifiedPort name ResultPortConst) <> (resultSymbol)
+      resultPortDia =  (makeQualifiedPort resultSymbol ResultPortConst name ) 
 
-      inputPort =  ( makeQualifiedPort name InputPortConst)
+      inputPort =  ( makeQualifiedPort inputPortSymbol InputPortConst name )
       finalDia = vcat [inputPort, argsDiagram, transformedName, resultPortDia] 
 
 nestedApplyDia :: SpecialBackend b n
@@ -379,21 +369,21 @@ generalNestedMultiIf iconInfo triangleColor inConstBox inputAndArgs
     finalDia = hcat [inputIcon, allCases ,resultPort]
 
     -- TODO aplay this pattern to do other imput diagram in places
-    inputPort = makeQualifiedPort name InputPortConst
+    inputPort = makeQualifiedPort inputPortSymbol InputPortConst name 
     inputIcon = case input of
       Just (Named _ _) -> (alignR (alignL $ placeSubIcon False input) <> inputPort)
       otherwise -> alignR (inputPortSymbol <> inputPort)
 
-    resultPort = resultSymbol <> makeQualifiedPort name ResultPortConst
+    resultPort = makeQualifiedPort resultSymbol ResultPortConst name 
 
     (iFConstIcons, iFVarIcons)
       = partitionEithers $ zipWith iconMapper argPortsConst subicons
 
     iconMapper (Port portNum) subicon
-      | even portNum = Right ${- middle -} vcat [multiIfVarSymbol triangleColor port ,placeSubIcon True subicon]
+      | even portNum = Right ${- middle -} vcat [multiIfVarSymbol triangleColor, placeSubIcon True subicon, port ]
       | otherwise = Left $ vcat [inConstBox $ placeSubIcon False subicon , port] {- middle -}
       where
-        port = makeQualifiedPort name (Port portNum)
+        port = makeQualifiedPort resultSymbol (Port portNum) name 
 
     iFVarAndConstIcons =
       zipWith combineIfIcons iFVarIcons iFConstIcons
@@ -434,7 +424,7 @@ nestedLambda iconInfo paramNames mBodyExp (TransformParams name level)
   = centerXY (named name inputsResultAndBodyDia)
   -- centerY (named name inputOutputDiagram)
   where
-  portPorts = zipWith (makeLabelledPort name) paramNames argPortsConst
+  portPorts = zipWith (makeLabelledPort True inputPortSymbol name) argPortsConst paramNames
   placedImputPorts = centerXY $ vsep portSeparationSize portPorts
   inputDiagram = placedImputPorts <> appArgBox (lamArgResC colorScheme) (width placedImputPorts) (height placedImputPorts)
 
@@ -446,7 +436,7 @@ nestedLambda iconInfo paramNames mBodyExp (TransformParams name level)
          bodyIcon
          (TransformParams bodyNodeName level)
 
-  resultDiagram = (alignB lambdaBodySymbol ) <>  makeQualifiedPort name ResultPortConst -- port on 0,0
+  resultDiagram = (alignB lambdaBodySymbol ) <> alignT( makeQualifiedPort resultSymbol ResultPortConst name )
          
   inputsResultAndBodyDia = vcat [lambdaBodyDiagram,inputDiagram, resultDiagram]
 
