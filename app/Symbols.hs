@@ -200,7 +200,7 @@ makeInputDiagram :: SpecialBackend b n
   -> SpecialQDiagram b n
 makeInputDiagram iconInfo tp maybeFunText name = case laValue maybeFunText of
   Just _ ->
-    makeAppInnerIcon iconInfo tp True InputPortConst maybeFunText
+    makeAppInnerIcon iconInfo tp True True InputPortConst maybeFunText
   Nothing -> makeQualifiedPort True InputPortConst name
       -- becaues it can only be [function name, lambda, imputPort]
 
@@ -209,18 +209,19 @@ makeResultDiagram :: SpecialBackend b n
   -> SpecialQDiagram b n
 makeResultDiagram = makeQualifiedPort False  ResultPortConst  
 
-makeAppInnerIcon :: SpecialBackend b n =>
-  IconInfo ->
-  TransformParams n ->
-  Bool ->  -- If False then add one to the nesting level.
-  Port ->  -- Port number (if the NamedIcon is Nothing)
-  Labeled (Maybe NamedIcon) ->  -- The icon
-  SpecialQDiagram b n
-makeAppInnerIcon _ (TransformParams name _) _ portNum
+makeAppInnerIcon :: SpecialBackend b n 
+  => IconInfo 
+  -> TransformParams n 
+  -> Bool  -- If False then add one to the nesting level. 
+  -> Bool 
+  -> Port  -- Port number (if the NamedIcon is Nothing)
+  -> Labeled (Maybe NamedIcon) -- The icon 
+  -> SpecialQDiagram b n
+makeAppInnerIcon _iconInfo (TransformParams name _) _isSameNestingLevel isInput portNum
   (Labeled Nothing str)
-  = centerX $ makeLabelledPort True name portNum str 
-makeAppInnerIcon iconInfo (TransformParams _ nestingLevel ) isSameNestingLevel _
-  (Labeled (Just (Named iconNodeName icon)) _)
+  = centerX $ makeLabelledPort isInput name portNum str 
+makeAppInnerIcon iconInfo (TransformParams _ nestingLevel ) isSameNestingLevel _isInput _portNum
+  (Labeled (Just (Named iconNodeName icon)) _) 
   = iconToDiagram
     iconInfo
     icon
@@ -249,7 +250,7 @@ nestedPatternAppDia
     constructorDiagram = makeInputDiagram iconInfo tp maybeConstructorName name
 
     paternCases::[SpecialQDiagram b n]
-    paternCases = zipWith (makeAppInnerIcon iconInfo tp False) argPortsConst subIcons
+    paternCases = zipWith (makeAppInnerIcon iconInfo tp False False) argPortsConst subIcons
     paternCasesCentredY = fmap centerY paternCases
     casesDia = centerX $ hsep portSeparationSize paternCasesCentredY
     casesDiaInBox = casesDia <> appArgBox borderColor (width casesDia) (height casesDia)
@@ -280,7 +281,7 @@ generalNestedDia
       borderColor = borderColors !! nestingLevel
       boxWidth = max (width transformedName) (width argPorts)
 
-      argPortsUncentred =  zipWith ( makeAppInnerIcon iconInfo tp False) argPortsConst (fmap pure args)
+      argPortsUncentred =  zipWith ( makeAppInnerIcon iconInfo tp False True) argPortsConst (fmap pure args)
       argPortsCentred  = fmap centerY argPortsUncentred
       argPorts = centerX $ hsep portSeparationSize argPortsCentred
       argsDiagram = (centerXY argPorts) <> (appArgBox borderColor boxWidth (height argPorts))
@@ -358,10 +359,11 @@ generalNestedMultiIf iconInfo triangleColor inConstBox inputAndArgs
     isSameNestingLevel = True
 
     iconMapper port@(Port portNum) subicon
-      | even portNum = Right ${- middle -} vcat [multiIfVarSymbol triangleColor, innerIcon ]
-      | otherwise = Left $ inConstBox innerIcon {- middle -}
+      | isInput = Left $ inConstBox $ innerIcon{- middle -}
+      | otherwise = Right ${- middle -} vcat [multiIfVarSymbol triangleColor, innerIcon]
       where 
-        innerIcon = makeAppInnerIcon iconInfo tp isSameNestingLevel port (Labeled subicon "")
+        innerIcon = makeAppInnerIcon iconInfo tp isSameNestingLevel isInput port (Labeled subicon "")
+        isInput = odd portNum
 
     iFVarAndConstIcons =
       zipWith combineIfIcons iFVarIcons iFConstIcons
