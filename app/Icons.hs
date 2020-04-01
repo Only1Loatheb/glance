@@ -81,16 +81,16 @@ resultPort :: SyntaxNode -> Port
 resultPort = const ResultPortConst
 
 caseRhsPorts :: [Port]
-caseRhsPorts = fmap Port [3,5..]
+caseRhsPorts = fmap Port [2,4..]
 
 casePatternPorts :: [Port]
-casePatternPorts = fmap Port [2,4..]
+casePatternPorts = fmap Port [3,5..]
 
 multiIfRhsPorts :: [Port]
-multiIfRhsPorts = casePatternPorts
+multiIfRhsPorts = caseRhsPorts
 
 multiIfBoolPorts :: [Port]
-multiIfBoolPorts = caseRhsPorts
+multiIfBoolPorts = casePatternPorts
 
 argumentPorts :: SyntaxNode -> [Port]
 argumentPorts n = case n of

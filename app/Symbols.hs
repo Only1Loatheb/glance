@@ -120,36 +120,6 @@ appArgBox borderColor topAndBottomWidth portHeight
     coloredArgBox = lwG defaultLineWidth $ lcA (withOpacity borderColor defaultOpacity) argBox
     argBox = rect topAndBottomWidth (portHeight + portSeparationSize)
 
--- >>>>>>>>>>>>>>>>>>>>>> SUB Diagrams <<<<<<<<<<<<<<<<<<<<<<<<
--- TODO Detect if we are in a loop (have called iconToDiagram on the same node
--- before)
-iconToDiagram :: SpecialBackend b n
-  => IconInfo
-  -> Icon
-  -> TransformableDia b n
-iconToDiagram iconInfo icon = case icon of
-  TextBoxIcon s -> textBox s
-  BindTextBoxIcon s -> identDiaFunc $ bindTextBox s
-  MultiIfIcon n -> nestedMultiIfDia iconInfo $ replicate (1 + (2 * n)) Nothing
-  CaseIcon n -> nestedCaseDia iconInfo $ replicate (1 + (2 * n)) Nothing
-  CaseResultIcon -> identDiaFunc resultPortSymbol
-  LambdaIcon x bodyExp _
-    -> nestedLambda iconInfo x (findIconFromName iconInfo <$> bodyExp)
-  NestedApply flavor headIcon args
-    -> nestedApplyDia
-       iconInfo
-       flavor
-       (fmap (findIconFromName iconInfo) headIcon)
-       ((fmap . fmap) (findIconFromName iconInfo) args)
-  NestedPatternApp constructor args
-    -> nestedPatternAppDia iconInfo (repeat $ patternC colorScheme) constructor args
-  NestedCaseIcon args -> nestedCaseDia
-                         iconInfo
-                         ((fmap . fmap) (findIconFromName iconInfo) args)
-  NestedMultiIfIcon args -> nestedMultiIfDia
-                            iconInfo
-                            ((fmap . fmap) (findIconFromName iconInfo) args)
-
 -- BEGIN Diagram helper functions --
 
 -- | Make an identity TransformableDia
@@ -211,13 +181,35 @@ makeLabelledPort isInput  name portNum str
       else label ||| portAndSymbol
 
 
--- END Diagram helper functions
-
--- BEGIN Icons --
-
--- BEGIN Main icons
-
--- BEGIN Apply like icons
+-- >>>>>>>>>>>>>>>>>>>>>> SUB Diagrams <<<<<<<<<<<<<<<<<<<<<<<<
+-- TODO Detect if we are in a loop (have called iconToDiagram on the same node
+-- before)
+iconToDiagram :: SpecialBackend b n
+  => IconInfo
+  -> Icon
+  -> TransformableDia b n
+iconToDiagram iconInfo icon = case icon of
+  TextBoxIcon s -> textBox s
+  BindTextBoxIcon s -> identDiaFunc $ bindTextBox s
+  MultiIfIcon n -> nestedMultiIfDia iconInfo $ replicate (1 + (2 * n)) Nothing
+  CaseIcon n -> nestedCaseDia iconInfo $ replicate (1 + (2 * n)) Nothing
+  CaseResultIcon -> identDiaFunc resultPortSymbol
+  LambdaIcon x bodyExp _
+    -> nestedLambda iconInfo x (findIconFromName iconInfo <$> bodyExp)
+  NestedApply flavor headIcon args
+    -> nestedApplyDia
+       iconInfo
+       flavor
+       (fmap (findIconFromName iconInfo) headIcon)
+       ((fmap . fmap) (findIconFromName iconInfo) args)
+  NestedPatternApp constructor args
+    -> nestedPatternAppDia iconInfo (repeat $ patternC colorScheme) constructor args
+  NestedCaseIcon args -> nestedCaseDia
+                         iconInfo
+                         ((fmap . fmap) (findIconFromName iconInfo) args)
+  NestedMultiIfIcon args -> nestedMultiIfDia
+                            iconInfo
+                            ((fmap . fmap) (findIconFromName iconInfo) args)
 
 makeAppInnerIcon :: SpecialBackend b n =>
   IconInfo ->
@@ -323,8 +315,6 @@ nestedApplyDia iconInfo flavor = case flavor of
     -> generalNestedDia iconInfo applySymbol (nestingC colorScheme)
   ComposeNodeFlavor
     -> generalNestedDia iconInfo composeSymbol (repeat $ apply1C colorScheme)
-
--- END Apply like diagrams
 
 -- BEGIN MultiIf and case icons --
 -- | The ports of the multiIf icon are as follows:
