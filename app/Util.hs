@@ -19,7 +19,9 @@ import qualified Diagrams.Prelude as Dia
 import Graphics.Svg.Attributes(bindAttr, AttrTag(..))
 
 import Data.Maybe(fromMaybe)
-import Data.Text(pack)
+import Data.Text as T(pack, filter, Text) 
+import Data.Char(isAlpha)
+import System.FilePath(takeBaseName)
 import Data.Typeable(Typeable)
 import qualified Debug.Trace
 
@@ -69,6 +71,8 @@ customRenderSVG :: (Typeable n, Show n, RealFloat n) =>
 customRenderSVG outputFilename size = renderSVG' outputFilename svgOptions where
   -- This xml:space attribute preserves the whitespace in the svg text.
   attributes = [bindAttr XmlSpace_ (pack "preserve")]
-  -- TODO Look at the source of renderSVG to see what the 3rd argument to
-  -- SVGOptions should be
-  svgOptions = SVGOptions size Nothing (pack "") attributes True
+  -- https://github.com/diagrams/diagrams-svg/blob/master/src/Diagrams/Backend/SVG.hs#L367
+  mkPrefix :: FilePath -> T.Text
+  mkPrefix = T.filter isAlpha . T.pack . takeBaseName
+
+  svgOptions = SVGOptions size Nothing (mkPrefix outputFilename) attributes True

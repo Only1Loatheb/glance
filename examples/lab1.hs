@@ -1,4 +1,4 @@
-import           Data.Char
+import           Data.Char(ord, chr, digitToInt)
 
 middle :: [a] -> a
 middle a = a !! (div (length a)  2)

@@ -387,7 +387,7 @@ nestedLambda ::  SpecialBackend b n
   -> [String]
   -> Maybe NamedIcon
   -> TransformableDia b n
-nestedLambda iconInfo paramNames mBodyExp tp@(TransformParams name level)
+nestedLambda iconInfo paramNames mBodyExp tp@(TransformParams name _level)
   -- = centerXY $ inputDiagram ||| centerY (named name inputOutputDiagram)
   = centerXY (named name inputsResultAndBodyDia)
   -- centerY (named name inputOutputDiagram)
@@ -398,10 +398,12 @@ nestedLambda iconInfo paramNames mBodyExp tp@(TransformParams name level)
     <> appArgBox (lamArgResC colorScheme) (width placedOutputPorts) (height placedOutputPorts)
 
   inputDiagram = makeInputDiagram iconInfo tp (pure mBodyExp) name
+  inputDiagramInBox = inputDiagram
+    <> appArgBox (lamArgResC colorScheme) (width inputDiagram) (height inputDiagram)
 
   resultDiagram = makeResultDiagram name
          
-  inputsResultAndBodyDia = vcat [inputDiagram,innerOutputDiagram,lambdaBodySymbol, resultDiagram]
+  inputsResultAndBodyDia = vcat [inputDiagramInBox,innerOutputDiagram,lambdaBodySymbol, resultDiagram]
 
 lambdaRegionSymbol :: forall b . SpecialBackend b Double
   => [SpecialQDiagram b Double]
@@ -451,12 +453,12 @@ getArrowOpts
 
 edgeSymbol :: (R1 (Diff p), Affine p, Transformable (Diff p (N t)),
                  TrailLike t, Floating (N (Diff p (N t))), Eq (N (Diff p (N t))),
-                 V (Diff p (N t)) ~ V2, V t ~ Diff p) =>
-                p (N t)
-                -> p (N t)
-                -> Maybe (Angle (N (Diff p (N t))))
-                -> Maybe (Angle (N (Diff p (N t))))
-                -> t
+                 V (Diff p (N t)) ~ V2, V t ~ Diff p) 
+  => p (N t)
+  -> p (N t)
+  -> Maybe (Angle (N (Diff p (N t))))
+  -> Maybe (Angle (N (Diff p (N t))))
+  -> t
 edgeSymbol formPoint toPoint anglesFrom anglesTo = fromSegments [bezier3 offsetToControl1 offsetToControl2 offsetToEnd] where
   angleFrom = fromMaybe (3/4 @@ turn) anglesFrom  -- } edges defaults to go down for unnamed nodes
   angleTo = fromMaybe (1/4 @@ turn) anglesTo  -- }

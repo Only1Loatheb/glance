@@ -298,7 +298,7 @@ lambdaTests = TestList [
       "y = (\\x -> (\\z -> x))"
       ]
   ,
-  -- TODO These tests fail since the lambda node has a " tempvar" param name.
+  -- -- TODO These tests fail since the lambda node has a " tempvar" param name.
   -- assertEqualSyntaxGraphs [
   --     "y x = case x of {0 -> 1; 3 -> 5}",
   --     "{y 0 = 1; y 3 = 5}"
