@@ -261,7 +261,7 @@ nestedPatternAppDia
     casesDia = hsep portSeparationSize paternCasesCentredY
     
     inputPortAndCases = makeLabelledPort True (centerX casesDia) name InputPortConst ""
-    argBox = appArgBox -- TODO consider this alignment
+    argBox = appArgBox
              borderColor
              (width inputPortAndCases)
              (height inputPortAndCases)
@@ -366,13 +366,11 @@ generalNestedMultiIf iconInfo triangleColor inConstBox inputAndArgs
   = named name $ case inputAndArgs of
   [] -> mempty
   input : subicons -> centerXY finalDia where
-    finalDia = hcat [inputIcon, allCases ,resultPort]
+    finalDia = hcat [inputPort, inputIcon, allCases ,resultPort]
 
     -- TODO aplay this pattern to do other imput diagram in places
     inputPort = makeQualifiedPort inputPortSymbol InputPortConst name 
-    inputIcon = case input of
-      Just (Named _ _) -> (alignR (alignL $ placeSubIcon False input) <> inputPort)
-      otherwise -> alignR (inputPortSymbol <> inputPort)
+    inputIcon = placeSubIcon False input
 
     resultPort = makeQualifiedPort resultSymbol ResultPortConst name 
 
@@ -436,9 +434,9 @@ nestedLambda iconInfo paramNames mBodyExp (TransformParams name level)
          bodyIcon
          (TransformParams bodyNodeName level)
 
-  resultDiagram = (alignB lambdaBodySymbol ) <> alignT( makeQualifiedPort resultSymbol ResultPortConst name )
+  resultDiagram = makeQualifiedPort resultSymbol ResultPortConst name 
          
-  inputsResultAndBodyDia = vcat [lambdaBodyDiagram,inputDiagram, resultDiagram]
+  inputsResultAndBodyDia = vcat [lambdaBodyDiagram,inputDiagram,lambdaBodySymbol, resultDiagram]
 
 lambdaRegionSymbol :: forall b . SpecialBackend b Double
   => [SpecialQDiagram b Double]
