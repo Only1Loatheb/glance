@@ -75,9 +75,9 @@ multiIfVarSymbol color = alignB coloredSymbol  where
     coloredSymbol
       = lwG defaultLineWidth $ lc color (strokeLine symbol)
 
-resultSymbol :: SpecialBackend b n 
+resultPortSymbol :: SpecialBackend b n 
   => SpecialQDiagram b n
-resultSymbol = symbol where
+resultPortSymbol = symbol where
   symbol = fc color $ lw none $ rotateBy (1/2) $ eqTriangle (5/4 * sizeUnit) -- cant be to big to fit in diagrams
   color = caseRhsC colorScheme
 
@@ -132,7 +132,7 @@ iconToDiagram iconInfo icon = case icon of
   BindTextBoxIcon s -> identDiaFunc $ bindTextBox s
   MultiIfIcon n -> nestedMultiIfDia iconInfo $ replicate (1 + (2 * n)) Nothing
   CaseIcon n -> nestedCaseDia iconInfo $ replicate (1 + (2 * n)) Nothing
-  CaseResultIcon -> identDiaFunc resultSymbol
+  CaseResultIcon -> identDiaFunc resultPortSymbol
   LambdaIcon x bodyExp _
     -> nestedLambda iconInfo x (findIconFromName iconInfo <$> bodyExp)
   NestedApply flavor headIcon args
@@ -190,20 +190,21 @@ makePort x = named x mempty
 --makePort x = textBox (show x) # fc green # named x
 
 makeQualifiedPort :: SpecialBackend b n =>
-  SpecialQDiagram b n -> Port -> NodeName -> SpecialQDiagram b n
-makeQualifiedPort  symbol portNum name = portAndSymbol where 
+  Bool -> Port -> NodeName -> SpecialQDiagram b n
+makeQualifiedPort  isInput portNum name = portAndSymbol where 
   port = name .>> (makePort portNum)
   portAndSymbol = port <> symbol
+  symbol = if isInput then inputPortSymbol else resultPortSymbol
 
 -- Don't display " tempvar" from Translate.hs/matchesToCase
 makeLabelledPort :: SpecialBackend b n =>
-  Bool -> SpecialQDiagram b n ->  NodeName -> Port -> String ->  SpecialQDiagram b n
-makeLabelledPort isInput symbol  name portNum str  
+  Bool ->  NodeName -> Port -> String ->  SpecialQDiagram b n
+makeLabelledPort isInput  name portNum str  
   | " tempvar" `isPrefixOf` str  = portAndSymbol
   | not (null str) = portSymbolAndLabel
   | otherwise = portAndSymbol
   where
-    portAndSymbol = makeQualifiedPort symbol  portNum name
+    portAndSymbol = makeQualifiedPort isInput portNum name
     label = transformableBindTextBox str 
     portSymbolAndLabel = if isInput
       then portAndSymbol ||| label
@@ -227,7 +228,7 @@ makeAppInnerIcon :: SpecialBackend b n =>
   SpecialQDiagram b n
 makeAppInnerIcon _iconInfo (TransformParams name _) _ portNum
   (Labeled Nothing str)
-  = centerX $ makeLabelledPort True inputPortSymbol name portNum str 
+  = centerX $ makeLabelledPort True name portNum str 
 makeAppInnerIcon iconInfo (TransformParams _ nestingLevel ) func _
   (Labeled (Just (Named iconNodeName icon)) _)
   = iconToDiagram
@@ -253,23 +254,23 @@ nestedPatternAppDia
   where
     borderColor = borderColors !! nestingLevel
     
+    inputPort = makeQualifiedPort True InputPortConst name
+    resultDia = makeQualifiedPort False  ResultPortConst name  
+
     constructorDiagram = makeTransformedText iconInfo tp maybeConstructorName
-    
+
     paternCases::[SpecialQDiagram b n]
     paternCases = zipWith (makeAppInnerIcon iconInfo tp False) argPortsConst subIcons
     paternCasesCentredY = fmap centerY paternCases
-    casesDia = hsep portSeparationSize paternCasesCentredY
-    
-    inputPortAndCases = makeLabelledPort True (centerX casesDia) name InputPortConst ""
+    casesDia = centerX $ hsep portSeparationSize paternCasesCentredY
     argBox = appArgBox
              borderColor
-             (width inputPortAndCases)
-             (height inputPortAndCases)
-    inputPortAndCasesInBox = argBox <> inputPortAndCases
+             (width casesDia)
+             (height casesDia)
 
-    resultDia = makeQualifiedPort resultSymbol ResultPortConst name 
+    casesDiaInBox = argBox <> casesDia
     
-    finalDia = vcat [ inputPortAndCasesInBox, constructorDiagram , resultDia ]
+    finalDia = vcat [ inputPort, casesDiaInBox, constructorDiagram , resultDia ]
 
 
 
@@ -286,7 +287,7 @@ generalNestedDia :: SpecialBackend b n
   -> TransformableDia b n
 generalNestedDia
   iconInfo
-  colorResultSymbol
+  colorresultPortSymbol
   borderColors
   maybeFunText
   args
@@ -306,9 +307,9 @@ generalNestedDia
           (height argPorts)
 
       transformedName = centerX $ makeTransformedText iconInfo tp (pure maybeFunText)
-      resultPortDia =  (makeQualifiedPort resultSymbol ResultPortConst name ) 
+      resultPortDia =  makeQualifiedPort False ResultPortConst name
 
-      inputPort =  ( makeQualifiedPort inputPortSymbol InputPortConst name )
+      inputPort =  makeQualifiedPort True InputPortConst name
       finalDia = vcat [inputPort, argsDiagram, transformedName, resultPortDia] 
 
 nestedApplyDia :: SpecialBackend b n
@@ -369,19 +370,20 @@ generalNestedMultiIf iconInfo triangleColor inConstBox inputAndArgs
     finalDia = hcat [inputPort, inputIcon, allCases ,resultPort]
 
     -- TODO aplay this pattern to do other imput diagram in places
-    inputPort = makeQualifiedPort inputPortSymbol InputPortConst name 
+    inputPort = makeQualifiedPort True InputPortConst name 
     inputIcon = placeSubIcon False input
 
-    resultPort = makeQualifiedPort resultSymbol ResultPortConst name 
+    resultPort = makeQualifiedPort False ResultPortConst name 
 
     (iFConstIcons, iFVarIcons)
       = partitionEithers $ zipWith iconMapper argPortsConst subicons
 
-    iconMapper (Port portNum) subicon
-      | even portNum = Right ${- middle -} vcat [multiIfVarSymbol triangleColor, placeSubIcon True subicon, port ]
-      | otherwise = Left $ vcat [inConstBox $ placeSubIcon False subicon , port] {- middle -}
+    iconMapper port@(Port portNum) subicon
+      | even portNum = Right ${- middle -} vcat [multiIfVarSymbol triangleColor, placeSubIcon True subicon, portDiagram ]
+      | otherwise = Left $ vcat [inConstBox $ placeSubIcon False subicon , portDiagram] {- middle -}
       where
-        port = makeQualifiedPort resultSymbol (Port portNum) name 
+        portDiagram = makeQualifiedPort (odd portNum) port name 
+
 
     iFVarAndConstIcons =
       zipWith combineIfIcons iFVarIcons iFConstIcons
@@ -418,15 +420,16 @@ nestedLambda ::  SpecialBackend b n
   -> Maybe NamedIcon
   -> TransformableDia b n
 nestedLambda iconInfo paramNames mBodyExp (TransformParams name level)
-  -- = centerXY $ lambdaBodyDiagram ||| centerY (named name inputOutputDiagram)
+  -- = centerXY $ inputDiagram ||| centerY (named name inputOutputDiagram)
   = centerXY (named name inputsResultAndBodyDia)
   -- centerY (named name inputOutputDiagram)
   where
-  portPorts = zipWith (makeLabelledPort True inputPortSymbol name) argPortsConst paramNames
-  placedImputPorts = centerXY $ vsep portSeparationSize portPorts
-  inputDiagram = placedImputPorts <> appArgBox (lamArgResC colorScheme) (width placedImputPorts) (height placedImputPorts)
+  innerOutputPorts = zipWith (makeLabelledPort False name) argPortsConst paramNames
+  placedOutputPorts = centerXY $ vsep portSeparationSize innerOutputPorts
+  innerOutputDiagram = placedOutputPorts 
+    <> appArgBox (lamArgResC colorScheme) (width placedOutputPorts) (height placedOutputPorts)
 
-  lambdaBodyDiagram = case mBodyExp of
+  inputDiagram = case mBodyExp of
     Nothing -> mempty
     Just (Named bodyNodeName bodyIcon)
       -> iconToDiagram
@@ -434,9 +437,9 @@ nestedLambda iconInfo paramNames mBodyExp (TransformParams name level)
          bodyIcon
          (TransformParams bodyNodeName level)
 
-  resultDiagram = makeQualifiedPort resultSymbol ResultPortConst name 
+  resultDiagram = makeQualifiedPort False ResultPortConst name 
          
-  inputsResultAndBodyDia = vcat [lambdaBodyDiagram,inputDiagram,lambdaBodySymbol, resultDiagram]
+  inputsResultAndBodyDia = vcat [inputDiagram,innerOutputDiagram,lambdaBodySymbol, resultDiagram]
 
 lambdaRegionSymbol :: forall b . SpecialBackend b Double
   => [SpecialQDiagram b Double]

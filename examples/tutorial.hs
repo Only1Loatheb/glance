@@ -74,7 +74,8 @@ The Mystery Icon:
 That was probably not too surprising. How about this? What does the green icon
 represent?
 -}
-f x = 3 * x
+a = f 1 where 
+  f x = 3 * x
 
 {-Let's try to figure it out. First look at the f. It's green and in an orange
 box which indicates that it is bound to the result. Now look at the
