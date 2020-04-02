@@ -73,10 +73,11 @@ multiIfVarSymbol color = alignB coloredSymbol  where
     coloredSymbol
       = lwG defaultLineWidth $ lc color (strokeLine symbol)
 
-lambdaBodySymbol :: SpecialBackend b n =>
-  SpecialQDiagram b n
-lambdaBodySymbol
-  = coloredTextBox (regionPerimC colorScheme) (opaque (bindTextBoxC colorScheme)) "lambda"
+lambdaBodySymbol :: SpecialBackend b n 
+  => Maybe String
+  -> SpecialQDiagram b n
+lambdaBodySymbol functionName
+  = coloredTextBox (regionPerimC colorScheme) (opaque (bindTextBoxC colorScheme)) (fromMaybe "lambda" functionName)
 
 inMultiIfConstBox :: SpecialBackend b n 
   => SpecialQDiagram b n -> SpecialQDiagram b n
@@ -175,8 +176,8 @@ iconToDiagram iconInfo icon = case icon of
   MultiIfIcon n -> nestedMultiIfDia iconInfo $ replicate (1 + (2 * n)) Nothing
   CaseIcon n -> nestedCaseDia iconInfo $ replicate (1 + (2 * n)) Nothing
   CaseResultIcon -> identDiaFunc resultPortSymbol
-  LambdaIcon x bodyExp _
-    -> nestedLambda iconInfo x (findIconFromName iconInfo <$> bodyExp)
+  LambdaIcon x maybeName bodyExp _
+    -> nestedLambda iconInfo x (findIconFromName iconInfo <$> bodyExp) maybeName
   NestedApply flavor headIcon args
     -> nestedApplyDia
        iconInfo
@@ -386,11 +387,10 @@ nestedLambda ::  SpecialBackend b n
   => IconInfo
   -> [String]
   -> Maybe NamedIcon
+  -> Maybe String
   -> TransformableDia b n
-nestedLambda iconInfo paramNames mBodyExp tp@(TransformParams name _level)
-  -- = centerXY $ inputDiagram ||| centerY (named name inputOutputDiagram)
+nestedLambda iconInfo paramNames mBodyExp maybeName tp@(TransformParams name _level) 
   = centerXY (named name inputsResultAndBodyDia)
-  -- centerY (named name inputOutputDiagram)
   where
   innerOutputPorts = zipWith (makeLabelledPort False name) argPortsConst paramNames
   placedOutputPorts = centerXY $ vsep portSeparationSize innerOutputPorts
@@ -402,8 +402,8 @@ nestedLambda iconInfo paramNames mBodyExp tp@(TransformParams name _level)
     <> appArgBox (lamArgResC colorScheme) (width inputDiagram) (height inputDiagram)
 
   resultDiagram = makeResultDiagram name
-         
-  inputsResultAndBodyDia = vcat [inputDiagramInBox,innerOutputDiagram,lambdaBodySymbol, resultDiagram]
+  
+  inputsResultAndBodyDia = vcat [inputDiagramInBox,innerOutputDiagram,lambdaBodySymbol maybeName, resultDiagram]
 
 lambdaRegionSymbol :: forall b . SpecialBackend b Double
   => [SpecialQDiagram b Double]

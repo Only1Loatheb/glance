@@ -102,6 +102,7 @@ qNameToString qName = case qName of
     Exts.Cons _ -> "(:)"
     -- unboxed singleton tuple constructor
     Exts.UnboxedSingleCon _ -> "(# #)"
+    -- Exts.ExprHole _ -> "_" -- TODO find out why it is not there
     _ -> error $ "Unsupported syntax in qNameToSrting: " <> show qName
 
 simpExpToRhs :: Show l => l -> SimpExp l -> Exts.Rhs l
@@ -294,7 +295,7 @@ desugarEnums :: Show l => l -> String -> [Exts.Exp l] -> SimpExp l
 desugarEnums l funcName exprs = hsExpToSimpExp $ deListifyApp l
                                 (makeVarExp l funcName)
                                 exprs
-
+-- http://hackage.haskell.org/package/haskell-src-exts-1.23.0/docs/Language-Haskell-Exts-Syntax.html#g:8
 hsExpToSimpExp :: Show a => Exts.Exp a -> SimpExp a
 hsExpToSimpExp x = simplifyExp $ case x of
   Exts.Var l n -> SeName l (qNameToString n)

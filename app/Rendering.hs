@@ -7,16 +7,24 @@ module Rendering (
 ) where
 
 import qualified Diagrams.Prelude as DIA
-import Diagrams.Prelude(toName, shaftStyle, global, arrowShaft, noTail
-                       , arrowTail, arrowHead, scale, r2, bezier3
-                       , fromSegments, Angle, P2, V2, Point, ArrowOpts, N
-                       , TrailLike, V, height, width, (*^), reflectX, rotate
-                       , centerXY, place
-                       , rect, dashingG, lwG, lightgreen, lc, centerPoint
-                       , moveTo, turn, (@@), unitX, signedAngleBetween, (.-.)
-                       , applyAll, angleV, rad, (^.), angleBetween, (.>)
-                       , connectOutside', connect', with, (%~), lengths, (^+^)
-                       , (.~), scaleX, (*^), unitX, unitY)
+import           Diagrams.Prelude               ( toName
+                                                , shaftStyle
+                                                , Angle
+                                                , P2
+                                                , height
+                                                , width
+                                                , (*^)
+                                                , centerXY
+                                                , place
+                                                , lwG
+                                                , lc
+                                                , applyAll
+                                                , (.>)
+                                                , connectOutside'
+                                                , connect'
+                                                , (%~)
+                                                , (*^)
+                                                )
 import Diagrams.TwoD.GraphViz(mkGraph, getGraph, layoutGraph')
 import qualified Data.GraphViz as GV
 import qualified Data.GraphViz.Attributes.Complete as GVA
@@ -25,12 +33,10 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 import Control.Arrow(first)
-import Data.Function(on)
 import qualified Data.Graph.Inductive as ING
 import Data.Graph.Inductive.PatriciaTree (Gr)
-import Data.List(find, minimumBy)
-import Data.Maybe(isNothing, fromMaybe, mapMaybe)
-import Data.Typeable(Typeable)
+import Data.List(find)
+import Data.Maybe(isNothing, mapMaybe)
 import GHC.Stack(HasCallStack)
 
 --import qualified Data.GraphViz.Types
@@ -50,7 +56,7 @@ import TranslateCore(nodeToIcon)
 import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
             , Drawing(..), NameAndPort(..)
             , SpecialQDiagram, SpecialBackend, SpecialNum, NodeName(..)
-            , Port(..), NamedIcon, Icon(..), NodeInfo(..), IconInfo
+            , NamedIcon, Icon(..), NodeInfo(..), IconInfo
             , Named(..)
             , TransformParams(..))
 
@@ -212,7 +218,7 @@ drawLambdaRegions iconInfo placedNodes
     -- Also draw the region around the icon the lambda is in.
     drawRegion :: Set.Set NodeName -> NamedIcon -> SpecialQDiagram b Double
     drawRegion parentNames icon = case icon of
-      Named lambdaName (LambdaIcon _ _ enclosedNames)
+      Named _lambdaName (LambdaIcon _ _ _ enclosedNames)
         -> lambdaRegionSymbol enclosed where
             enclosed =  findDia <$> Set.toList (parentNames <> enclosedNames)
       Named parentName (NestedApply _ headIcon icons)

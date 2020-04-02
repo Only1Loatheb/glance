@@ -14,7 +14,7 @@ Function Application:
 Let's start with y = f x.
 The function f is applied to the argument x, and the result is bound to y.
 -}
-
+f _ = 3
 a = 1
 {--}
 b = 1.1

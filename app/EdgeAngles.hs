@@ -101,7 +101,7 @@ getPortAngleHelper _embedded iconInfo icon port maybeNodeName = case icon of
   MultiIfIcon _ -> multiIfPortAngle port
   CaseIcon _ -> multiIfPortAngle port
   CaseResultIcon -> 1/4 @@ turn
-  LambdaIcon _ _ _ -> lambdaPortAngle port
+  LambdaIcon _ _ _ _ -> lambdaPortAngle port
   NestedApply _ headIcon args
     -> generalNestedPortAngle
       iconInfo

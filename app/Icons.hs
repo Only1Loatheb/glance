@@ -96,7 +96,7 @@ argumentPorts :: SyntaxNode -> [Port]
 argumentPorts n = case n of
   (ApplyNode _ _) -> defaultPorts
   PatternApplyNode _ _-> defaultPorts
-  (FunctionDefNode _ _) -> defaultPorts
+  (FunctionDefNode _ _ _) -> defaultPorts
   CaseOrMultiIfNode _ _ -> defaultPorts
   NameNode _ -> []
   BindNameNode _ -> []

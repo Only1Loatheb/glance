@@ -52,14 +52,14 @@ syntaxNodeIsEmbeddable parentType syntaxNode mParentPort mChildPort
   = case (parentType, syntaxNode) of
       (ApplyParent, ApplyNode _ _) -> parentPortNotResult
       (ApplyParent, LiteralNode _) -> parentPortNotResult
-      (ApplyParent, FunctionDefNode _ _)
+      (ApplyParent, FunctionDefNode _ _ _)
         -> parentPortNotResult && isResult mChildPort
 
       -- The match below works, but can make messy drawings with the current
       -- icon for lambdas.
-      -- (LambdaParent, ApplyNode _ _ _) -> parentPortIsInput
+      -- (LambdaParent, ApplyNode _ _) -> parentPortIsInput
       (LambdaParent, LiteralNode _) -> parentPortIsInput
-      (LambdaParent, FunctionDefNode _ _)
+      (LambdaParent, FunctionDefNode _ _ _)
         -> parentPortIsInput && isResult mChildPort
 
       (CaseParent, LiteralNode _) -> parentPortNotResult
@@ -93,7 +93,7 @@ parentTypeForNode n = case n of
   (ApplyNode _ _) -> ApplyParent
   CaseOrMultiIfNode CaseTag _ -> CaseParent
   CaseOrMultiIfNode MultiIfTag _ -> MultiIfParent
-  (FunctionDefNode _ _) -> LambdaParent
+  (FunctionDefNode _ _ _) -> LambdaParent
   _ -> NotAParent
 
 lookupSyntaxNode :: ING.Graph gr =>

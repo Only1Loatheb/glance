@@ -289,8 +289,8 @@ nodeToIcon (Embedder embeddedNodes node) = case node of
   (NameNode s) -> TextBoxIcon s
   (BindNameNode s) -> BindTextBoxIcon s
   (LiteralNode s) -> TextBoxIcon s
-  (FunctionDefNode labels bodyNodes)
-    -> nestedLambdaToIcon labels embeddedNodes bodyNodes
+  (FunctionDefNode labels bodyNodes maybeName)
+    -> nestedLambdaToIcon labels maybeName embeddedNodes  bodyNodes 
   CaseResultNode -> CaseResultIcon
   (CaseOrMultiIfNode tag x)
     -> nestedCaseOrMultiIfNodeToIcon tag x embeddedNodes
@@ -320,14 +320,15 @@ nestedApplySyntaxNodeToIcon flavor numArgs args =
     argList = fmap (makeArg args) argPorts
 
 nestedLambdaToIcon :: [String]  -- labels
-                   -> Set.Set (NodeName, Edge)  -- embedded icons
-                   -> Set.Set NodeName  -- body nodes
-                   -> Icon
-nestedLambdaToIcon labels embeddedNodes =
-  LambdaIcon labels embeddedBodyNode
+  -> Maybe String
+  -> Set.Set (NodeName, Edge)  -- embedded icons
+  -> Set.Set NodeName  -- body nodes
+  -> Icon
+nestedLambdaToIcon labels maybeName embeddedNodes =
+  LambdaIcon labels maybeName embeddedBodyNode 
   where
-    dummyNode = FunctionDefNode [] Set.empty
-    embeddedBodyNode = makeArg embeddedNodes (inputPort dummyNode)
+    dummyNode = FunctionDefNode [] Set.empty maybeName
+    embeddedBodyNode = (makeArg embeddedNodes (inputPort dummyNode))
 
 nestedCaseOrMultiIfNodeToIcon ::
   CaseOrMultiIfTag
