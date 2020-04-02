@@ -183,12 +183,12 @@ matchesToFunBind l matches = matchToSimpDecl $ case matches of
       alts = fmap matchToAlt matches
   _ -> error $ "Unsupported syntax in matchesToFunBind: " <> show matches
 
-
 hsDeclToSimpDecl :: Show a => Exts.Decl a -> SimpDecl a
 hsDeclToSimpDecl decl = case decl of
   Exts.TypeSig l names typeForNames -> SdTypeSig l names typeForNames
   Exts.FunBind l matches -> matchesToFunBind l matches
   Exts.PatBind l pat rhs maybeBinds -> SdPatBind l (hsPatToSimpPat pat) expr
+  -- TODO Add a visual representation of data declarations
     where
       expr = whereToLet l rhs maybeBinds
   d -> SdCatchAll d

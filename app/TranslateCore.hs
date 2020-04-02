@@ -277,8 +277,7 @@ nTupleSectionString bools = '(' : (commas ++ ")") where
 
 
 nListString :: Int -> String
--- TODO: Use something better than [_]
-nListString 1 = "[_]"
+nListString 1 = "[•]"
 nListString n = '[' : replicate (n -1) ',' ++ "]"
 
 nodeToIcon :: EmbedderSyntaxNode -> Icon

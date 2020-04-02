@@ -245,8 +245,7 @@ nTupleString :: Int -> String
 nTupleString n = '(' : replicate (n -1) ',' ++ ")"
 
 nListString :: Int -> String
--- TODO: Use something better than [_]
-nListString 1 = "[_]"
+nListString 1 = "[•]"
 nListString n = '[' : replicate (n -1) ',' ++ "]"
 
 
