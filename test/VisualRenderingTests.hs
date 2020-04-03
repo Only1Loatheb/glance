@@ -7,9 +7,18 @@ import qualified Diagrams.Prelude as Dia
 import qualified Data.Set as Set
 
 import Rendering (renderDrawing)
-import Types (Labeled(..), NodeName(..), Drawing(..), Edge, Icon(..), Port(..)
-             , SpecialQDiagram, SpecialBackend
-             , Named(..), NamedIcon)
+import           Types                          ( Labeled(..)
+                                                , NodeName(..)
+                                                , Drawing(..)
+                                                , Edge
+                                                , Icon(..)
+                                                , Port(..)
+                                                , PortNo(..)
+                                                , SpecialQDiagram
+                                                , SpecialBackend
+                                                , Named(..)
+                                                , NamedIcon
+                                                )
 
 import Util(iconToPort, tupleToNamed)
 
@@ -17,7 +26,7 @@ import Util(iconToPort, tupleToNamed)
 -- change the Drawing type.
 
 iconToIntPort :: NodeName -> NodeName -> Int -> Edge
-iconToIntPort x y p = iconToPort x y (Port p)
+iconToIntPort x y p = iconToPort x y (Port (PortNo p) True)
 
 n0, n1, n2, n3, n4, n5, n6, n7, n8, n9, n10 :: NodeName
 nodeNames :: [NodeName]

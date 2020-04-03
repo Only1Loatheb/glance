@@ -9,10 +9,10 @@ module Icons
     inputPort,
     resultPort,
     argumentPorts,
-    caseRhsPorts,
+    caseValuePorts,
     casePatternPorts,
-    multiIfRhsPorts,
-    multiIfBoolPorts,
+    multiIfValuePorts,
+    multiIfConstPorts,
     findIconFromName,
     findIcon,
     argPortsConst
@@ -25,8 +25,8 @@ import Data.Maybe(listToMaybe, isJust, fromJust, mapMaybe)
 
 import Constants(pattern InputPortConst, pattern ResultPortConst)
 import Types(Icon(..)
-            , NodeName(..), Port(..),
-            SyntaxNode(..), NamedIcon, Labeled(..), IconInfo
+            , NodeName(..), Port(..), PortNo(..)
+            ,SyntaxNode(..), NamedIcon, Labeled(..), IconInfo
             , Named(..))
 
 {-# ANN module "HLint: ignore Use record patterns" #-}
@@ -71,7 +71,7 @@ findNestedIcon iconInfo name icon = case icon of
 -- BEGIN Port numbers
 
 argPortsConst :: [Port]
-argPortsConst = fmap Port [2,3..]
+argPortsConst = [Port (PortNo i) True | i <- [2,3..]]
 
 -- TODO It's a bit strange that the parameter is a SyntaxNode, not an Icon.
 inputPort :: SyntaxNode -> Port
@@ -80,17 +80,18 @@ inputPort = const InputPortConst
 resultPort :: SyntaxNode -> Port
 resultPort = const ResultPortConst
 
-caseRhsPorts :: [Port]
-caseRhsPorts = fmap Port [2,4..]
-
 casePatternPorts :: [Port]
-casePatternPorts = fmap Port [3,5..]
+casePatternPorts = [Port (PortNo i) True | i <- [3,5..]]
 
-multiIfRhsPorts :: [Port]
-multiIfRhsPorts = caseRhsPorts
+caseValuePorts :: [Port]
+caseValuePorts = [Port (PortNo i) False | i <- [2,4..]]
 
-multiIfBoolPorts :: [Port]
-multiIfBoolPorts = casePatternPorts
+multiIfConstPorts :: [Port]
+multiIfConstPorts = casePatternPorts
+
+multiIfValuePorts :: [Port]
+multiIfValuePorts = caseValuePorts
+
 
 argumentPorts :: SyntaxNode -> [Port]
 argumentPorts n = case n of

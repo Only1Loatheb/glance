@@ -33,7 +33,7 @@ import           TextBox  ( bindTextBox
 import Constants(pattern InputPortConst, pattern ResultPortConst)
 import DrawingColors(colorScheme, ColorStyle(..))
 import Types(Icon(..), SpecialQDiagram, SpecialBackend, SpecialNum
-            , NodeName(..), Port(..), LikeApplyFlavor(..)
+            , NodeName(..), Port(..),PortNo(..), LikeApplyFlavor(..)
             , NamedIcon, Labeled(..), IconInfo
             , Named(..), NameAndPort(..)
             ,TransformParams(..),TransformableDia)
@@ -136,27 +136,27 @@ nameDiagram name dia = named name (name .>> dia)
 -- (not === or |||)  since mempty has no size and will not be placed where you
 -- want it.
 makePort ::  SpecialBackend b n => Port -> SpecialQDiagram b n
-makePort x = named x mempty
+makePort port = named port mempty
 --makePort x = circle 0.2 # fc green # named x
 -- Note, the version of makePort below seems to have a different type.
 --makePort x = textBox (show x) # fc green # named x
 
 makeQualifiedPort :: SpecialBackend b n =>
   Bool -> Port -> NodeName -> SpecialQDiagram b n
-makeQualifiedPort  isInput portNum name = portAndSymbol where 
-  port = name .>> (makePort portNum)
-  portAndSymbol = port <> symbol
+makeQualifiedPort  isInput port name = portAndSymbol where 
+  namedPort = name .>> (makePort port)
+  portAndSymbol = namedPort <> symbol
   symbol = if isInput then inputPortSymbol else resultPortSymbol
 
 -- Don't display " tempvar" from Translate.hs/matchesToCase
 makeLabelledPort :: SpecialBackend b n =>
   Bool ->  NodeName -> Port -> String ->  SpecialQDiagram b n
-makeLabelledPort isInput  name portNum str  
+makeLabelledPort isInput  name port str  
   | " tempvar" `isPrefixOf` str  = portAndSymbol
   | not (null str) = portSymbolAndLabel
   | otherwise = portAndSymbol
   where
-    portAndSymbol = makeQualifiedPort isInput portNum name
+    portAndSymbol = makeQualifiedPort isInput port name
     label = transformableBindTextBox str 
     portSymbolAndLabel = if isInput
       then portAndSymbol ||| label
@@ -218,9 +218,9 @@ makeAppInnerIcon :: SpecialBackend b n
   -> Port  -- Port number (if the NamedIcon is Nothing)
   -> Labeled (Maybe NamedIcon) -- The icon 
   -> SpecialQDiagram b n
-makeAppInnerIcon _iconInfo (TransformParams name _) _isSameNestingLevel isInput portNum
+makeAppInnerIcon _iconInfo (TransformParams name _) _isSameNestingLevel isInput port
   (Labeled Nothing str)
-  = centerX $ makeLabelledPort isInput name portNum str 
+  = centerX $ makeLabelledPort isInput name port str 
 makeAppInnerIcon iconInfo (TransformParams _ nestingLevel ) isSameNestingLevel _isInput _portNum
   (Labeled (Just (Named iconNodeName icon)) _) 
   = iconToDiagram
@@ -359,12 +359,11 @@ generalNestedMultiIf iconInfo triangleColor inConstBox inputAndArgs
 
     isSameNestingLevel = True
 
-    iconMapper port@(Port portNum) subicon
+    iconMapper port@(Port _portNum isInput) subicon
       | isInput = Left $ inConstBox $ innerIcon{- middle -}
       | otherwise = Right ${- middle -} vcat [multiIfVarSymbol triangleColor, innerIcon]
       where 
         innerIcon = makeAppInnerIcon iconInfo tp isSameNestingLevel isInput port (Labeled subicon "")
-        isInput = odd portNum
 
     iFVarAndConstIcons =
       zipWith combineIfIcons iFVarIcons iFConstIcons
@@ -434,7 +433,7 @@ getArrowOpts
   = (arrowOptions, shaftColor)
   where
     edgeColors = edgeListC colorScheme
-    Port portNum = fromMaybe (Port 0) mPort
+    Port (PortNo portNum) _isInput = fromMaybe (Port (PortNo 0) True) mPort
     namePortHash = mod (portNum + (503 * nodeNum)) (length edgeColors)
     shaftColor = edgeColors !! namePortHash
     formPoint = fromMaybe (p2 (0.0,0.0)) formMaybePoint

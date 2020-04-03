@@ -4,10 +4,10 @@ module Constants
   , pattern ResultPortConst
   ) where
 
-import Types(Port(..))
+import Types(Port(..), PortNo(..))
 
 pattern InputPortConst :: Port
-pattern InputPortConst = Port 0
+pattern InputPortConst = Port (PortNo 0) True
 
 pattern ResultPortConst :: Port
-pattern ResultPortConst = Port 1
+pattern ResultPortConst = Port (PortNo 1) False
