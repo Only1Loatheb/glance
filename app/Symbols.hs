@@ -11,7 +11,8 @@ module Symbols
   , iconToDiagram
   , multilineComment
   , lambdaRegionSymbol
-  , getArrowOpts
+  , getArrowShadowOpts
+  , getArrowBaseOpts
   , textBox
   )
 where
@@ -42,15 +43,23 @@ import Types(Icon(..), SpecialQDiagram, SpecialBackend, SpecialNum
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
 -- CONSTANTS --
-
 sizeUnit :: (Fractional a) => a
 sizeUnit = 0.5
+
 portSeparationSize :: (Fractional a) => a
 portSeparationSize = 0.5
 
 defaultOpacity :: (Fractional a) => a
 defaultOpacity = 0.4
 
+defaultShadowOpacity :: (Fractional a) => a
+defaultShadowOpacity = 0.6
+
+arrowLineWidth :: Fractional a => a
+arrowLineWidth = 2 * defaultLineWidth
+
+arrowShadowWidth :: Fractional a => a
+arrowShadowWidth = 3.8 * defaultLineWidth
 -- COLORS --
 lineColorValue :: Colour Double
 lineColorValue = lineC colorScheme
@@ -420,28 +429,45 @@ lambdaRegionSymbol enclosedDiagarms
 -- END Main icons
 -- END Icons
 
-
-getArrowOpts :: (RealFloat n, Typeable n) =>
-  (Maybe (Point V2 n),Maybe (Point V2 n))
-  -> NameAndPort
+getArrowShadowOpts :: (RealFloat n, Typeable n) 
+  => (Maybe (Point V2 n),Maybe (Point V2 n))
   -> (Maybe (Angle n), Maybe (Angle n))
-  -> (ArrowOpts n, Colour Double)
-getArrowOpts
-  (formMaybePoint, toMaybePoint)
-  (NameAndPort (NodeName nodeNum) mPort)
-  (anglesFrom,anglesTo)
-  = (arrowOptions, shaftColor)
-  where
+  -> ArrowOpts n 
+getArrowShadowOpts maybePoints maybeAngles = 
+  shaftStyle %~ (lwG arrowShadowWidth . 
+                lcA $ withOpacity shaftColor defaultShadowOpacity)
+  $ headStyle %~ fc shaftColor
+  $ getArrowOpts maybePoints maybeAngles where
+    shaftColor = backgroundC colorScheme
+
+getArrowBaseOpts :: (RealFloat n, Typeable n) 
+  => NameAndPort
+  -> (Maybe (Point V2 n),Maybe (Point V2 n))
+  -> (Maybe (Angle n), Maybe (Angle n))
+  -> ArrowOpts n 
+getArrowBaseOpts (NameAndPort (NodeName nodeNum) mPort) maybePoints maybeAngles
+  = shaftStyle %~ (lwG arrowLineWidth . lc shaftColor)
+  $ headStyle %~ fc shaftColor
+  $ getArrowOpts maybePoints maybeAngles where
     edgeColors = edgeListC colorScheme
     Port (PortNo portNum) _isInput = fromMaybe (Port (PortNo 0) True) mPort
     namePortHash = mod (portNum + (503 * nodeNum)) (length edgeColors)
-    shaftColor = edgeColors !! namePortHash
+    shaftColor = edgeColors !! namePortHash 
+
+getArrowOpts :: (RealFloat n, Typeable n)
+  => (Maybe (Point V2 n),Maybe (Point V2 n))
+  -> (Maybe (Angle n), Maybe (Angle n))
+  -> ArrowOpts n
+getArrowOpts
+  (formMaybePoint, toMaybePoint)
+  (anglesFrom,anglesTo)
+  = arrowOptions
+  where
     formPoint = fromMaybe (p2 (0.0,0.0)) formMaybePoint
     toPoint = fromMaybe (p2  (0.0,-1.0)) toMaybePoint
     arrowOptions =
       -- arrowHead .~ DIA.noHead
       arrowHead .~ tri
-      $ headStyle %~ fc shaftColor
       $ arrowTail .~ noTail
       $ arrowShaft .~ edgeSymbol formPoint toPoint anglesFrom anglesTo
       -- TODO Don't use a magic number for lengths (headLength and tailLength)

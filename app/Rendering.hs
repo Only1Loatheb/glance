@@ -43,12 +43,10 @@ import GHC.Stack(HasCallStack)
 --import Data.GraphViz.Commands
 
 import Icons(findIconFromName)
-import Symbols  ( colorScheme
-                , iconToDiagram
-                , defaultLineWidth
-                , ColorStyle(..)
+import Symbols  ( iconToDiagram
                 , lambdaRegionSymbol
-                , getArrowOpts
+                , getArrowShadowOpts
+                , getArrowBaseOpts
                 )
 import EdgeAngles(getPortAngle)
 
@@ -133,65 +131,65 @@ connectMaybePorts ::  (ING.Graph gr,SpecialBackend b n)
 connectMaybePorts
   iconInfo
   graph
+  labeledEdge@((_node0, _node1, 
+    (EmbedInfo _embedDir
+    (Edge
+      _edgeOptions
+      (fromNamePort, toNamePort)))))
+  origDia
+  = newDia where 
+    (connectFunc, qPort0, qPort1) = connectFuncAndPorts fromNamePort toNamePort
+
+    pointFrom  = namedToPoint origDia qPort0
+    pointTo = namedToPoint origDia qPort1
+
+    newDia = case (pointFrom, pointTo) of
+      (Nothing,Nothing) -> origDia
+      (Nothing,_) -> origDia
+      (_,Nothing) -> origDia
+      (_, _) -> ((connectFunc arrowBaseOpts qPort0 qPort1) . (connectFunc arrowShadowOpts qPort0 qPort1)) origDia where
+        (arrowBaseOpts,arrowShadowOpts) = drawArrow iconInfo    graph   labeledEdge     pointFrom    pointTo
+
+connectFuncAndPorts  (NameAndPort name0 mPort1) (NameAndPort name1 mPort2) = helper (mPort1, mPort2) where
+      helper (Just port0, Just port1) = (connect', name0 .> port0, name1 .> port1)
+      helper (Nothing, Just port1) = (connectOutside', toName name0, name1 .> port1)
+      helper (Just port0, Nothing) = (connectOutside', name0 .> port0, toName name1)
+      helper (_, _) = (connectOutside', toName name0, toName name1)
+
+namedToPoint origDia n = case DIA.lookupName n origDia of
+  --Nothing -> DIA.r2 (0, 0)--error "Name does not exist!"
+  Nothing -> Nothing-- error $ "Name does not exist! name=" <> show n <> "\neInfo=" <> show eInfo
+  Just subDia -> Just $ DIA.location subDia
+
+-- In order to give arrows a "shadow" effect, draw a thicker semi-transparent
+-- line shaft the same color as the background underneath the normal line
+-- shaft.
+
+drawArrow
+  iconInfo
+  graph
   (node0, node1, 
-  (EmbedInfo embedDir --edge@(EmbedInfo _ (Edge _ (_namePort0, _namePort1)))
+    (EmbedInfo _embedDir --edge@(EmbedInfo _ (Edge _ (_namePort0, _namePort1)))
     (Edge
       _
-      (fromNamePort@(NameAndPort name0 mPort1)
-      ,toNamePort@(NameAndPort name1 mPort2)))))
-  origDia
-  -- In order to give arrows a "shadow" effect, draw a thicker semi-transparent
-  -- line shaft the same color as the background underneath the normal line
-  -- shaft.
-  = -- if DIA.location (DIA.lookupName qPort0 origDia) == DIA.location (DIA.lookupName qPort1 origDia
-  -- if nameToPoint qPort0 == nameToPoint qPort1
-  --   then error "connectMaybePorts: fromNamePort equals toNamePort!"
-  case pointsTheSame of
-    Nothing -> origDia
-    Just True -> origDia
-    _ ->
-      (connectFunc normalOpts qPort0 qPort1
-       . connectFunc arrOptsShadow qPort0 qPort1) origDia
-  where
-    pointsTheSame = do
-      p0 <- nameToPoint qPort0
-      p1 <- nameToPoint qPort1
-      return $ p0 == p1
-    nameToPoint n = case DIA.lookupName n origDia of
-      --Nothing -> DIA.r2 (0, 0)--error "Name does not exist!"
-      Nothing -> Nothing-- error $ "Name does not exist! name=" <> show n <> "\neInfo=" <> show eInfo
-      Just subDia -> Just $ DIA.location subDia
-
-
-    lineWidth = 2 * defaultLineWidth
-
+      (fromNamePort, toNamePort))))
+  pointFrom
+  pointTo
+  = (arrowBaseOpts, arrowShadowOpts) where
     node0NameAndPort = fromMaybeError
-                 ("makeEdge: node0 is not in graph. node0: " ++ show node0)
-                 $ ING.lab graph node0
+                ("makeEdge: node0 is not in graph. node0: " ++ show node0)
+                $ ING.lab graph node0
     node1NameAndPort = fromMaybeError
-                 ("makeEdge: node1 is not in graph. node1: " ++ show node1)
-                 $ ING.lab graph node1
+                ("makeEdge: node1 is not in graph. node1: " ++ show node1)
+                $ ING.lab graph node1
 
-    from = nameToPoint qPort0
-    to = nameToPoint qPort1
-    portAngle0 = findPortAngles iconInfo node0NameAndPort fromNamePort
-    portAngle1 = findPortAngles iconInfo node1NameAndPort toNamePort
+    angleFrom = findPortAngles iconInfo node0NameAndPort fromNamePort
+    angleTo = findPortAngles iconInfo node1NameAndPort toNamePort
 
-    (baseArrOpts, shaftCol) = getArrowOpts (from,to) fromNamePort (portAngle0,portAngle1) 
-    -- TODO Use a color from the color scheme for un-embedded shafts.
-    shaftCol' = if isNothing embedDir then shaftCol else DIA.lime
-    normalOpts = (shaftStyle %~ (lwG lineWidth . lc shaftCol'))
-                 baseArrOpts
-    arrOptsShadow = (shaftStyle
-                     %~ (lwG (1.9 * lineWidth)
-                         . DIA.lcA
-                          $ DIA.withOpacity (backgroundC colorScheme) 0.5))
-                    baseArrOpts
-    (connectFunc, qPort0, qPort1) = case (mPort1, mPort2) of
-      (Just port0, Just port1) -> (connect', name0 .> port0, name1 .> port1)
-      (Nothing, Just port1) -> (connectOutside', toName name0, name1 .> port1)
-      (Just port0, Nothing) -> (connectOutside', name0 .> port0, toName name1)
-      (_, _) -> (connectOutside', toName name0, toName name1)
+    arrowShadowOpts = getArrowShadowOpts (pointFrom, pointTo)  (angleFrom, angleTo) 
+    arrowBaseOpts = getArrowBaseOpts fromNamePort (pointFrom, pointTo)  (angleFrom, angleTo) 
+
+
 
 findPortAngles :: SpecialNum n
   => IconInfo -> NamedIcon -> NameAndPort -> Maybe (Angle n)
