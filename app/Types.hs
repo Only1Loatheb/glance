@@ -127,7 +127,10 @@ data SyntaxNode =
 -- add bool isInput 
 newtype PortNo = PortNo Int deriving (Typeable, Eq, Ord, Show)
 
-data Port = Port { portNo :: PortNo, isInput :: Bool} deriving (Typeable, Eq, Ord, Show)
+data Port = Port { portNo :: PortNo, isInput :: Bool} deriving (Typeable, Ord, Show)
+instance Eq Port where
+  (==) (Port (PortNo portNo1) _) (Port (PortNo portNo2) _) = portNo1 == portNo2
+  
 instance IsName Port
 
 

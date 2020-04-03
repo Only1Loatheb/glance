@@ -49,6 +49,9 @@ sizeUnit = 0.5
 portSeparationSize :: (Fractional a) => a
 portSeparationSize = 0.5
 
+lambdaRectPadding :: (Fractional a) => a
+lambdaRectPadding = 3 * sizeUnit -- so result symbols on edge can fit
+
 defaultOpacity :: (Fractional a) => a
 defaultOpacity = 0.4
 
@@ -420,11 +423,10 @@ lambdaRegionSymbol enclosedDiagarms
   = moveTo (centerPoint combinedDia) coloredContentsRect
   where
     combinedDia = mconcat enclosedDiagarms
-    rectPadding = 3 * sizeUnit -- so result symbols on edge can fit
     contentsRect = dashingG [0.7 * sizeUnit, 0.3 * sizeUnit] 0
                    $ rect
-                   (rectPadding + width combinedDia)
-                   (rectPadding + height combinedDia)
+                   (lambdaRectPadding + width combinedDia)
+                   (lambdaRectPadding + height combinedDia)
     coloredContentsRect = lc lightgreen (lwG defaultLineWidth contentsRect)
 -- END Main icons
 -- END Icons
