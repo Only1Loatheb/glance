@@ -22,34 +22,39 @@ import Types  ( Icon(..)
               )                         
 import Icons(findIconFromName,findIcon)
 
+import PortConstants(
+    pattern InputPortConst
+  , pattern ResultPortConst
+  , isInputPort)
+
 {-# ANN module "HLint: ignore Use record patterns" #-}
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
 applyPortAngle :: Floating n => Port -> Angle n
-applyPortAngle (Port x) =  case x of
-  0 -> 1/4 @@ turn -- input
-  1 -> 3/4 @@ turn -- output
-  _ -> 1/4 @@ turn -- [idk, side fromline comes with value like in lambda]
+applyPortAngle InputPortConst = 1/2 @@ turn -- input function
+applyPortAngle ResultPortConst = 3/4 @@ turn
+applyPortAngle _isInput = 1/4 @@ turn
 
 lambdaPortAngle :: Floating n => Port -> Angle n
-lambdaPortAngle (Port x) =  case x of
-  0 -> 1/4 @@ turn -- input
-  1 -> 3/4 @@ turn-- output
-  _ -> 0 @@ turn -- value placement
+lambdaPortAngle InputPortConst = 1/4 @@ turn
+lambdaPortAngle ResultPortConst = 3/4 @@ turn
+lambdaPortAngle port
+  | isInputPort port = 1/2 @@ turn
+  | otherwise        = 0 @@ turn
 
 patternAppPortAngle :: Floating n => Port -> Angle n
-patternAppPortAngle (Port x) = case x of
-  0 -> 1/4 @@ turn -- input
-  1 -> 1/4 @@ turn -- result label input
-  _ -> 3/4 @@ turn -- output of inner constructors from pattern
+patternAppPortAngle InputPortConst = 1/4 @@ turn
+patternAppPortAngle ResultPortConst = 1/4 @@ turn
+patternAppPortAngle port
+  | isInputPort port = 1/4 @@ turn
+  | otherwise        = 3/4 @@ turn
 
 multiIfPortAngle :: Floating n => Port -> Angle n
-multiIfPortAngle (Port port) = case port of
-  0 -> 1/4 @@ turn -- input
-  1 -> 3/4 @@ turn -- output 
-  _ -> otherAngle where otherAngle -- options, may get fliped
-                           | even port = 1/4 @@ turn -- then side
-                           | otherwise = 1/2 @@ turn -- if side
+multiIfPortAngle InputPortConst = 1/4 @@ turn
+multiIfPortAngle ResultPortConst = 3/4 @@ turn
+multiIfPortAngle port
+  | isInputPort port = 1/4 @@ turn
+  | otherwise        = 3/4 @@ turn
 
 nestedMultiIfPortAngle :: SpecialNum n
   => IconInfo

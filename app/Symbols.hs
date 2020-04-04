@@ -38,7 +38,8 @@ import PortConstants(
   argPortsConst,
   isInputPort,
   mixedPorts,
-  resultPortsConst
+  resultPortsConst,
+  casePatternPorts
   )
 
 import DrawingColors(colorScheme, ColorStyle(..))
@@ -272,7 +273,7 @@ nestedPatternAppDia
     constructorDiagram = makeInputDiagram iconInfo tp maybeConstructorName name
 
     paternCases::[SpecialQDiagram b n]
-    paternCases = zipWith (makeAppInnerIcon iconInfo tp False) argPortsConst subIcons
+    paternCases = zipWith (makeAppInnerIcon iconInfo tp False) casePatternPorts subIcons
     paternCasesCentredY = fmap centerY paternCases
     casesDia = centerX $ hsep portSeparationSize paternCasesCentredY
     casesDiaInBox = casesDia <> appArgBox borderColor (width casesDia) (height casesDia)

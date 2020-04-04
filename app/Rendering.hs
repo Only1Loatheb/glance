@@ -138,25 +138,25 @@ connectMaybePorts
       (fromNamePort, toNamePort)))))
   origDia
   = newDia where 
-    (connectFunc, qPort0, qPort1) = connectFuncAndPorts fromNamePort toNamePort
+    (connectFunc, qPort0, qPort1) = getConnectFuncAndPorts fromNamePort toNamePort
 
-    pointFrom  = namedToPoint origDia qPort0
-    pointTo = namedToPoint origDia qPort1
+    pointFrom  = getPositionOfNamed origDia qPort0
+    pointTo = getPositionOfNamed origDia qPort1
 
     newDia = case (pointFrom, pointTo) of
       (Nothing,Nothing) -> origDia
       (Nothing,_) -> origDia
       (_,Nothing) -> origDia
       (_, _) -> ((connectFunc arrowBaseOpts qPort0 qPort1) . (connectFunc arrowShadowOpts qPort0 qPort1)) origDia where
-        (arrowBaseOpts,arrowShadowOpts) = drawArrow iconInfo    graph   labeledEdge     pointFrom    pointTo
+        (arrowBaseOpts,arrowShadowOpts) = getArrowsOpts iconInfo    graph   labeledEdge     pointFrom    pointTo
 
-connectFuncAndPorts  (NameAndPort name0 mPort1) (NameAndPort name1 mPort2) = helper (mPort1, mPort2) where
+getConnectFuncAndPorts  (NameAndPort name0 mPort1) (NameAndPort name1 mPort2) = helper (mPort1, mPort2) where
       helper (Just port0, Just port1) = (connect', name0 .> port0, name1 .> port1)
       helper (Nothing, Just port1) = (connectOutside', toName name0, name1 .> port1)
       helper (Just port0, Nothing) = (connectOutside', name0 .> port0, toName name1)
       helper (_, _) = (connectOutside', toName name0, toName name1)
 
-namedToPoint origDia n = case DIA.lookupName n origDia of
+getPositionOfNamed origDia n = case DIA.lookupName n origDia of
   --Nothing -> DIA.r2 (0, 0)--error "Name does not exist!"
   Nothing -> Nothing-- error $ "Name does not exist! name=" <> show n <> "\neInfo=" <> show eInfo
   Just subDia -> Just $ DIA.location subDia
@@ -165,7 +165,7 @@ namedToPoint origDia n = case DIA.lookupName n origDia of
 -- line shaft the same color as the background underneath the normal line
 -- shaft.
 
-drawArrow
+getArrowsOpts
   iconInfo
   graph
   (node0, node1, 

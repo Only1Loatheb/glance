@@ -37,7 +37,7 @@ caseValuePorts :: [Port]
 caseValuePorts = resultPortsConst
 
 casePatternPorts :: [Port]
-casePatternPorts = argPortsConst
+casePatternPorts = resultPortsConst
 
 multiIfValuePorts :: [Port]
 multiIfValuePorts = resultPortsConst
@@ -58,7 +58,7 @@ resultPort = const ResultPortConst
 argumentPorts :: SyntaxNode -> [Port]
 argumentPorts n = case n of
   (ApplyNode _ _) -> argPortsConst
-  PatternApplyNode _ _-> mixedPorts
+  PatternApplyNode _ _-> resultPortsConst
   (FunctionDefNode _ _ _) -> resultPortsConst
   CaseOrMultiIfNode _ _ -> mixedPorts
   NameNode _ -> []
