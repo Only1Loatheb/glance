@@ -59,7 +59,7 @@ executable glance-exe
                , DrawingColors
                , GraphAlgorithms
                , SimplifySyntax
-               , Constants
+               , PortConstants
 
 test-suite glance-test
   type:                exitcode-stdio-1.0
@@ -105,7 +105,7 @@ test-suite glance-test
                , DrawingColors
                , GraphAlgorithms
                , SimplifySyntax
-               , Constants
+               , PortConstants
 
 source-repository head
   type:     git

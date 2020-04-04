@@ -9,7 +9,6 @@ module Types (
   SyntaxNode(..),
   NodeName(..),
   Port(..),
-  PortNo(..),
   NameAndPort(..),
   Connection,
   Edge(..),
@@ -32,7 +31,7 @@ module Types (
   mkEmbedder,
   EmbedderSyntaxNode,
   TransformParams(..),
-  TransformableDia,
+  TransformableDia
 ) where
 
 import Diagrams.Prelude(QDiagram, V2, Any, Renderable, Path, IsName)
@@ -124,15 +123,8 @@ data SyntaxNode =
   | CaseOrMultiIfNode CaseOrMultiIfTag Int
   deriving (Show, Eq, Ord)
 
--- add bool isInput 
-newtype PortNo = PortNo Int deriving (Typeable, Eq, Ord, Show)
-
-data Port = Port { portNo :: PortNo, isInput :: Bool} deriving (Typeable, Ord, Show)
-instance Eq Port where
-  (==) (Port (PortNo portNo1) _) (Port (PortNo portNo2) _) = portNo1 == portNo2
-  
+newtype Port = Port Int deriving (Typeable, Eq, Ord, Show)
 instance IsName Port
-
 
 data NameAndPort = NameAndPort NodeName (Maybe Port) deriving (Show, Eq, Ord)
 

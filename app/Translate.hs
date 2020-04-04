@@ -21,7 +21,7 @@ import qualified Language.Haskell.Exts as Exts
 import qualified Language.Haskell.Exts.Pretty as PExts
 
 import GraphAlgorithms(annotateGraph, collapseAnnotatedGraph)
-import Icons(inputPort, resultPort, argumentPorts, caseValuePorts,
+import PortConstants(inputPort, resultPort, argumentPorts, caseValuePorts,
              casePatternPorts)
 import SimplifySyntax(SimpAlt(..), stringToSimpDecl, SimpExp(..), SimpPat(..)
                      , qNameToString, nameToString, customParseDecl
@@ -524,55 +524,55 @@ asBindGraphZipper :: Maybe String -> NameAndPort -> SyntaxGraph
 asBindGraphZipper asName nameNPort = makeAsBindGraph (Right nameNPort) [asName]
 
 -- TODO Refactor evalLambda
-evalLambda
-  :: Show l
+evalLambda :: Show l
   => l
   -> EvalContext
   -> [SimpPat l]
   -> SimpExp l
   -> State IDState (SyntaxGraph, NameAndPort)
-evalLambda _l context patterns expr = do
-  lambdaName             <- getUniqueName
+evalLambda _ context patterns expr = do
+  lambdaName <- getUniqueName
   patternValsWithAsNames <- mapM evalPattern patterns
-  let patternVals    = fmap fst patternValsWithAsNames
-      patternStrings = concatMap namesInPattern patternValsWithAsNames
-      rhsContext     = patternStrings <> context
+  let
+    patternVals = fmap fst patternValsWithAsNames
+    patternStrings = concatMap namesInPattern patternValsWithAsNames
+    rhsContext = patternStrings <> context
   GraphAndRef rhsRawGraph rhsRef <- evalExp rhsContext expr
-  let paramNames        = fmap patternName patternValsWithAsNames
-      enclosedNodeNames = Set.fromList $ naName <$> sgNodes combinedGraph
-      lambdaNode        = FunctionDefNode paramNames enclosedNodeNames Nothing -- TODO shouldnt be name?
-      lambdaPorts = map (nameAndPort lambdaName) $ argumentPorts lambdaNode
-      patternGraph      = mconcat $ fmap graphAndRefToGraph patternVals
+  let
+    paramNames = fmap patternName patternValsWithAsNames
+    enclosedNodeNames = Set.fromList $ naName <$> sgNodes combinedGraph
+    lambdaNode = FunctionDefNode paramNames enclosedNodeNames Nothing -- TODO shouldnt be name?
+    lambdaPorts = map (nameAndPort lambdaName) $ argumentPorts lambdaNode
+    patternGraph = mconcat $ fmap graphAndRefToGraph patternVals
 
-      (patternEdges, newBinds) =
-        partitionEithers $ zipWith makePatternEdges patternVals lambdaPorts
+    (patternEdges, newBinds) =
+      partitionEithers $ zipWith makePatternEdges patternVals lambdaPorts
 
-      icons                = [Named lambdaName (mkEmbedder lambdaNode)]
-      returnPort           = nameAndPort lambdaName (inputPort lambdaNode)
-      (newEdges, newSinks) = case rhsRef of
-        Left s -> (patternEdges, [SgSink s returnPort])
-        Right rhsPort ->
-          (makeSimpleEdge (rhsPort, returnPort) : patternEdges, mempty)
-      finalGraph  = SyntaxGraph icons newEdges newSinks newBinds mempty
+    icons = [Named lambdaName (mkEmbedder lambdaNode)]
+    returnPort = nameAndPort lambdaName (inputPort lambdaNode)
+    (newEdges, newSinks) = case rhsRef of
+      Left s -> (patternEdges, [SgSink s returnPort])
+      Right rhsPort ->
+        (makeSimpleEdge (rhsPort, returnPort) : patternEdges, mempty)
+    finalGraph = SyntaxGraph icons newEdges newSinks newBinds mempty
 
-      asBindGraph = mconcat $ zipWith asBindGraphZipper
-                                      (fmap snd patternValsWithAsNames)
-                                      lambdaPorts
-      combinedGraph =
-        deleteBindings
-          . makeEdges
-          $ (asBindGraph <> rhsRawGraph <> patternGraph <> finalGraph)
+    asBindGraph = mconcat $ zipWith
+                  asBindGraphZipper
+                  (fmap snd patternValsWithAsNames)
+                  lambdaPorts
+    combinedGraph = deleteBindings . makeEdges
+                    $ (asBindGraph <> rhsRawGraph <> patternGraph <> finalGraph)
 
   pure (combinedGraph, nameAndPort lambdaName (resultPort lambdaNode))
- where
+  where
     -- TODO Like evalPatBind, this edge should have an indicator that it is the
     -- input to a pattern.
     -- makePatternEdges creates the edges between the patterns and the parameter
     -- ports.
-  makePatternEdges :: GraphAndRef -> NameAndPort -> Either Edge SgBind
-  makePatternEdges (GraphAndRef _ ref) lamPort = case ref of
-    Right patPort -> Left $ makeSimpleEdge (lamPort, patPort)
-    Left  str     -> Right $ SgBind str (Right lamPort)
+    makePatternEdges :: GraphAndRef -> NameAndPort -> Either Edge SgBind
+    makePatternEdges (GraphAndRef _ ref) lamPort = case ref of
+      Right patPort -> Left $ makeSimpleEdge (lamPort, patPort)
+      Left str -> Right $ SgBind str (Right lamPort)
 
 -- END generalEvalLambda
 

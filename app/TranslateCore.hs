@@ -37,8 +37,8 @@ import qualified Data.Map as Map
 import Data.Semigroup(Semigroup, (<>))
 import qualified Data.Set as Set
 
-import Icons(inputPort, resultPort, argumentPorts, multiIfValuePorts
-            , multiIfConstPorts)
+import PortConstants(inputPort, resultPort, argumentPorts, multiIfValuePorts
+            , multiIfBoolPorts)
 import Types(Labeled(..), Icon(..), SyntaxNode(..), Edge(..), EdgeOption(..)
             , NameAndPort(..), IDState, SgNamedNode, NodeName(..), Port
             , LikeApplyFlavor(..), CaseOrMultiIfTag(..), IDState(..)
@@ -205,7 +205,7 @@ makeMultiIfGraph numPairs multiIfName bools exps
   where
     multiIfNode = CaseOrMultiIfNode MultiIfTag numPairs
     expsWithPorts = zip exps $ map (nameAndPort multiIfName) multiIfValuePorts
-    boolsWithPorts = zip bools $ map (nameAndPort multiIfName) multiIfConstPorts
+    boolsWithPorts = zip bools $ map (nameAndPort multiIfName) multiIfBoolPorts
     combindedGraph = combineExpressions False $ expsWithPorts <> boolsWithPorts
     icons = [Named multiIfName (mkEmbedder multiIfNode)]
     newGraph = syntaxGraphFromNodes icons <> combindedGraph

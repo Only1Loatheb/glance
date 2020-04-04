@@ -13,7 +13,6 @@ import           Types                          ( Labeled(..)
                                                 , Edge
                                                 , Icon(..)
                                                 , Port(..)
-                                                , PortNo(..)
                                                 , SpecialQDiagram
                                                 , SpecialBackend
                                                 , Named(..)
@@ -26,7 +25,7 @@ import Util(iconToPort, tupleToNamed)
 -- change the Drawing type.
 
 iconToIntPort :: NodeName -> NodeName -> Int -> Edge
-iconToIntPort x y p = iconToPort x y (Port (PortNo p) True)
+iconToIntPort x y p = iconToPort x y (Port p)
 
 n0, n1, n2, n3, n4, n5, n6, n7, n8, n9, n10 :: NodeName
 nodeNames :: [NodeName]

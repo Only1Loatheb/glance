@@ -6,16 +6,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Icons
     (
-    inputPort,
-    resultPort,
-    argumentPorts,
-    caseValuePorts,
-    casePatternPorts,
-    multiIfValuePorts,
-    multiIfConstPorts,
     findIconFromName,
-    findIcon,
-    argPortsConst
+    findIcon
     ) where
 
 import qualified Control.Arrow as Arrow
@@ -23,10 +15,8 @@ import qualified Data.IntMap as IM
 import Data.List(find)
 import Data.Maybe(listToMaybe, isJust, fromJust, mapMaybe)
 
-import Constants(pattern InputPortConst, pattern ResultPortConst)
 import Types(Icon(..)
-            , NodeName(..), Port(..), PortNo(..)
-            ,SyntaxNode(..), NamedIcon, Labeled(..), IconInfo
+            , NodeName(..), NamedIcon, Labeled(..), IconInfo
             , Named(..))
 
 {-# ANN module "HLint: ignore Use record patterns" #-}
@@ -68,41 +58,3 @@ findNestedIcon iconInfo name icon = case icon of
     snd <$> findIcon iconInfo name (fmap laValue (constructor:args))
   _ -> Nothing
 
--- BEGIN Port numbers
-
-argPortsConst :: [Port]
-argPortsConst = [Port (PortNo i) True | i <- [2,3..]]
-
--- TODO It's a bit strange that the parameter is a SyntaxNode, not an Icon.
-inputPort :: SyntaxNode -> Port
-inputPort = const InputPortConst
-
-resultPort :: SyntaxNode -> Port
-resultPort = const ResultPortConst
-
-casePatternPorts :: [Port]
-casePatternPorts = [Port (PortNo i) True | i <- [3,5..]]
-
-caseValuePorts :: [Port]
-caseValuePorts = [Port (PortNo i) False | i <- [2,4..]]
-
-multiIfConstPorts :: [Port]
-multiIfConstPorts = casePatternPorts
-
-multiIfValuePorts :: [Port]
-multiIfValuePorts = caseValuePorts
-
-
-argumentPorts :: SyntaxNode -> [Port]
-argumentPorts n = case n of
-  (ApplyNode _ _) -> defaultPorts
-  PatternApplyNode _ _-> defaultPorts
-  (FunctionDefNode _ _ _) -> defaultPorts
-  CaseOrMultiIfNode _ _ -> defaultPorts
-  NameNode _ -> []
-  BindNameNode _ -> []
-  LiteralNode _ -> []
-  CaseResultNode -> []
-  where
-    defaultPorts = argPortsConst
--- END Port numbers

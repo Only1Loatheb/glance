@@ -12,7 +12,7 @@ import qualified Data.Set as Set
 import Data.Tuple(swap)
 import GHC.Stack(HasCallStack)
 
-import Constants(pattern ResultPortConst, pattern InputPortConst)
+import PortConstants(pattern ResultPortConst, pattern InputPortConst)
 import Types(SyntaxNode(..), IngSyntaxGraph, Edge(..),
              CaseOrMultiIfTag(..), Port(..), NameAndPort(..), SgNamedNode
             , AnnotatedGraph, EmbedInfo(..), EmbedDirection(..), NodeInfo(..)
