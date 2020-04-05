@@ -11,6 +11,7 @@ module TextBox
   , transformCorrectedTextBox --} remove one
   , transformableBindTextBox -- }
   , multilineComment
+  , letterHeight
   )
 where
 
@@ -42,6 +43,9 @@ monoLetterWidthToHeightFraction = 0.61
 textBoxHeightFactor :: (Fractional a) => a
 textBoxHeightFactor = 1.4
 
+sidePadding :: Fractional a => a
+sidePadding = textBoxFontSize * 0.3
+
 textFont :: String
 textFont = "monospace"
 -- BEGIN Text helper functions --
@@ -59,7 +63,6 @@ rectForText n = rect textWidth textHeight
   where
     textHeight = letterHeight
     textWidth = (fromIntegral n * letterWidth) + sidePadding
-    sidePadding = textBoxFontSize * 0.3
 
 -- END Text helper functions
 
@@ -89,7 +92,7 @@ coloredTextBox textColor boxColor t
       fontSize
       (local textBoxFontSize)
       (font textFont $ fillColor textColor $ text t) -- dont have size
-    padOverText = strutY (textBoxFontSize * textBoxHeightFactor /3)
+    padOverText = strutY (textBoxFontSize * textBoxHeightFactor /4)
     boxAroundText =
       lwG -- A convenient synonym for 'lineWidth (global w)'.
       (0.6 * defaultLineWidth)

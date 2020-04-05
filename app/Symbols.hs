@@ -26,10 +26,10 @@ import           Data.List                      ( isPrefixOf )
 import Icons(findIconFromName)
 import           TextBox  ( bindTextBox
                           , defaultLineWidth
-                          , coloredTextBox
                           , transformCorrectedTextBox
                           , transformableBindTextBox
                           , multilineComment
+                          , letterHeight
                           )
 
 import PortConstants(
@@ -53,14 +53,17 @@ import Types(Icon(..), SpecialQDiagram, SpecialBackend, SpecialNum
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
 -- CONSTANTS --
-sizeUnit :: (Fractional a) => a
-sizeUnit = 0.5
+symbolSize :: (Fractional a) => a
+symbolSize = 0.5
+
+boxPadding :: Fractional a => a
+boxPadding = 2 * defaultLineWidth
 
 portSeparationSize :: (Fractional a) => a
-portSeparationSize = 0.5
+portSeparationSize = 0.3
 
 lambdaRectPadding :: (Fractional a) => a
-lambdaRectPadding = 3 * sizeUnit -- so result symbols on edge can fit
+lambdaRectPadding = 3 * symbolSize -- so result symbols on edge can fit
 
 defaultOpacity :: (Fractional a) => a
 defaultOpacity = 0.4
@@ -80,33 +83,33 @@ lineColorValue = lineC colorScheme
 
 -- BEGIN diagram basic symbols --
 inputPortSymbol :: SpecialBackend b n => SpecialQDiagram b n
-inputPortSymbol = lw none $ fc lineColorValue $ circle (sizeUnit * 0.5)
+inputPortSymbol = lw none $ fc lineColorValue $ circle (symbolSize * 0.5)
 
-resultPortSymbol :: SpecialBackend b n 
+resultPortSymbol :: SpecialBackend b n
   => SpecialQDiagram b n
 resultPortSymbol = symbol where
-  symbol = fc color $ lw none $ rotateBy (1/2) $ eqTriangle (5/4 * sizeUnit) -- cant be to big to fit in diagrams
+  symbol = fc color $ lw none $ rotateBy (1/2) $ eqTriangle (5/4 * symbolSize) -- cant be to big to fit in diagrams
   color = caseRhsC colorScheme
 
 multiIfVarSymbol :: SpecialBackend b n
   => Colour Double
   ->  SpecialQDiagram b n
 multiIfVarSymbol color = alignB coloredSymbol  where
-    symbol = vrule (2 * sizeUnit)
+    symbol = vrule (2 * symbolSize)
     coloredSymbol
       = lwG defaultLineWidth $ lc color (strokeLine symbol)
 
-lambdaBodySymbol :: SpecialBackend b n 
+lambdaBodySymbol :: SpecialBackend b n
   => Maybe String
   -> SpecialQDiagram b n
 lambdaBodySymbol functionName
-  = coloredTextBox (regionPerimC colorScheme) (opaque (bindTextBoxC colorScheme)) (fromMaybe "lambda" functionName)
+  = transformCorrectedTextBox (fromMaybe "lambda" functionName) (regionPerimC colorScheme) (bindTextBoxC colorScheme)
 
-inMultiIfConstBox :: SpecialBackend b n 
+inMultiIfConstBox :: SpecialBackend b n
   => SpecialQDiagram b n -> SpecialQDiagram b n
 inMultiIfConstBox = generalInConstBox (boolC colorScheme)
 
-inCaseConstBox :: SpecialBackend b n 
+inCaseConstBox :: SpecialBackend b n
   => SpecialQDiagram b n -> SpecialQDiagram b n
 inCaseConstBox = generalInConstBox (caseRhsC colorScheme)
 
@@ -114,32 +117,34 @@ generalInConstBox :: SpecialBackend b n
   => Colour Double
   -> SpecialQDiagram b n
   -> SpecialQDiagram b n
-generalInConstBox borderColor diagram 
+generalInConstBox borderColor diagram
   = finalDiagram where
     line = hrule (width diagram)
     coloredLine = lwG defaultLineWidth $  lc borderColor line
     triangleToRight = centerY $ fromOffsets triangleOfssets
-    halfHeight = (height diagram) / 2
+    halfHeight = (boxPadding + height diagram) / 2
     triangleOfssets = [halfHeight *^ (unitY+unitX), halfHeight *^ (unitY-unitX)]
     coloredTriangleToRight =  lwG defaultLineWidth $  lc borderColor $ triangleToRight
-    diagramWithLines = centerY $ vcat [coloredLine, diagram, coloredLine]
+    diagramWithLines = centerY $ vsep defaultLineWidth [coloredLine, diagram, coloredLine]
     finalDiagram = centerX $ hcat [reflectX coloredTriangleToRight, diagramWithLines, coloredTriangleToRight]
 
-appArgBox :: SpecialBackend b n
-  => Colour Double 
+boxForDiagram :: SpecialBackend b n
+  => Colour Double
   -> n
   -> n
   -> SpecialQDiagram b n
-appArgBox borderColor topAndBottomWidth portHeight
+boxForDiagram borderColor topAndBottomWidth portHeight
   = coloredArgBox where
+    rectWidth = max (topAndBottomWidth + boxPadding) letterHeight
+    rectHeight = max (portHeight + boxPadding) letterHeight
     coloredArgBox = lwG defaultLineWidth $ lcA (withOpacity borderColor defaultOpacity) argBox
-    argBox = rect topAndBottomWidth (portHeight + portSeparationSize)
+    argBox = rect rectWidth rectHeight
 
 -- BEGIN Diagram helper functions --
 
 -- | Make an identity TransformableDia
 identDiaFunc :: SpecialNum n => SpecialQDiagram b n -> TransformableDia b n
-identDiaFunc dia transformParams = nameDiagram (tpName transformParams) dia                          
+identDiaFunc dia transformParams = nameDiagram (tpName transformParams) dia
 
 textBox :: SpecialBackend b n =>
   String -> TransformableDia b n
@@ -166,7 +171,7 @@ makePort x = named x mempty
 
 makeQualifiedPort :: SpecialBackend b n =>
   Port -> NodeName -> SpecialQDiagram b n
-makeQualifiedPort port name = portAndSymbol where 
+makeQualifiedPort port name = portAndSymbol where
   namedPort = name .>> (makePort port)
   portAndSymbol = namedPort <> symbol
   symbol = if isInputPort port then inputPortSymbol else resultPortSymbol
@@ -174,20 +179,20 @@ makeQualifiedPort port name = portAndSymbol where
 -- Don't display " tempvar" from Translate.hs/matchesToCase
 makeLabelledPort :: SpecialBackend b n =>
   NodeName -> Port -> String ->  SpecialQDiagram b n
-makeLabelledPort name port str  
+makeLabelledPort name port str
   | " tempvar" `isPrefixOf` str  = portAndSymbol
   | not (null str) = portSymbolAndLabel
   | otherwise = portAndSymbol
   where
     portAndSymbol = makeQualifiedPort port name
-    label = transformableBindTextBox str 
+    label = transformableBindTextBox str
     portSymbolAndLabel = if isInputPort port
       then portAndSymbol ||| label
       else label ||| portAndSymbol
 
 makePassthroughPorts :: SpecialBackend b n =>
   NodeName -> (Port,Port) -> String ->  SpecialQDiagram b n
-makePassthroughPorts name (port1,port2) str  
+makePassthroughPorts name (port1,port2) str
   | " tempvar" `isPrefixOf` str  = portsDiagram
   | not (null str) = portSymbolAndLabel
   | otherwise = portsDiagram
@@ -243,20 +248,20 @@ makeInputDiagram iconInfo tp maybeFunText name = case laValue maybeFunText of
 makeResultDiagram :: SpecialBackend b n
   => NodeName
   -> SpecialQDiagram b n
-makeResultDiagram = makeQualifiedPort ResultPortConst  
+makeResultDiagram = makeQualifiedPort ResultPortConst
 
-makeAppInnerIcon :: SpecialBackend b n 
-  => IconInfo 
-  -> TransformParams n 
+makeAppInnerIcon :: SpecialBackend b n
+  => IconInfo
+  -> TransformParams n
   -> Bool  -- If False then add one to the nesting level. 
   -> Port  -- Port number (if the NamedIcon is Nothing)
   -> Labeled (Maybe NamedIcon) -- The icon 
   -> SpecialQDiagram b n
 makeAppInnerIcon _iconInfo (TransformParams name _) _isSameNestingLevel  port
   (Labeled Nothing str)
-  = centerX $ makeLabelledPort name port str 
+  = centerX $ makeLabelledPort name port str
 makeAppInnerIcon iconInfo (TransformParams _ nestingLevel ) isSameNestingLevel _port
-  (Labeled (Just (Named iconNodeName icon)) _) 
+  (Labeled (Just (Named iconNodeName icon)) _)
   = iconToDiagram
     iconInfo
     icon
@@ -264,18 +269,18 @@ makeAppInnerIcon iconInfo (TransformParams _ nestingLevel ) isSameNestingLevel _
   where
     innerLevel = if isSameNestingLevel then nestingLevel else nestingLevel + 1
 
-makePassthroughIcon :: SpecialBackend b n 
-  => IconInfo 
-  -> TransformParams n 
+makePassthroughIcon :: SpecialBackend b n
+  => IconInfo
+  -> TransformParams n
   -> Bool  -- If False then add one to the nesting level. 
   -> (Port, Port)  -- Port number (if the NamedIcon is Nothing)
   -> Labeled (Maybe NamedIcon) -- The icon 
   -> SpecialQDiagram b n
 makePassthroughIcon _iconInfo (TransformParams name _) _isSameNestingLevel  ports
   (Labeled Nothing str)
-  = centerX $ makePassthroughPorts name ports str 
+  = centerX $ makePassthroughPorts name ports str
 makePassthroughIcon iconInfo (TransformParams _ nestingLevel ) isSameNestingLevel _ports
-  (Labeled (Just (Named iconNodeName icon)) _) 
+  (Labeled (Just (Named iconNodeName icon)) _)
   = iconToDiagram
     iconInfo
     icon
@@ -298,18 +303,20 @@ nestedPatternAppDia
   = named name $ centerY finalDia
   where
     borderColor = borderColors !! nestingLevel
-    
-    resultDia = makeResultDiagram name 
+    resultDia = makeResultDiagram name
+
 
     constructorDiagram = makeInputDiagram iconInfo tp maybeConstructorName name
 
     patternCases::[SpecialQDiagram b n]
     patternCases = zipWith (makePassthroughIcon iconInfo tp False) casePortPairs subIcons
     patternCasesCentred = fmap centerY patternCases
-    casesDia = centerX $ hsep portSeparationSize patternCasesCentred
-    casesDiaInBox = casesDia <> appArgBox borderColor (width casesDia) (height casesDia)
-    
-    finalDia = centerX $ (constructorDiagram  === resultDia) ||| casesDiaInBox 
+    patternDiagram = hsep portSeparationSize (constructorDiagram : patternCasesCentred)
+
+    patternDiagramInBox = (centerXY $ patternDiagram)
+      <> boxForDiagram borderColor (width patternDiagram) (height patternDiagram)
+
+    finalDia = patternDiagramInBox  === resultDia
 
 
 
@@ -333,20 +340,20 @@ generalNestedDia
   = named name finalDia
     where
       borderColor = borderColors !! nestingLevel
-      boxWidth = max (width transformedName) (width argPorts)
+      boxWidth =  max (width transformedName) (width argPorts)
 
       argPortsUncentred =  zipWith ( makeAppInnerIcon iconInfo tp False) argPortsConst (fmap pure args)
-      argPortsCentred  = fmap centerY argPortsUncentred
+      argPortsCentred  = fmap alignB argPortsUncentred
       argPorts = centerX $ hsep portSeparationSize argPortsCentred
-      argsDiagram = (centerXY argPorts) <> (appArgBox borderColor boxWidth (height argPorts))
+      argsDiagram = (centerXY argPorts) <> (boxForDiagram borderColor boxWidth (height argPorts))
 
       resultDiagram =  makeResultDiagram name
 
-      transformedName = makeInputDiagram iconInfo tp (pure maybeFunText) name 
-        
-      functionDiagramInBox = transformedName <> (appArgBox borderColor boxWidth (height transformedName))
+      transformedName = makeInputDiagram iconInfo tp (pure maybeFunText) name
 
-      finalDia = vcat [ argsDiagram,functionDiagramInBox, resultDiagram] 
+      functionDiagramInBox = transformedName <> (boxForDiagram borderColor boxWidth (height transformedName))
+
+      finalDia = vcat [ argsDiagram,functionDiagramInBox, resultDiagram]
 
 nestedApplyDia :: SpecialBackend b n
   => IconInfo
@@ -370,7 +377,7 @@ nestedMultiIfDia :: SpecialBackend b n =>
   IconInfo
   -> [Maybe NamedIcon]
   -> TransformableDia b n
-nestedMultiIfDia iconInfo 
+nestedMultiIfDia iconInfo
   = generalNestedMultiIf iconInfo lineColorValue inMultiIfConstBox
 
 -- | The ports of the case icon are as follows:
@@ -413,9 +420,9 @@ generalNestedMultiIf iconInfo triangleColor inConstBox inputAndArgs
     isSameNestingLevel = True
 
     iconMapper port subicon
-      | isInputPort port = Left $ inConstBox $ innerIcon{- middle -}
+      | isInputPort port = Left $ inConstBox innerIcon{- middle -}
       | otherwise = Right ${- middle -} vcat [multiIfVarSymbol triangleColor, innerIcon]
-      where 
+      where
         innerIcon = makeAppInnerIcon iconInfo tp isSameNestingLevel port (Labeled subicon "")
 
     iFVarAndConstIcons =
@@ -423,9 +430,11 @@ generalNestedMultiIf iconInfo triangleColor inConstBox inputAndArgs
 
     combineIfIcons iFVarIcon iFConstIcon
       = decisionDiagram where
-        decisionDiagram = (alignB iFConstIcon) <>  (alignT iFVarIcon)
+        spaceForBigLine = strutY defaultLineWidth
+        ifConstDiagram = vcat [iFConstIcon,spaceForBigLine]
+        decisionDiagram = (alignB ifConstDiagram) <>  (alignT iFVarIcon)
 
-    multiIfDia = centerX (hsep portSeparationSize (alignL iFVarAndConstIcons))
+    multiIfDia = centerX $ hsep portSeparationSize  iFVarAndConstIcons
     bigVerticalLine = lwG defaultLineWidth $ lc triangleColor $ hrule (width multiIfDia)
     allCases = multiIfDia <> bigVerticalLine
 
@@ -441,20 +450,20 @@ nestedLambda ::  SpecialBackend b n
   -> Maybe NamedIcon
   -> Maybe String
   -> TransformableDia b n
-nestedLambda iconInfo paramNames mBodyExp maybeName tp@(TransformParams name _level) 
+nestedLambda iconInfo paramNames mBodyExp maybeName tp@(TransformParams name _level)
   = centerXY (named name inputsResultAndBodyDia)
   where
   innerOutputPorts = zipWith (makeLabelledPort name) resultPortsConst paramNames
   placedOutputPorts = centerXY $ vsep portSeparationSize innerOutputPorts
-  innerOutputDiagram = placedOutputPorts 
-    <> appArgBox (lamArgResC colorScheme) (width placedOutputPorts) (height placedOutputPorts)
+  innerOutputDiagram = placedOutputPorts
+    <> boxForDiagram (lamArgResC colorScheme) (width placedOutputPorts) (height placedOutputPorts)
 
   inputDiagram = makeInputDiagram iconInfo tp (pure mBodyExp) name
   inputDiagramInBox = inputDiagram
-    <> appArgBox (lamArgResC colorScheme) (width inputDiagram) (height inputDiagram)
+    <> boxForDiagram (lamArgResC colorScheme) (width inputDiagram) (height inputDiagram)
 
   resultDiagram = makeResultDiagram name
-  
+
   inputsResultAndBodyDia = vcat [inputDiagramInBox,innerOutputDiagram,lambdaBodySymbol maybeName, resultDiagram]
 
 lambdaRegionSymbol :: forall b . SpecialBackend b Double
@@ -464,7 +473,7 @@ lambdaRegionSymbol enclosedDiagarms
   = moveTo (centerPoint combinedDia) coloredContentsRect
   where
     combinedDia = mconcat enclosedDiagarms
-    contentsRect = dashingG [0.7 * sizeUnit, 0.3 * sizeUnit] 0
+    contentsRect = dashingG [0.7 * symbolSize, 0.3 * symbolSize] 0
                    $ rect
                    (lambdaRectPadding + width combinedDia)
                    (lambdaRectPadding + height combinedDia)
@@ -472,22 +481,22 @@ lambdaRegionSymbol enclosedDiagarms
 -- END Main icons
 -- END Icons
 
-getArrowShadowOpts :: (RealFloat n, Typeable n) 
+getArrowShadowOpts :: (RealFloat n, Typeable n)
   => (Maybe (Point V2 n),Maybe (Point V2 n))
   -> (Maybe (Angle n), Maybe (Angle n))
-  -> ArrowOpts n 
-getArrowShadowOpts maybePoints maybeAngles = 
-  shaftStyle %~ (lwG arrowShadowWidth . 
+  -> ArrowOpts n
+getArrowShadowOpts maybePoints maybeAngles =
+  shaftStyle %~ (lwG arrowShadowWidth .
                 lcA $ withOpacity shaftColor defaultShadowOpacity)
   $ headStyle %~ fc shaftColor
   $ getArrowOpts maybePoints maybeAngles where
     shaftColor = backgroundC colorScheme
 
-getArrowBaseOpts :: (RealFloat n, Typeable n) 
+getArrowBaseOpts :: (RealFloat n, Typeable n)
   => NameAndPort
   -> (Maybe (Point V2 n),Maybe (Point V2 n))
   -> (Maybe (Angle n), Maybe (Angle n))
-  -> ArrowOpts n 
+  -> ArrowOpts n
 getArrowBaseOpts (NameAndPort (NodeName nodeNum) mPort) maybePoints maybeAngles
   = shaftStyle %~ (lwG arrowLineWidth . lc shaftColor)
   $ headStyle %~ fc shaftColor
@@ -495,7 +504,7 @@ getArrowBaseOpts (NameAndPort (NodeName nodeNum) mPort) maybePoints maybeAngles
     edgeColors = edgeListC colorScheme
     Port portNum = fromMaybe (Port 0) mPort
     namePortHash = mod (portNum + (503 * nodeNum)) (length edgeColors)
-    shaftColor = edgeColors !! namePortHash 
+    shaftColor = edgeColors !! namePortHash
 
 getArrowOpts :: (RealFloat n, Typeable n)
   => (Maybe (Point V2 n),Maybe (Point V2 n))
@@ -521,7 +530,7 @@ getArrowOpts
 
 edgeSymbol :: (R1 (Diff p), Affine p, Transformable (Diff p (N t)),
                  TrailLike t, Floating (N (Diff p (N t))), Eq (N (Diff p (N t))),
-                 V (Diff p (N t)) ~ V2, V t ~ Diff p) 
+                 V (Diff p (N t)) ~ V2, V t ~ Diff p)
   => p (N t)
   -> p (N t)
   -> Maybe (Angle (N (Diff p (N t))))
@@ -530,7 +539,7 @@ edgeSymbol :: (R1 (Diff p), Affine p, Transformable (Diff p (N t)),
 edgeSymbol formPoint toPoint anglesFrom anglesTo = fromSegments [bezier3 offsetToControl1 offsetToControl2 offsetToEnd] where
   angleFrom = fromMaybe (3/4 @@ turn) anglesFrom  -- } edges defaults to go down for unnamed nodes
   angleTo = fromMaybe (1/4 @@ turn) anglesTo  -- }
-  scaleFactor = sizeUnit * 10.0
+  scaleFactor = symbolSize * 10.0
   offsetToEnd = toPoint .-. formPoint
   offsetToControl1 = rotate angleFrom (scale scaleFactor unitX)
   offsetToControl2 = rotate angleTo (scale scaleFactor unitX) ^+^ offsetToEnd

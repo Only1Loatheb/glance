@@ -8,7 +8,6 @@ module Rendering (
 
 import qualified Diagrams.Prelude as DIA
 import           Diagrams.Prelude               ( toName
-                                                , shaftStyle
                                                 , Angle
                                                 , P2
                                                 , height
@@ -16,13 +15,10 @@ import           Diagrams.Prelude               ( toName
                                                 , (*^)
                                                 , centerXY
                                                 , place
-                                                , lwG
-                                                , lc
                                                 , applyAll
                                                 , (.>)
                                                 , connectOutside'
                                                 , connect'
-                                                , (%~)
                                                 , (*^)
                                                 )
 import Diagrams.TwoD.GraphViz(mkGraph, getGraph, layoutGraph')
