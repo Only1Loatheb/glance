@@ -39,7 +39,7 @@ import PortConstants(
   isInputPort,
   mixedPorts,
   resultPortsConst,
-  casePatternPorts
+  casePortPairs
   )
 
 import DrawingColors(colorScheme, ColorStyle(..))
@@ -185,6 +185,18 @@ makeLabelledPort name port str
       then portAndSymbol ||| label
       else label ||| portAndSymbol
 
+makePassthroughPorts :: SpecialBackend b n =>
+  NodeName -> (Port,Port) -> String ->  SpecialQDiagram b n
+makePassthroughPorts name (port1,port2) str  
+  | " tempvar" `isPrefixOf` str  = portsDiagram
+  | not (null str) = portSymbolAndLabel
+  | otherwise = portsDiagram
+  where
+    portAndSymbol1 = makeQualifiedPort port1 name
+    portAndSymbol2 = makeQualifiedPort port2 name
+    label = transformableBindTextBox str
+    portsDiagram =  portAndSymbol1 === portAndSymbol2
+    portSymbolAndLabel = portAndSymbol1 === label === portAndSymbol2
 
 -- >>>>>>>>>>>>>>>>>>>>>> SUB Diagrams <<<<<<<<<<<<<<<<<<<<<<<<
 -- TODO Detect if we are in a loop (have called iconToDiagram on the same node
@@ -252,6 +264,25 @@ makeAppInnerIcon iconInfo (TransformParams _ nestingLevel ) isSameNestingLevel _
   where
     innerLevel = if isSameNestingLevel then nestingLevel else nestingLevel + 1
 
+makePassthroughIcon :: SpecialBackend b n 
+  => IconInfo 
+  -> TransformParams n 
+  -> Bool  -- If False then add one to the nesting level. 
+  -> (Port, Port)  -- Port number (if the NamedIcon is Nothing)
+  -> Labeled (Maybe NamedIcon) -- The icon 
+  -> SpecialQDiagram b n
+makePassthroughIcon _iconInfo (TransformParams name _) _isSameNestingLevel  ports
+  (Labeled Nothing str)
+  = centerX $ makePassthroughPorts name ports str 
+makePassthroughIcon iconInfo (TransformParams _ nestingLevel ) isSameNestingLevel _ports
+  (Labeled (Just (Named iconNodeName icon)) _) 
+  = iconToDiagram
+    iconInfo
+    icon
+    (TransformParams iconNodeName innerLevel)
+  where
+    innerLevel = if isSameNestingLevel then nestingLevel else nestingLevel + 1
+
 nestedPatternAppDia :: forall b n. SpecialBackend b n
   => IconInfo
   -> [Colour Double]
@@ -264,7 +295,7 @@ nestedPatternAppDia
   maybeConstructorName
   subIcons
   tp@(TransformParams name nestingLevel)
-  = named name $ centerXY finalDia
+  = named name $ centerY finalDia
   where
     borderColor = borderColors !! nestingLevel
     
@@ -272,13 +303,13 @@ nestedPatternAppDia
 
     constructorDiagram = makeInputDiagram iconInfo tp maybeConstructorName name
 
-    paternCases::[SpecialQDiagram b n]
-    paternCases = zipWith (makeAppInnerIcon iconInfo tp False) casePatternPorts subIcons
-    paternCasesCentredY = fmap centerY paternCases
-    casesDia = centerX $ hsep portSeparationSize paternCasesCentredY
+    patternCases::[SpecialQDiagram b n]
+    patternCases = zipWith (makePassthroughIcon iconInfo tp False) casePortPairs subIcons
+    patternCasesCentred = fmap centerY patternCases
+    casesDia = centerX $ hsep portSeparationSize patternCasesCentred
     casesDiaInBox = casesDia <> appArgBox borderColor (width casesDia) (height casesDia)
     
-    finalDia = vcat [ casesDiaInBox, constructorDiagram , resultDia ]
+    finalDia = centerX $ (constructorDiagram  === resultDia) ||| casesDiaInBox 
 
 
 
