@@ -50,26 +50,26 @@ syntaxNodeIsEmbeddable :: ParentType
                        -> Bool
 syntaxNodeIsEmbeddable parentType syntaxNode mParentPort mChildPort
   = case (parentType, syntaxNode) of
-      (ApplyParent, ApplyNode _ _) -> parentPortNotResult
-      (ApplyParent, LiteralNode _) -> parentPortNotResult
-      (ApplyParent, FunctionDefNode _ _ _)
+      (ApplyParent, ApplyNode {}) -> parentPortNotResult
+      (ApplyParent, LiteralNode {}) -> parentPortNotResult
+      (ApplyParent, FunctionDefNode {})
         -> parentPortNotResult && isResult mChildPort
 
       -- The match below works, but can make messy drawings with the current
       -- icon for lambdas.
       -- (LambdaParent, ApplyNode _ _) -> parentPortIsInput
-      (LambdaParent, LiteralNode _) -> parentPortIsInput
-      (LambdaParent, FunctionDefNode _ _ _)
+      (LambdaParent, LiteralNode {}) -> parentPortIsInput
+      (LambdaParent, FunctionDefNode {})
         -> parentPortIsInput && isResult mChildPort
 
-      (CaseParent, LiteralNode _) -> parentPortNotResult
-      (CaseParent, ApplyNode _ _)
+      (CaseParent, LiteralNode {}) -> parentPortNotResult
+      (CaseParent, ApplyNode {})
         -> parentPortNotResult && parentPortNotInput
-      (CaseParent, PatternApplyNode _ _)
+      (CaseParent, PatternApplyNode {})
         -> parentPortNotResult && parentPortNotInput
 
-      (MultiIfParent, LiteralNode _) -> parentPortNotResult
-      (MultiIfParent, ApplyNode _ _)
+      (MultiIfParent, LiteralNode {}) -> parentPortNotResult
+      (MultiIfParent, ApplyNode {})
         -> parentPortNotResult && parentPortNotInput
 
       _ -> False
@@ -90,10 +90,10 @@ syntaxNodeIsEmbeddable parentType syntaxNode mParentPort mChildPort
 
 parentTypeForNode :: SyntaxNode -> ParentType
 parentTypeForNode n = case n of
-  (ApplyNode _ _) -> ApplyParent
+  ApplyNode {} -> ApplyParent
   CaseOrMultiIfNode CaseTag _ -> CaseParent
   CaseOrMultiIfNode MultiIfTag _ -> MultiIfParent
-  (FunctionDefNode _ _ _) -> LambdaParent
+  FunctionDefNode {} -> LambdaParent
   _ -> NotAParent
 
 lookupSyntaxNode :: ING.Graph gr =>

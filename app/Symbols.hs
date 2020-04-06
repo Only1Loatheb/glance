@@ -100,10 +100,10 @@ multiIfVarSymbol color = alignB coloredSymbol  where
       = lwG defaultLineWidth $ lc color (strokeLine symbol)
 
 lambdaBodySymbol :: SpecialBackend b n
-  => Maybe String
+  => String
   -> SpecialQDiagram b n
 lambdaBodySymbol functionName
-  = transformCorrectedTextBox (fromMaybe "lambda" functionName) (regionPerimC colorScheme) (bindTextBoxC colorScheme)
+  = transformCorrectedTextBox functionName (regionPerimC colorScheme) (bindTextBoxC colorScheme)
 
 inMultiIfConstBox :: SpecialBackend b n
   => SpecialQDiagram b n -> SpecialQDiagram b n
@@ -222,8 +222,8 @@ iconToDiagram iconInfo icon = case icon of
   MultiIfIcon n -> nestedMultiIfDia iconInfo $ replicate (1 + (2 * n)) Nothing
   CaseIcon n -> nestedCaseDia iconInfo $ replicate (1 + (2 * n)) Nothing
   CaseResultIcon -> identDiaFunc resultPortSymbol
-  LambdaIcon x maybeName bodyExp _
-    -> nestedLambda iconInfo x (findIconFromName iconInfo <$> bodyExp) maybeName
+  LambdaIcon x (Labeled bodyExp str) _
+    -> nestedLambda iconInfo x (findIconFromName iconInfo <$> bodyExp) str
   NestedApply flavor headIcon args
     -> nestedApplyDia
        iconInfo
@@ -453,7 +453,7 @@ nestedLambda ::  SpecialBackend b n
   => IconInfo
   -> [String]
   -> Maybe NamedIcon
-  -> Maybe String
+  -> String
   -> TransformableDia b n
 nestedLambda iconInfo outputNames mAppliedValue maybeName tp@(TransformParams name _level)
   = centerXY (named name inputsResultAndBodyDia)

@@ -70,8 +70,8 @@ data Icon = TextBoxIcon String
     Int  -- Number of alternatives
   | LambdaIcon
     [String]  -- Parameter labels
-    (Maybe String) -- function name
-    (Maybe NodeName)  -- Function body expression
+    -- (Maybe String) -- function name
+    (Labeled (Maybe NodeName))  -- Function body expression
     (Set NodeName)  -- Nodes inside the lambda
   | CaseIcon Int
   | CaseResultIcon
@@ -117,8 +117,8 @@ data SyntaxNode =
   | LiteralNode String -- Literal values like the string "Hello World"
   | FunctionDefNode  -- Function definition (ie. lambda expression)
     [String]  -- Parameter labels
+    String -- function name
     (Set NodeName)  -- Nodes inside the lambda
-    (Maybe String) -- function name
   | CaseResultNode -- TODO remove caseResultNode
   | CaseOrMultiIfNode CaseOrMultiIfTag Int
   deriving (Show, Eq, Ord)

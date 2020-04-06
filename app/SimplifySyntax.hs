@@ -36,7 +36,7 @@ data SimpExp l =
   | SeApp l
     (SimpExp l)  -- function
     (SimpExp l)  -- argument
-  | SeLambda l [SimpPat l] (SimpExp l)
+  | SeLambda l [SimpPat l] (SimpExp l) String
   | SeLet l [SimpDecl l] (SimpExp l)
   | SeCase l (SimpExp l) [SimpAlt l]
   | SeMultiIf l [SelectorAndVal l]
@@ -152,7 +152,8 @@ matchToSimpDecl (Exts.Match l name patterns rhs maybeWhereBinds)
     (SpVar l name)
     (SeLambda l
      (fmap hsPatToSimpPat patterns)
-     (whereToLet l rhs maybeWhereBinds))
+     (whereToLet l rhs maybeWhereBinds)
+     (nameToString name))
 matchToSimpDecl m = error $ "Unsupported syntax in matchToSimpDecl: " <> show m
 
 -- Only used by matchesToCase
@@ -306,7 +307,7 @@ hsExpToSimpExp x = simplifyExp $ case x of
   Exts.App l f arg -> SeApp l (hsExpToSimpExp f) (hsExpToSimpExp arg)
   Exts.NegApp l e -> hsExpToSimpExp $ Exts.App l (makeVarExp l "negate") e
   Exts.Lambda l patterns e
-    -> SeLambda l (fmap hsPatToSimpPat patterns) (hsExpToSimpExp e)
+    -> SeLambda l (fmap hsPatToSimpPat patterns) (hsExpToSimpExp e) "lambda"
   Exts.Let l bs e -> SeLet l (hsBindsToDecls bs) (hsExpToSimpExp e)
   Exts.If l e1 e2 e3
     -> ifToGuard l (hsExpToSimpExp e1) (hsExpToSimpExp e2) (hsExpToSimpExp e3)
@@ -340,7 +341,7 @@ simpExpToHsExp x = case x of
   -- SeName l str -> (Exts.Var l (strToQName l str))
   SeLit l lit -> Exts.Lit l lit
   SeApp l e1 e2 -> Exts.App l (simpExpToHsExp e1) (simpExpToHsExp e2)
-  SeLambda l pats e
+  SeLambda l pats e _name
     -> Exts.Lambda l (fmap simpPatToHsPat pats) (simpExpToHsExp e)
   SeLet l decls e -> Exts.Let l (simpDeclsToHsBinds l decls) (simpExpToHsExp e)
   SeCase l e alts
