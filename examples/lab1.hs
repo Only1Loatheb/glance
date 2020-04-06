@@ -37,18 +37,18 @@ insertAt []       a _     = [a]
 insertAt xs       a 0     = a : xs
 insertAt (x : xs) a index = x : insertAt xs a (index - 1)
 
--- codeCezar :: String -> Int -> String
--- codeCezar [] _ = []
--- codeCezar (x : xs) i
---   | x >= 'A' && x <= 'Z' = (codeCezarLetter x i (ord 'A')) : codeCezar xs i
---   | x >= 'a' && x <= 'z' = (codeCezarLetter x i (ord 'a')) : codeCezar xs i
+codeCezar :: String -> Int -> String
+codeCezar [] _ = []
+codeCezar (x : xs) i
+  | x >= 'A' && x <= 'Z' = (codeCezarLetter x i (ord 'A')) : codeCezar xs i
+  | x >= 'a' && x <= 'z' = (codeCezarLetter x i (ord 'a')) : codeCezar xs i
 
--- codeCezarLetter x i baseLetterOrd = chr codedletterOrd where
---   codedletterOrd = letterNumberCycled + baseLetterOrd   where
---   letterNumberCycled = (letterNumber + i) `mod` alphabetLength   where
---   letterNumber = (ord x) - baseLetterOrd
+codeCezarLetter x i baseLetterOrd = chr codedletterOrd where
+  codedletterOrd = letterNumberCycled + baseLetterOrd where
+    letterNumberCycled = (letterNumber + i) `mod` alphabetLength where
+      letterNumber = (ord x) - baseLetterOrd
 
--- alphabetLength = (ord 'z') - (ord 'a') + 1
+alphabetLength = (ord 'z') - (ord 'a') + 1
 
--- decodeCezar :: String -> Int -> String
--- decodeCezar xs i = codeCezar xs (-i)
+decodeCezar :: String -> Int -> String
+decodeCezar xs i = codeCezar xs (-i)

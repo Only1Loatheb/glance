@@ -118,27 +118,32 @@ generalInConstBox :: SpecialBackend b n
   -> SpecialQDiagram b n
   -> SpecialQDiagram b n
 generalInConstBox borderColor diagram
-  = finalDiagram where
-    line = hrule (width diagram)
-    coloredLine = lwG defaultLineWidth $  lc borderColor line
+  = centerXY diagram <> coloredBox where
+    boxHeight = boxPadding + height diagram
+    halfBoxHeight = boxHeight / 2
+    boxWidth = boxPadding + width diagram
+
+    line = hrule boxWidth
+    triangleOfssets = [halfBoxHeight *^ (unitY+unitX), halfBoxHeight *^ (unitY-unitX)]
     triangleToRight = centerY $ fromOffsets triangleOfssets
-    halfHeight = (boxPadding + height diagram) / 2
-    triangleOfssets = [halfHeight *^ (unitY+unitX), halfHeight *^ (unitY-unitX)]
-    coloredTriangleToRight =  lwG defaultLineWidth $  lc borderColor $ triangleToRight
-    diagramWithLines = centerY $ vsep defaultLineWidth [coloredLine, diagram, coloredLine]
-    finalDiagram = centerX $ hcat [reflectX coloredTriangleToRight, diagramWithLines, coloredTriangleToRight]
+
+    topAndBottopLines = centerY $ vsep boxHeight [line, line]
+    sideArrows = centerX $ hsep boxWidth [reflectX triangleToRight, triangleToRight]
+    
+    coloredBox = lwG defaultLineWidth $  lc borderColor (topAndBottopLines <> sideArrows)
 
 boxForDiagram :: SpecialBackend b n
-  => Colour Double
+  => SpecialQDiagram b n
+  -> Colour Double
   -> n
   -> n
   -> SpecialQDiagram b n
-boxForDiagram borderColor topAndBottomWidth portHeight
-  = coloredArgBox where
+boxForDiagram diagram borderColor topAndBottomWidth portHeight
+  = centerXY diagram <> coloredArgBox where
     rectWidth = max (topAndBottomWidth + boxPadding) letterHeight
     rectHeight = max (portHeight + boxPadding) letterHeight
-    coloredArgBox = lwG defaultLineWidth $ lcA (withOpacity borderColor defaultOpacity) argBox
     argBox = rect rectWidth rectHeight
+    coloredArgBox = lwG defaultLineWidth $ lcA (withOpacity borderColor defaultOpacity) argBox
 
 -- BEGIN Diagram helper functions --
 
@@ -180,28 +185,29 @@ makeQualifiedPort port name = portAndSymbol where
 makeLabelledPort :: SpecialBackend b n =>
   NodeName -> Port -> String ->  SpecialQDiagram b n
 makeLabelledPort name port str
-  | " tempvar" `isPrefixOf` str  = portAndSymbol
-  | not (null str) = portSymbolAndLabel
-  | otherwise = portAndSymbol
-  where
+  = choosePortDiagram str portAndSymbol portSymbolAndLabel where
     portAndSymbol = makeQualifiedPort port name
     label = transformableBindTextBox str
     portSymbolAndLabel = if isInputPort port
       then portAndSymbol ||| label
       else label ||| portAndSymbol
 
+choosePortDiagram :: SpecialBackend b n =>
+  String -> SpecialQDiagram b n -> SpecialQDiagram b n ->SpecialQDiagram b n
+choosePortDiagram str portAndSymbol portSymbolAndLabel
+      | " tempvar" `isPrefixOf` str  = portAndSymbol
+      | not (null str) = portSymbolAndLabel
+      | otherwise = portAndSymbol
+
 makePassthroughPorts :: SpecialBackend b n =>
   NodeName -> (Port,Port) -> String ->  SpecialQDiagram b n
 makePassthroughPorts name (port1,port2) str
-  | " tempvar" `isPrefixOf` str  = portsDiagram
-  | not (null str) = portSymbolAndLabel
-  | otherwise = portsDiagram
-  where
+  = choosePortDiagram str portsDiagram portSymbolsAndLabel where
     portAndSymbol1 = makeQualifiedPort port1 name
     portAndSymbol2 = makeQualifiedPort port2 name
     label = transformableBindTextBox str
     portsDiagram =  portAndSymbol1 === portAndSymbol2
-    portSymbolAndLabel = portAndSymbol1 === label === portAndSymbol2
+    portSymbolsAndLabel = portAndSymbol1 === label === portAndSymbol2
 
 -- >>>>>>>>>>>>>>>>>>>>>> SUB Diagrams <<<<<<<<<<<<<<<<<<<<<<<<
 -- TODO Detect if we are in a loop (have called iconToDiagram on the same node
@@ -313,8 +319,7 @@ nestedPatternAppDia
     patternCasesCentred = fmap centerY patternCases
     patternDiagram = hsep portSeparationSize (constructorDiagram : patternCasesCentred)
 
-    patternDiagramInBox = (centerXY $ patternDiagram)
-      <> boxForDiagram borderColor (width patternDiagram) (height patternDiagram)
+    patternDiagramInBox = boxForDiagram patternDiagram borderColor (width patternDiagram) (height patternDiagram)
 
     finalDia = patternDiagramInBox  === resultDia
 
@@ -345,13 +350,13 @@ generalNestedDia
       argPortsUncentred =  zipWith ( makeAppInnerIcon iconInfo tp False) argPortsConst (fmap pure args)
       argPortsCentred  = fmap alignB argPortsUncentred
       argPorts = centerX $ hsep portSeparationSize argPortsCentred
-      argsDiagram = (centerXY argPorts) <> (boxForDiagram borderColor boxWidth (height argPorts))
+      argsDiagram = boxForDiagram argPorts borderColor boxWidth (height argPorts)
 
       resultDiagram =  makeResultDiagram name
 
       transformedName = makeInputDiagram iconInfo tp (pure maybeFunText) name
 
-      functionDiagramInBox = transformedName <> (boxForDiagram borderColor boxWidth (height transformedName))
+      functionDiagramInBox = boxForDiagram transformedName borderColor boxWidth (height transformedName)
 
       finalDia = vcat [ argsDiagram,functionDiagramInBox, resultDiagram]
 
@@ -450,17 +455,15 @@ nestedLambda ::  SpecialBackend b n
   -> Maybe NamedIcon
   -> Maybe String
   -> TransformableDia b n
-nestedLambda iconInfo paramNames mBodyExp maybeName tp@(TransformParams name _level)
+nestedLambda iconInfo outputNames mAppliedValue maybeName tp@(TransformParams name _level)
   = centerXY (named name inputsResultAndBodyDia)
   where
-  innerOutputPorts = zipWith (makeLabelledPort name) resultPortsConst paramNames
-  placedOutputPorts = centerXY $ vsep portSeparationSize innerOutputPorts
-  innerOutputDiagram = placedOutputPorts
-    <> boxForDiagram (lamArgResC colorScheme) (width placedOutputPorts) (height placedOutputPorts)
+  innerOutputPorts = zipWith (makeLabelledPort name) resultPortsConst outputNames
+  placedOutputPorts = vsep portSeparationSize innerOutputPorts
+  innerOutputDiagram = boxForDiagram placedOutputPorts (lamArgResC colorScheme) (width placedOutputPorts) (height placedOutputPorts)
 
-  inputDiagram = makeInputDiagram iconInfo tp (pure mBodyExp) name
-  inputDiagramInBox = inputDiagram
-    <> boxForDiagram (lamArgResC colorScheme) (width inputDiagram) (height inputDiagram)
+  inputDiagram = makeInputDiagram iconInfo tp (pure mAppliedValue) name
+  inputDiagramInBox = boxForDiagram inputDiagram (lamArgResC colorScheme) (width inputDiagram) (height inputDiagram)
 
   resultDiagram = makeResultDiagram name
 
