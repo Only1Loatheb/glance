@@ -14,6 +14,7 @@ module Symbols
   , getArrowShadowOpts
   , getArrowBaseOpts
   , textBox
+  , lambdaRegionToDiagram
   )
 where
 
@@ -47,7 +48,8 @@ import Types(Icon(..), SpecialQDiagram, SpecialBackend, SpecialNum
             , NodeName(..), Port(..), LikeApplyFlavor(..)
             , NamedIcon, Labeled(..), IconInfo
             , Named(..), NameAndPort(..)
-            ,TransformParams(..),TransformableDia)
+            ,TransformParams(..),TransformableDia
+            ,CaseOrMultiIfTag(..))
 
 {-# ANN module "HLint: ignore Use record patterns" #-}
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
@@ -61,9 +63,6 @@ boxPadding = 2 * defaultLineWidth
 
 portSeparationSize :: (Fractional a) => a
 portSeparationSize = 0.3
-
-lambdaRectPadding :: (Fractional a) => a
-lambdaRectPadding = 3 * symbolSize -- so result symbols on edge can fit
 
 defaultOpacity :: (Fractional a) => a
 defaultOpacity = 0.4
@@ -100,10 +99,12 @@ multiIfVarSymbol color = alignB coloredSymbol  where
       = lwG defaultLineWidth $ lc color (strokeLine symbol)
 
 lambdaBodySymbol :: SpecialBackend b n
-  => String
+  => NodeName
+  -> String
   -> SpecialQDiagram b n
-lambdaBodySymbol functionName
-  = transformCorrectedTextBox functionName (regionPerimC colorScheme) (bindTextBoxC colorScheme)
+lambdaBodySymbol name
+  = makePassthroughPorts name (InputPortConst,ResultPortConst)
+    -- ===  transformCorrectedTextBox functionName (regionPerimC colorScheme) (bindTextBoxC colorScheme)
 
 inMultiIfConstBox :: SpecialBackend b n
   => SpecialQDiagram b n -> SpecialQDiagram b n
@@ -189,12 +190,14 @@ makeLabelledPort name port str
     portAndSymbol = makeQualifiedPort port name
     label = transformableBindTextBox str
     portSymbolAndLabel = if isInputPort port
-      then portAndSymbol ||| label
-      else label ||| portAndSymbol
+      then portAndSymbol === label
+      else label === portAndSymbol
 
 choosePortDiagram :: SpecialBackend b n =>
   String -> SpecialQDiagram b n -> SpecialQDiagram b n ->SpecialQDiagram b n
 choosePortDiagram str portAndSymbol portSymbolAndLabel
+  = centerX symbol where
+    symbol 
       | " tempvar" `isPrefixOf` str  = portAndSymbol
       | not (null str) = portSymbolAndLabel
       | otherwise = portAndSymbol
@@ -219,11 +222,11 @@ iconToDiagram :: SpecialBackend b n
 iconToDiagram iconInfo icon = case icon of
   TextBoxIcon s -> textBox s
   BindTextBoxIcon s -> identDiaFunc $ bindTextBox s
-  MultiIfIcon n -> nestedMultiIfDia iconInfo $ replicate (1 + (2 * n)) Nothing
-  CaseIcon n -> nestedCaseDia iconInfo $ replicate (1 + (2 * n)) Nothing
+  MultiIfIcon n -> nestedMultiIfDia iconInfo (replicate (1 + (2 * n)) Nothing) MultiIfTag
+  CaseIcon n -> nestedCaseDia iconInfo (replicate (1 + (2 * n)) Nothing) CaseTag
   CaseResultIcon -> identDiaFunc resultPortSymbol
-  LambdaIcon x (Labeled bodyExp str) _
-    -> nestedLambda iconInfo x (findIconFromName iconInfo <$> bodyExp) str
+  LambdaIcon {}
+    -> nestedLambda
   NestedApply flavor headIcon args
     -> nestedApplyDia
        iconInfo
@@ -235,9 +238,11 @@ iconToDiagram iconInfo icon = case icon of
   NestedCaseIcon args -> nestedCaseDia
                          iconInfo
                          ((fmap . fmap) (findIconFromName iconInfo) args)
+                         CaseTag
   NestedMultiIfIcon args -> nestedMultiIfDia
                             iconInfo
                             ((fmap . fmap) (findIconFromName iconInfo) args)
+                            MultiIfTag
 
 makeInputDiagram :: SpecialBackend b n
   => IconInfo
@@ -265,7 +270,7 @@ makeAppInnerIcon :: SpecialBackend b n
   -> SpecialQDiagram b n
 makeAppInnerIcon _iconInfo (TransformParams name _) _isSameNestingLevel  port
   (Labeled Nothing str)
-  = centerX $ makeLabelledPort name port str
+  = makeLabelledPort name port str
 makeAppInnerIcon iconInfo (TransformParams _ nestingLevel ) isSameNestingLevel _port
   (Labeled (Just (Named iconNodeName icon)) _)
   = iconToDiagram
@@ -284,7 +289,7 @@ makePassthroughIcon :: SpecialBackend b n
   -> SpecialQDiagram b n
 makePassthroughIcon _iconInfo (TransformParams name _) _isSameNestingLevel  ports
   (Labeled Nothing str)
-  = centerX $ makePassthroughPorts name ports str
+  = makePassthroughPorts name ports str
 makePassthroughIcon iconInfo (TransformParams _ nestingLevel ) isSameNestingLevel _ports
   (Labeled (Just (Named iconNodeName icon)) _)
   = iconToDiagram
@@ -372,27 +377,18 @@ nestedApplyDia iconInfo flavor = case flavor of
   ComposeNodeFlavor
     -> generalNestedDia iconInfo (repeat $ apply1C colorScheme)
 
--- BEGIN MultiIf and case icons --
--- | The ports of the multiIf icon are as follows:
--- InputPortConst: Top result port (not used)
--- ResultPortConst: Bottom result port
--- Ports 3,5...: The left ports for the booleans
--- Ports 2,4...: The right ports for the values
 nestedMultiIfDia :: SpecialBackend b n =>
   IconInfo
   -> [Maybe NamedIcon]
+  -> CaseOrMultiIfTag
   -> TransformableDia b n
 nestedMultiIfDia iconInfo
   = generalNestedMultiIf iconInfo lineColorValue inMultiIfConstBox
 
--- | The ports of the case icon are as follows:
--- InputPortConst: Top input port
--- ResultPortConst: Bottom result port
--- Ports 3,5...: The left ports for the results
--- Ports 2,4...: The right ports for the patterns
 nestedCaseDia :: SpecialBackend b n
   => IconInfo
   -> [Maybe NamedIcon]
+  -> CaseOrMultiIfTag
   -> TransformableDia b n
 nestedCaseDia iconInfo
   = generalNestedMultiIf iconInfo (patternC colorScheme) inCaseConstBox
@@ -407,15 +403,18 @@ generalNestedMultiIf ::forall b n. SpecialBackend b n
                    -> Colour Double
                    -> (SpecialQDiagram b n -> SpecialQDiagram b n)
                    -> [Maybe NamedIcon]
+                   -> CaseOrMultiIfTag
                    -> TransformableDia b n
-generalNestedMultiIf iconInfo triangleColor inConstBox inputAndArgs
+generalNestedMultiIf iconInfo symbolColor inConstBox inputAndArgs flavor
   tp@(TransformParams name _nestingLevel)
   = named name $ case inputAndArgs of
   [] -> error "empty multiif"-- mempty
   input : subicons -> centerXY finalDia where
     finalDia = hcat [inputDiagram, allCases ,resultPort]
 
-    inputDiagram = makeInputDiagram iconInfo tp (pure input) name
+    inputDiagram
+      | flavor == MultiIfTag = transformCorrectedTextBox "True" symbolColor symbolColor
+      | otherwise = makeInputDiagram iconInfo tp (pure input) name
 
     resultPort = makeResultDiagram name
 
@@ -426,7 +425,7 @@ generalNestedMultiIf iconInfo triangleColor inConstBox inputAndArgs
 
     iconMapper port subicon
       | isInputPort port = Left $ inConstBox innerIcon{- middle -}
-      | otherwise = Right ${- middle -} vcat [multiIfVarSymbol triangleColor, innerIcon]
+      | otherwise = Right ${- middle -} vcat [multiIfVarSymbol symbolColor, innerIcon]
       where
         innerIcon = makeAppInnerIcon iconInfo tp isSameNestingLevel port (Labeled subicon "")
 
@@ -440,49 +439,56 @@ generalNestedMultiIf iconInfo triangleColor inConstBox inputAndArgs
         decisionDiagram = (alignB ifConstDiagram) <>  (alignT iFVarIcon)
 
     multiIfDia = centerX $ hsep portSeparationSize  iFVarAndConstIcons
-    bigVerticalLine = lwG defaultLineWidth $ lc triangleColor $ hrule (width multiIfDia)
+    bigVerticalLine = lwG defaultLineWidth $ lc symbolColor $ hrule (width multiIfDia)
     allCases = multiIfDia <> bigVerticalLine
 
--- END MultiIf and case icons
+nestedLambda ::  SpecialBackend b n
+  => TransformableDia b n
+nestedLambda (TransformParams name _level)
+  = named name (strutY 3) -- TODO remove this
+-- Done to prevent this:
+-- glance-test: circleDiameter too small: 0.0
+-- CallStack (from HasCallStack):
+-- error, called at app/Rendering.hs:315:18 in main:Rendering
+
+lambdaRegionToDiagram :: SpecialBackend b Double =>
+                           [SpecialQDiagram b Double]
+                           -> IconInfo -> Icon -> NodeName -> SpecialQDiagram b Double
+lambdaRegionToDiagram enclosedDiagarms iconInfo (LambdaIcon x (Labeled bodyExp str) _) name
+    = lambdaRegionSymbol enclosedDiagarms iconInfo x (findIconFromName iconInfo <$> bodyExp) str name
+lambdaRegionToDiagram _ _ _ name = named name mempty 
 
 -- | The ports of flatLambdaIcon are:
 -- 0: Result icon
 -- 1: The lambda function value
 -- 2,3.. : The parameters
-nestedLambda ::  SpecialBackend b n
-  => IconInfo
+lambdaRegionSymbol :: SpecialBackend b Double
+  => [SpecialQDiagram b Double]
+  -> IconInfo
   -> [String]
   -> Maybe NamedIcon
   -> String
-  -> TransformableDia b n
-nestedLambda iconInfo outputNames mAppliedValue maybeName tp@(TransformParams name _level)
-  = centerXY (named name inputsResultAndBodyDia)
-  where
-  innerOutputPorts = zipWith (makeLabelledPort name) resultPortsConst outputNames
-  placedOutputPorts = vsep portSeparationSize innerOutputPorts
-  innerOutputDiagram = boxForDiagram placedOutputPorts (lamArgResC colorScheme) (width placedOutputPorts) (height placedOutputPorts)
-
-  inputDiagram = makeInputDiagram iconInfo tp (pure mAppliedValue) name
-  inputDiagramInBox = boxForDiagram inputDiagram (lamArgResC colorScheme) (width inputDiagram) (height inputDiagram)
-
-  resultDiagram = makeResultDiagram name
-
-  inputsResultAndBodyDia = vcat [inputDiagramInBox,innerOutputDiagram,lambdaBodySymbol maybeName, resultDiagram]
-
-lambdaRegionSymbol :: forall b . SpecialBackend b Double
-  => [SpecialQDiagram b Double]
+  -> NodeName
   -> SpecialQDiagram b Double
-lambdaRegionSymbol enclosedDiagarms
-  = moveTo (centerPoint combinedDia) coloredContentsRect
+lambdaRegionSymbol enclosedDiagarms iconInfo argumentNames mAppliedValue maybeFunctionName name
+  = moveTo (centerPoint enclosedBoundingBox) finalDiagram
   where
-    combinedDia = mconcat enclosedDiagarms
+    enclosedBoundingBox = boundingBox $ mconcat enclosedDiagarms
+
     contentsRect = dashingG [0.7 * symbolSize, 0.3 * symbolSize] 0
                    $ rect
-                   (lambdaRectPadding + width combinedDia)
-                   (lambdaRectPadding + height combinedDia)
+                   (defaultLineWidth + width enclosedBoundingBox)
+                   (defaultLineWidth + height enclosedBoundingBox)
     coloredContentsRect = lc lightgreen (lwG defaultLineWidth contentsRect)
--- END Main icons
--- END Icons
+
+    argumetPort = zipWith (makeLabelledPort name) resultPortsConst argumentNames
+    combinedArgumetPort = hsep portSeparationSize argumetPort
+    argumetsInBox = alignB $ boxForDiagram combinedArgumetPort (lamArgResC colorScheme) (width combinedArgumetPort) (height combinedArgumetPort)
+
+    lambdaSymbol = lambdaBodySymbol name maybeFunctionName
+
+    frameWithLambdaSymbol = beside (-unitY) coloredContentsRect lambdaSymbol
+    finalDiagram = beside unitY frameWithLambdaSymbol argumetsInBox  
 
 getArrowShadowOpts :: (RealFloat n, Typeable n)
   => (Maybe (Point V2 n),Maybe (Point V2 n))

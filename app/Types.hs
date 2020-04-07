@@ -31,7 +31,7 @@ module Types (
   mkEmbedder,
   EmbedderSyntaxNode,
   TransformParams(..),
-  TransformableDia
+  TransformableDia,
 ) where
 
 import Diagrams.Prelude(QDiagram, V2, Any, Renderable, Path, IsName)
