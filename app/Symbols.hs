@@ -64,6 +64,9 @@ boxPadding = 2 * defaultLineWidth
 portSeparationSize :: (Fractional a) => a
 portSeparationSize = 0.3
 
+lambdaRectPadding :: (Fractional a) => a
+lambdaRectPadding = 2 * letterHeight + defaultLineWidth
+
 defaultOpacity :: (Fractional a) => a
 defaultOpacity = 0.4
 
@@ -445,7 +448,7 @@ generalNestedMultiIf iconInfo symbolColor inConstBox inputAndArgs flavor
 nestedLambda ::  SpecialBackend b n
   => TransformableDia b n
 nestedLambda (TransformParams name _level)
-  = named name (strutY 3) -- TODO remove this
+  = named name mempty -- TODO remove this
 -- Done to prevent this:
 -- glance-test: circleDiameter too small: 0.0
 -- CallStack (from HasCallStack):
@@ -453,10 +456,10 @@ nestedLambda (TransformParams name _level)
 
 lambdaRegionToDiagram :: SpecialBackend b Double =>
                            [SpecialQDiagram b Double]
-                           -> IconInfo -> Icon -> NodeName -> SpecialQDiagram b Double
-lambdaRegionToDiagram enclosedDiagarms iconInfo (LambdaIcon x (Labeled bodyExp str) _) name
-    = lambdaRegionSymbol enclosedDiagarms iconInfo x (findIconFromName iconInfo <$> bodyExp) str name
-lambdaRegionToDiagram _ _ _ name = named name mempty 
+                           -> Icon -> NodeName -> SpecialQDiagram b Double
+lambdaRegionToDiagram enclosedDiagarms (LambdaIcon argumentNames (Labeled _ str) _) name
+    = lambdaRegionSymbol enclosedDiagarms argumentNames str name
+lambdaRegionToDiagram _ _ name = named name mempty 
 
 -- | The ports of flatLambdaIcon are:
 -- 0: Result icon
@@ -464,21 +467,19 @@ lambdaRegionToDiagram _ _ _ name = named name mempty
 -- 2,3.. : The parameters
 lambdaRegionSymbol :: SpecialBackend b Double
   => [SpecialQDiagram b Double]
-  -> IconInfo
   -> [String]
-  -> Maybe NamedIcon
   -> String
   -> NodeName
   -> SpecialQDiagram b Double
-lambdaRegionSymbol enclosedDiagarms iconInfo argumentNames mAppliedValue maybeFunctionName name
+lambdaRegionSymbol enclosedDiagarms argumentNames maybeFunctionName name
   = moveTo (centerPoint enclosedBoundingBox) finalDiagram
   where
     enclosedBoundingBox = boundingBox $ mconcat enclosedDiagarms
 
     contentsRect = dashingG [0.7 * symbolSize, 0.3 * symbolSize] 0
                    $ rect
-                   (defaultLineWidth + width enclosedBoundingBox)
-                   (defaultLineWidth + height enclosedBoundingBox)
+                   (lambdaRectPadding + width enclosedBoundingBox)
+                   (lambdaRectPadding + height enclosedBoundingBox)
     coloredContentsRect = lc lightgreen (lwG defaultLineWidth contentsRect)
 
     argumetPort = zipWith (makeLabelledPort name) resultPortsConst argumentNames

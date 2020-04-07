@@ -213,7 +213,7 @@ drawLambdaRegions iconInfo placedNodes
     drawRegion :: Set.Set NodeName -> NamedIcon -> SpecialQDiagram b Double
     drawRegion parentNames icon = case icon of
       Named lambdaName lambdaIcon@(LambdaIcon _ _ enclosedNames)
-        -> lambdaRegionToDiagram enclosed iconInfo lambdaIcon lambdaName where
+        -> lambdaRegionToDiagram enclosed lambdaIcon lambdaName where
             enclosed = findDia <$> Set.toList (parentNames <> enclosedNames)
       Named parentName (NestedApply _ headIcon icons)
         -> mconcat
@@ -276,9 +276,10 @@ renderIconGraph debugInfo fullGraphWithInfo = do
     placedNodeList :: [(NamedIcon,SpecialQDiagram b Double)]
     placedNodeList = fmap (placeNode iconInfo) (Map.toList positionMap)
     placedNodes = mconcat $ fmap snd placedNodeList
-    edges = addEdges debugInfo iconInfo parentGraph placedNodes
+    placedNodesAndRegions = placedNodes <> placedRegions
+    edges = addEdges debugInfo iconInfo parentGraph placedNodesAndRegions
     placedRegions = drawLambdaRegions iconInfo placedNodeList
-  pure (placedNodes <> edges <> placedRegions)
+  pure (edges <> placedNodesAndRegions)
   where
     parentGraph
       = ING.nmap niVal $ ING.labfilter (isNothing . niParent) fullGraphWithInfo
@@ -294,7 +295,6 @@ renderIconGraph debugInfo fullGraphWithInfo = do
       }
     nodeAttribute :: (Int, NamedIcon) -> [GV.Attribute]
     nodeAttribute (_, Named _ nodeIcon) =
-      -- GVA.Width and GVA.Height have a minimum of 0.01
       --[GVA.Width diaWidth, GVA.Height diaHeight]
       [GVA.Width circleDiameter, GVA.Height circleDiameter]
       where
@@ -306,14 +306,11 @@ renderIconGraph debugInfo fullGraphWithInfo = do
               iconInfo
               nodeIcon
               (TransformParams (NodeName (-1)) 0)
-
+        
         diaWidth = drawingToGraphvizScaleFactor * width dia
         diaHeight = drawingToGraphvizScaleFactor * height dia
-        circleDiameter' = max diaWidth diaHeight
-        circleDiameter
-          = if circleDiameter' <= 0.01
-            then error ("circleDiameter too small: " ++ show circleDiameter')
-            else circleDiameter'
+        circleDiameter = maximum [diaWidth, diaHeight, 0.01]
+        -- GVA.Width and GVA.Height have a minimum of 0.01
 
 -- | Given a Drawing, produce a Diagram complete with rotated/flipped icons and
 -- lines connecting ports and icons. IO is needed for the GraphViz layout.

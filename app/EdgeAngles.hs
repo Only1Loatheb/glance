@@ -40,11 +40,11 @@ lambdaPortAngle InputPortConst = 1/4 @@ turn
 lambdaPortAngle ResultPortConst = 3/4 @@ turn
 lambdaPortAngle port
   | isInputPort port = 1/2 @@ turn
-  | otherwise        = 0 @@ turn
+  | otherwise        = 3/4 @@ turn
 
 patternAppPortAngle :: Floating n => Port -> Angle n
 patternAppPortAngle InputPortConst = 1/4 @@ turn
-patternAppPortAngle ResultPortConst = 1/4 @@ turn
+patternAppPortAngle ResultPortConst = 3/4 @@ turn
 patternAppPortAngle port
   | isInputPort port = 1/4 @@ turn
   | otherwise        = 3/4 @@ turn
