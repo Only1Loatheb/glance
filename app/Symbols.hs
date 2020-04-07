@@ -133,7 +133,7 @@ generalInConstBox borderColor diagram
 
     topAndBottopLines = centerY $ vsep boxHeight [line, line]
     sideArrows = centerX $ hsep boxWidth [reflectX triangleToRight, triangleToRight]
-    
+
     coloredBox = lwG defaultLineWidth $  lc borderColor (topAndBottopLines <> sideArrows)
 
 boxForDiagram :: SpecialBackend b n
@@ -200,7 +200,7 @@ choosePortDiagram :: SpecialBackend b n =>
   String -> SpecialQDiagram b n -> SpecialQDiagram b n ->SpecialQDiagram b n
 choosePortDiagram str portAndSymbol portSymbolAndLabel
   = centerX symbol where
-    symbol 
+    symbol
       | " tempvar" `isPrefixOf` str  = portAndSymbol
       | not (null str) = portSymbolAndLabel
       | otherwise = portAndSymbol
@@ -459,7 +459,7 @@ lambdaRegionToDiagram :: SpecialBackend b Double =>
                            -> Icon -> NodeName -> SpecialQDiagram b Double
 lambdaRegionToDiagram enclosedDiagarms (LambdaIcon argumentNames (Labeled _ str) _) name
     = lambdaRegionSymbol enclosedDiagarms argumentNames str name
-lambdaRegionToDiagram _ _ name = named name mempty 
+lambdaRegionToDiagram _ _ name = named name mempty
 
 -- | The ports of flatLambdaIcon are:
 -- 0: Result icon
@@ -484,12 +484,15 @@ lambdaRegionSymbol enclosedDiagarms argumentNames maybeFunctionName name
 
     argumetPort = zipWith (makeLabelledPort name) resultPortsConst argumentNames
     combinedArgumetPort = hsep portSeparationSize argumetPort
-    argumetsInBox = alignB $ boxForDiagram combinedArgumetPort (lamArgResC colorScheme) (width combinedArgumetPort) (height combinedArgumetPort)
+    argumetsInBox = moveOriginBy b $ alignB $ boxForDiagram combinedArgumetPort (lamArgResC colorScheme) (width combinedArgumetPort) (height combinedArgumetPort)
 
     lambdaSymbol = lambdaBodySymbol name maybeFunctionName
 
+    a = (-unitX) ^* ((width enclosedBoundingBox)*(width enclosedBoundingBox)/(height enclosedBoundingBox + width enclosedBoundingBox))
+    b = a + unitX ^* ((width enclosedBoundingBox) /2)
+
     frameWithLambdaSymbol = beside (-unitY) coloredContentsRect lambdaSymbol
-    finalDiagram = beside unitY frameWithLambdaSymbol argumetsInBox  
+    finalDiagram = beside unitY frameWithLambdaSymbol argumetsInBox
 
 getArrowShadowOpts :: (RealFloat n, Typeable n)
   => (Maybe (Point V2 n),Maybe (Point V2 n))

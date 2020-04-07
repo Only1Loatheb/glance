@@ -55,9 +55,9 @@ syntaxNodeIsEmbeddable parentType syntaxNode mParentPort mChildPort
       -- (ApplyParent, FunctionDefNode {})
       --   -> parentPortNotResult && isResult mChildPort
 
-      -- The match below works, but can make messy drawings with the current
-      -- icon for lambdas.
-      -- (LambdaParent, ApplyNode _ _) -> parentPortIsInput
+      -- -- -- The match below works, but can make messy drawings with the current
+      -- -- -- icon for lambdas.
+      -- -- (LambdaParent, ApplyNode _ _) -> parentPortIsInput
       -- (LambdaParent, LiteralNode {}) -> parentPortIsInput
       -- (LambdaParent, FunctionDefNode {})
       --   -> parentPortIsInput && isResult mChildPort
