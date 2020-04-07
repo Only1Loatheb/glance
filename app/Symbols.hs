@@ -142,10 +142,10 @@ boxForDiagram :: SpecialBackend b n
   -> n
   -> n
   -> SpecialQDiagram b n
-boxForDiagram diagram borderColor topAndBottomWidth portHeight
+boxForDiagram diagram borderColor diagramWidth diagramHeight
   = centerXY diagram <> coloredArgBox where
-    rectWidth = max (topAndBottomWidth + boxPadding) letterHeight
-    rectHeight = max (portHeight + boxPadding) letterHeight
+    rectWidth = max (diagramWidth + boxPadding) letterHeight
+    rectHeight = max (diagramHeight + boxPadding) letterHeight
     argBox = rect rectWidth rectHeight
     coloredArgBox = lwG defaultLineWidth $ lcA (withOpacity borderColor defaultOpacity) argBox
 
@@ -413,24 +413,23 @@ generalNestedMultiIf iconInfo symbolColor inConstBox inputAndArgs flavor
   = named name $ case inputAndArgs of
   [] -> error "empty multiif"-- mempty
   input : subicons -> centerXY finalDia where
-    finalDia = hcat [inputDiagram, allCases ,resultPort]
+    finalDia = vcat [inputDiagram, allCasesAtRight ,resultPort]
+
+    resultPort = makeResultDiagram name
 
     inputDiagram
       | flavor == MultiIfTag = transformCorrectedTextBox "True" symbolColor symbolColor
       | otherwise = makeInputDiagram iconInfo tp (pure input) name
 
-    resultPort = makeResultDiagram name
-
     (iFConstIcons, iFVarIcons)
       = partitionEithers $ zipWith iconMapper mixedPorts subicons
-
-    isSameNestingLevel = True
 
     iconMapper port subicon
       | isInputPort port = Left $ inConstBox innerIcon{- middle -}
       | otherwise = Right ${- middle -} vcat [multiIfVarSymbol symbolColor, innerIcon]
       where
         innerIcon = makeAppInnerIcon iconInfo tp isSameNestingLevel port (Labeled subicon "")
+        isSameNestingLevel = True
 
     iFVarAndConstIcons =
       zipWith combineIfIcons iFVarIcons iFConstIcons
@@ -442,8 +441,12 @@ generalNestedMultiIf iconInfo symbolColor inConstBox inputAndArgs flavor
         decisionDiagram = (alignB ifConstDiagram) <>  (alignT iFVarIcon)
 
     multiIfDia = centerX $ hsep portSeparationSize  iFVarAndConstIcons
-    bigVerticalLine = lwG defaultLineWidth $ lc symbolColor $ hrule (width multiIfDia)
-    allCases = multiIfDia <> bigVerticalLine
+    decisionLine = lwG defaultLineWidth $ lc symbolColor $ hrule (width multiIfDia)
+    allCases = multiIfDia <> decisionLine
+    inputLambdaLine = lwG defaultLineWidth $ lc symbolColor $ vrule (height allCases)
+    allCasesAtRight = alignT inputLambdaLine <> alignTL allCases
+
+    
 
 nestedLambda ::  SpecialBackend b n
   => TransformableDia b n
@@ -484,12 +487,13 @@ lambdaRegionSymbol enclosedDiagarms argumentNames maybeFunctionName name
 
     argumetPort = zipWith (makeLabelledPort name) resultPortsConst argumentNames
     combinedArgumetPort = hsep portSeparationSize argumetPort
-    argumetsInBox = moveOriginBy b $ alignB $ boxForDiagram combinedArgumetPort (lamArgResC colorScheme) (width combinedArgumetPort) (height combinedArgumetPort)
+    argumetsInBox = alignB $ boxForDiagram combinedArgumetPort (lamArgResC colorScheme) (width combinedArgumetPort) (height combinedArgumetPort)
 
     lambdaSymbol = lambdaBodySymbol name maybeFunctionName
 
-    a = (-unitX) ^* ((width enclosedBoundingBox)*(width enclosedBoundingBox)/(height enclosedBoundingBox + width enclosedBoundingBox))
-    b = a + unitX ^* ((width enclosedBoundingBox) /2)
+    -- moveOriginBy b $
+    -- a = (-unitX) ^* ((width enclosedBoundingBox)*(width enclosedBoundingBox)/(height enclosedBoundingBox + width enclosedBoundingBox))
+    -- b = a + unitX ^* ((width enclosedBoundingBox) /2)
 
     frameWithLambdaSymbol = beside (-unitY) coloredContentsRect lambdaSymbol
     finalDiagram = beside unitY frameWithLambdaSymbol argumetsInBox

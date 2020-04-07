@@ -302,23 +302,23 @@ multiWayIfTests = [
 
 testDecls :: [String]
 testDecls = mconcat [
-  simpleTests
-  , composeTests
-  , nestedTests
-  , doTests
-  , caseTests
-  , lambdaTests
-  , guardTests
-  , patternTests
-  , specialTests
-  , tupleTests
-  , listTests
-  , letTests
-  , operatorTests
-  , otherTests
-  , typeSigTests
-  , dataDeclTests
-  , multiWayIfTests
+  simpleTests,
+  composeTests,
+  nestedTests,
+  doTests,
+  caseTests,
+  lambdaTests,
+  guardTests,
+  patternTests,
+  specialTests,
+  tupleTests,
+  listTests,
+  letTests,
+  operatorTests,
+  otherTests,
+  typeSigTests,
+  dataDeclTests,
+  multiWayIfTests
   ]
 
 
