@@ -40,7 +40,10 @@ data SimpExp l =
   | SeLet l [SimpDecl l] (SimpExp l)
   | SeCase l (SimpExp l) [SimpAlt l]
   | SeMultiIf l [SelectorAndVal l]
+  | SeListComp l (SimpExp l) (SimpExp l) -- TODO  [SimpStmt l]
   deriving (Show, Eq)
+
+data SimpStmt l = SimpStmt l String deriving (Show, Eq)
 
 data SelectorAndVal l = SelectorAndVal {
   svSelector :: SimpExp l
@@ -330,7 +333,20 @@ hsExpToSimpExp x = simplifyExp $ case x of
   Exts.EnumFromThen l e1 e2 -> desugarEnums l "enumFromThen" [e1, e2]
   Exts.EnumFromThenTo l e1 e2 e3 -> desugarEnums l "enumFromThenTo" [e1, e2, e3]
   Exts.MultiIf l rhss -> SeMultiIf l (fmap guardedRhsToSelectorAndVal rhss)
+  Exts.ListComp l e1 qStmts -> SeListComp l (hsExpToSimpExp e1) (hsExpToSimpExp (hsQStmtsToSimpStmts qStmts))
   _ -> error $ "Unsupported syntax in hsExpToSimpExp: " ++ show x
+
+hsQStmtsToSimpStmts :: Show l => [Exts.QualStmt l] -> Exts.Exp l
+hsQStmtsToSimpStmts qStmts = desugarListComp list where
+  list = [ x | (Exts.QualStmt l x) <- qStmts]
+-- TODO implement for other Exts.QualStmt l
+
+desugarListComp :: Show l => [Exts.Stmt l] -> Exts.Exp l
+desugarListComp (Exts.Generator l pat e : stmtsTail) = Exts.App l (Exts.App l (makeVarExp l "listComp") e) (Exts.Lambda l [pat] (desugarListComp stmtsTail))
+desugarListComp (Exts.Qualifier l e : stmtsTail)     = Exts.App l (Exts.App l (makeVarExp l "listComp") e) (desugarListComp stmtsTail)
+desugarListComp (Exts.LetStmt l binds : stmtsTail)   = Exts.Let l binds (desugarListComp stmtsTail)
+desugarListComp [Exts.Qualifier _ e]                 = e
+desugarListComp stmt                                 = error $ "Unsupported syntax in desugarListComp: " <> show stmt
 
 simpExpToHsExp :: Show a => SimpExp a -> Exts.Exp a
 simpExpToHsExp x = case x of

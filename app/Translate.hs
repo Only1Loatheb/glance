@@ -531,7 +531,7 @@ evalLambda :: Show l
   -> SimpExp l
   -> String
   -> State IDState (SyntaxGraph, NameAndPort)
-evalLambda _ context patterns expr name = do
+evalLambda _ context patterns expr functionName = do
   lambdaName <- getUniqueName
   patternValsWithAsNames <- mapM evalPattern patterns
   let
@@ -542,7 +542,7 @@ evalLambda _ context patterns expr name = do
   let
     paramNames = fmap patternName patternValsWithAsNames
     enclosedNodeNames = Set.fromList $ naName <$> sgNodes combinedGraph
-    lambdaNode = FunctionDefNode paramNames name enclosedNodeNames  -- TODO shouldnt be name?
+    lambdaNode = FunctionDefNode paramNames functionName enclosedNodeNames  -- TODO shouldnt be functionName?
     lambdaPorts = map (nameAndPort lambdaName) $ argumentPorts lambdaNode
     patternGraph = mconcat $ fmap graphAndRefToGraph patternVals
 
@@ -582,7 +582,7 @@ evalExp c x = case x of
   SeName _ s -> strToGraphRef c s
   SeLit _ lit -> grNamePortToGrRef <$> evalLit lit
   SeApp _ _ _ -> grNamePortToGrRef <$> evalApp c x
-  SeLambda l patterns e name-> grNamePortToGrRef <$> evalLambda l c patterns e name
+  SeLambda l patterns e functionName-> grNamePortToGrRef <$> evalLambda l c patterns e functionName
   SeLet _ decls expr -> evalLet c decls expr
   SeCase _ expr alts -> grNamePortToGrRef <$> evalCase c expr alts
   SeMultiIf _ selectorsAndVals

@@ -61,10 +61,10 @@ resultPort = const ResultPortConst
 argumentPorts :: SyntaxNode -> [Port]
 argumentPorts n = case n of
   ApplyNode {} -> argPortsConst
-  PatternApplyNode {}-> resultPortsConst
+  PatternApplyNode {} -> resultPortsConst
   FunctionDefNode {} -> resultPortsConst
   CaseOrMultiIfNode {} -> mixedPorts
-  NameNode _ -> []
-  BindNameNode _ -> []
-  LiteralNode _ -> []
-  CaseResultNode -> []
+  NameNode {} -> []
+  BindNameNode {} -> []
+  LiteralNode {} -> []
+  CaseResultNode {}-> []

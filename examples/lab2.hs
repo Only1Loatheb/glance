@@ -5,11 +5,11 @@ single :: [a] -> [[a]]
 single [] = []
 single (x:xs) = [x] : single xs
 
--- mymap :: (a0 -> b0) -> [a0] -> [b0]
--- mymap f xs = [f x | x <- xs]
+mymap :: (a0 -> b0) -> [a0] -> [b0]
+mymap f xs = [f x | x <- xs]
 
--- myfilter :: (a0 -> Bool) -> [a0] -> [a0]
--- myfilter f xs = [x | x <- xs, f x]
+myfilter :: (a0 -> Bool) -> [a0] -> [a0]
+myfilter f xs = [x | x <- xs, f x]
 
 data Day = Mon|Tue|Wed|Thu|Fri|Sat|Sun deriving Show
 
