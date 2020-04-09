@@ -97,7 +97,6 @@ evalLit :: Exts.Literal l -> State IDState (SyntaxGraph, NameAndPort)
 evalLit (Exts.Int _ x _) = makeLiteral x
 evalLit (Exts.Char _ x _) = makeLiteral x
 evalLit (Exts.String _ x _) = makeLiteral x
--- TODO: Print the Rational as a floating point.
 evalLit (Exts.Frac _ x _) = makeLiteral x
 -- TODO: Test the unboxed literals
 evalLit (Exts.PrimInt _ x _) = makeLiteral x
@@ -587,8 +586,26 @@ evalExp c x = case x of
   SeCase _ expr alts -> grNamePortToGrRef <$> evalCase c expr alts
   SeMultiIf _ selectorsAndVals
     -> grNamePortToGrRef <$> evalMultiIf c selectorsAndVals
+  -- SeListComp l e1 e2 -> evalListComp c l e1 e2
 
--- BEGIN evalDecl
+-- -- BEGIN evalDecl
+
+-- evalListComp :: Show l =>
+--   l -> EvalContext -> SimpExp l -> SimpExp l -> State IDState SyntaxGraph
+-- evalListComp l bindContext e1 e2 =  do
+  
+--   -- ((GraphAndRef patGraph patRef, mPatAsName), GraphAndRef rhsGraph rhsRef) <-
+--   -- bindOrAltHelper c pat e
+
+--   -- makeBox
+
+--   -- getUniqueName = fmap NodeName getId
+
+--   -- evaluatedDecl = evalDecl mempty d >>= showTopLevelBinds
+--   -- graph = evalState evaluatedDecl initialIdState
+--   let
+
+
 
 evalPatBind :: Show l =>
   l -> EvalContext -> SimpPat l -> SimpExp l -> State IDState SyntaxGraph

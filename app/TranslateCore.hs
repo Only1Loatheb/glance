@@ -129,9 +129,8 @@ initialIdState = IDState 0
 getId :: State IDState Int
 getId = state incrementer where
   incrementer (IDState x) = (x, IDState checkedIncrement) where
-    xPlusOne = x + 1
-    checkedIncrement = if xPlusOne > x
-      then xPlusOne
+    checkedIncrement = if x /= maxBound
+      then x + 1
       else error "getId: the ID state has overflowed."
 
 getUniqueName :: State IDState NodeName
