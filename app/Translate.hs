@@ -43,6 +43,11 @@ import Util(makeSimpleEdge, nameAndPort, justName)
 {-# ANN module "HLint: ignore Use record patterns" #-}
 
 -- OVERVIEW --
+-- Translate SimpExp into subgraf of type SyntaxGraph
+-- Generated SyntaxGraph has sgNodes sgEdges sgSinks sgBinds sgEmbedMap
+-- for one SimpExp
+-- sgNodes has unik ID called Name
+-- ARCHITECTURE NOTE --
 -- The core functions and data types used in this module are in TranslateCore.
 -- The TranslateCore also contains most/all of the translation functions that
 -- do not use Language.Haskell.Exts.
@@ -110,7 +115,7 @@ evalLit (Exts.PrimString _ x _) = makeLiteral x
 
 -- BEGIN evalPattern
 
--- BEGIN evalPApp
+-- BEGIN evalPatternApp
 asNameBind :: (GraphAndRef, Maybe String) -> Maybe SgBind
 asNameBind (GraphAndRef _ ref, mAsName) = case mAsName of
   Nothing -> Nothing
@@ -190,11 +195,11 @@ makeNestedPatternGraph applyIconName funStr argVals = nestedApplyResult
                         , nameAndPort applyIconName (resultPort pAppNode))
 
 
-evalPApp :: Show l =>
+evalPatternApp :: Show l =>
   Exts.QName l
   -> [SimpPat l]
   -> State IDState (SyntaxGraph, NameAndPort)
-evalPApp name patterns = case patterns of
+evalPatternApp name patterns = case patterns of
   [] -> makeBox constructorName
   _ ->  do
     patName <- getUniqueName
@@ -203,9 +208,9 @@ evalPApp name patterns = case patterns of
   where
     constructorName = qNameToString name
 
--- END evalPApp
+-- END evalPatternApp
 
--- BEGIN evalPLit
+-- BEGIN evalPatternLit
 showLiteral :: Exts.Literal l -> String
 showLiteral (Exts.Int _ x _) = show x
 showLiteral (Exts.Char _ x _) = show x
@@ -220,12 +225,12 @@ showLiteral (Exts.PrimDouble _ x _) = show x
 showLiteral (Exts.PrimChar _ x _) = show x
 showLiteral (Exts.PrimString _ x _) = show x
 
-evalPLit ::
+evalPatternLit ::
   Exts.Sign l -> Exts.Literal l -> State IDState (SyntaxGraph, NameAndPort)
-evalPLit sign l = case sign of
+evalPatternLit sign l = case sign of
   Exts.Signless _ -> evalLit l
   Exts.Negative _ -> makeBox ('-' : showLiteral l)
--- END evalPLit
+-- END evalPatternLit
 
 evalPAsPat :: Show l =>
   Exts.Name l -> SimpPat l -> State IDState (GraphAndRef, Maybe String)
@@ -245,8 +250,8 @@ makePatternResult
 evalPattern :: Show l => SimpPat l -> State IDState (GraphAndRef, Maybe String)
 evalPattern p = case p of
   SpVar _ n -> pure (GraphAndRef mempty (Left $ nameToString n), Nothing)
-  SpLit _ sign lit -> makePatternResult $ evalPLit sign lit
-  SpApp _ name patterns -> makePatternResult $ evalPApp name patterns
+  SpLit _ sign lit -> makePatternResult $ evalPatternLit sign lit
+  SpApp _ name patterns -> makePatternResult $ evalPatternApp name patterns
   SpAsPat _ name pat -> evalPAsPat name pat
   SpWildCard _ -> makePatternResult $ makeBox "_"
   -- _ -> error ("evalPattern todo: " <> show p)
@@ -586,26 +591,20 @@ evalExp c x = case x of
   SeCase _ expr alts -> grNamePortToGrRef <$> evalCase c expr alts
   SeMultiIf _ selectorsAndVals
     -> grNamePortToGrRef <$> evalMultiIf c selectorsAndVals
-  -- SeListComp l e1 e2 -> evalListComp c l e1 e2
-
--- -- BEGIN evalDecl
-
--- evalListComp :: Show l =>
---   l -> EvalContext -> SimpExp l -> SimpExp l -> State IDState SyntaxGraph
--- evalListComp l bindContext e1 e2 =  do
-  
---   -- ((GraphAndRef patGraph patRef, mPatAsName), GraphAndRef rhsGraph rhsRef) <-
---   -- bindOrAltHelper c pat e
-
---   -- makeBox
-
---   -- getUniqueName = fmap NodeName getId
-
---   -- evaluatedDecl = evalDecl mempty d >>= showTopLevelBinds
---   -- graph = evalState evaluatedDecl initialIdState
---   let
+  SeListComp l e1 e2 -> evalListComp c l e1 e2
 
 
+evalListComp :: Show l =>
+  EvalContext -> l -> SimpExp l -> SimpExp l -> State IDState GraphAndRef
+evalListComp bindContext l  e1 e2 =  do
+  listCompName <- getUniqueName
+  let node = LiteralNode "listComp"
+  let graph = syntaxGraphFromNodes [Named listCompName (mkEmbedder node)]
+  pure (GraphAndRef graph  (Right( nameAndPort listCompName (resultPort node)))  )
+  -- listCompName <- getUniqueName
+  -- let finalGraph = SyntaxGraph mempty mempty mempty mempty mempty
+    
+  -- pure (finalGraph, nameAndPort listCompName (resultPort lambdaNode))
 
 evalPatBind :: Show l =>
   l -> EvalContext -> SimpPat l -> SimpExp l -> State IDState SyntaxGraph
