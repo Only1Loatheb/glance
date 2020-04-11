@@ -345,7 +345,6 @@ desugarListComp :: Show l => [Exts.Stmt l] -> Exts.Exp l
 desugarListComp (Exts.Generator l pat e : stmtsTail) = Exts.App l (Exts.App l (makeVarExp l "listComp") e) (Exts.Lambda l [pat] (desugarListComp stmtsTail))
 desugarListComp (Exts.Qualifier l e : stmtsTail)     = Exts.App l (Exts.App l (makeVarExp l "listComp") e) (desugarListComp stmtsTail)
 desugarListComp (Exts.LetStmt l binds : stmtsTail)   = Exts.Let l binds (desugarListComp stmtsTail)
-desugarListComp [Exts.Qualifier _ e]                 = e
 desugarListComp stmt                                 = error $ "Unsupported syntax in desugarListComp: " <> show stmt
 
 simpExpToHsExp :: Show a => SimpExp a -> Exts.Exp a

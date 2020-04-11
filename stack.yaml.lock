@@ -11,6 +11,13 @@ packages:
       sha256: 77cb8ad5184a53e8b58d0c3569373f8082443def4b9c59e0e1c5a7b8b091da1f
   original:
     hackage: diagrams-graphviz-1.4.1
+- completed:
+    hackage: data-stringmap-1.0.1.1@sha256:93261201485505eb8c1a4e5c76f7c16fb1bb6095d410af0e1ea9252629a27b70,3903
+    pantry-tree:
+      size: 1004
+      sha256: 5244803e68d3ab34e2d0c025d3111cf88bfa10c3235f7ec26a982b3a0ec90c65
+  original:
+    hackage: data-stringmap-1.0.1.1
 snapshots:
 - completed:
     size: 504771

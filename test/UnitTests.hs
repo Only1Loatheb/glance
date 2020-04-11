@@ -62,7 +62,7 @@ renameSyntaxNode nameMap node counter = case node of
           (fmap laValue subNodes)
   _ -> (node, nameMap, counter)
 
-renameNodeFolder :: ([SgNamedNode], NameMap, Int) -> SgNamedNode -> ([SgNamedNode], NameMap, Int)
+renameNodeFolder :: (Set.Set SgNamedNode, NameMap, Int) -> SgNamedNode -> (Set.Set SgNamedNode, NameMap, Int)
 renameNodeFolder state@(renamedNodes, nameMap, counter) node@(Named nodeName _) = case lookup nodeName nameMap of
   Nothing -> (newNamedNode:renamedNodes, newNameMap, newCounter) where
     (newNamedNode, newNameMap, newCounter) = renameNode nameMap counter node

@@ -141,7 +141,7 @@ data Edge = Edge { edgeOptions :: [EdgeOption]
 
 -- | A drawing is a map from names to Icons, a list of edges,
 -- and a map of names to subDrawings
-data Drawing = Drawing [NamedIcon] [Edge] deriving (Show, Eq)
+data Drawing = Drawing [NamedIcon] (Set Edge) deriving (Show, Eq)
 
 -- | IDState is an Abstract Data Type that is used as a state whose value is a
 -- unique id.

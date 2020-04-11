@@ -125,7 +125,7 @@ connectMaybePorts (Edge opts ends (NameAndPort icon0 Nothing, NameAndPort icon1 
 
 makeConnections ::
    (RealFloat n, Typeable n, Renderable (Path V2 n) b) =>
-     [Edge] -> QDiagram b V2 n Any -> QDiagram b V2 n Any
+     (Set.Set Edge) -> QDiagram b V2 n Any -> QDiagram b V2 n Any
 makeConnections edges = applyAll connections
   where
     connections = map connectMaybePorts edges
@@ -226,7 +226,7 @@ lookupReference bindings ref@(Left originalS) = lookupHelper ref where
 deleteBindings :: IconGraph -> IconGraph
 deleteBindings (IconGraph a b c d _) = IconGraph a b c d mempty
 
-makeEdgesCore :: [Sink] -> [(String, Reference)] -> ([Sink], [Edge])
+makeEdgesCore :: [Sink] -> [(String, Reference)] -> ([Sink], (Set.Set Edge))
 makeEdgesCore sinks bindings = partitionEithers $ fmap renameOrMakeEdge sinks
   where
     renameOrMakeEdge :: (String, NameAndPort) -> Either (String, NameAndPort) Edge

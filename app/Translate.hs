@@ -15,7 +15,10 @@ import qualified Data.Graph.Inductive.PatriciaTree as FGR
 import Data.List(unzip5, partition, intercalate)
 import qualified Data.Map as Map
 import Data.Maybe(fromMaybe, mapMaybe)
+import           Data.Set(Set)
 import qualified Data.Set as Set
+import           Data.StringMap (StringMap)
+import qualified Data.StringMap as SMap
 
 import qualified Language.Haskell.Exts as Exts
 import qualified Language.Haskell.Exts.Pretty as PExts
@@ -58,11 +61,11 @@ import Util(makeSimpleEdge, nameAndPort, justName)
 -- names.
 makeAsBindGraph :: Reference -> [Maybe String] -> SyntaxGraph
 makeAsBindGraph ref asNames
-  = bindsToSyntaxGraph $ mapMaybe makeBind asNames
+  = bindsToSyntaxGraph (SMap.fromList (mapMaybe makeBind asNames))
   where
     makeBind mName = case mName of
       Nothing -> Nothing
-      Just asName -> Just $ SgBind asName ref
+      Just asName -> Just $ (asName, ref)
 
 grNamePortToGrRef :: (SyntaxGraph, NameAndPort) -> GraphAndRef
 grNamePortToGrRef (graph, np) = GraphAndRef graph (Right np)
@@ -119,7 +122,7 @@ evalLit (Exts.PrimString _ x _) = makeLiteral x
 asNameBind :: (GraphAndRef, Maybe String) -> Maybe SgBind
 asNameBind (GraphAndRef _ ref, mAsName) = case mAsName of
   Nothing -> Nothing
-  Just asName -> Just $ SgBind asName ref
+  Just asName -> Just ( asName, ref)
 
 patternArgumentMapper ::
   ((GraphAndRef, Maybe String), t)
@@ -130,23 +133,25 @@ patternArgumentMapper (asGraphAndRef@(graphAndRef, _), port)
     graph = graphAndRefToGraph graphAndRef
     patName = patternName asGraphAndRef
 
-    eitherVal = case graph of
-      (SyntaxGraph [namedNode] [] _ _ _) -> Right (namedNode, graph)
-      _ -> Left (graphAndRef, port)
+    nodes = sgNodes graph 
+    eitherVal = if Set.size nodes == 1 && Set.size (sgEdges graph) == 0
+      then Right ((Set.elemAt 0 nodes), graph)
+      else Left (graphAndRef, port)
 
 
 graphToTuple ::
   SyntaxGraph
-  -> ([SgNamedNode], [Edge], [SgSink], [SgBind], Map.Map NodeName NodeName)
+  -> (Set.Set SgNamedNode, (Set.Set Edge), (Set.Set SgSink), (SMap.StringMap Reference), Map.Map NodeName NodeName)
 graphToTuple (SyntaxGraph a b c d e) = (a, b, c, d, e)
 
 graphsToComponents ::
   [SyntaxGraph]
-  -> ([SgNamedNode], [Edge], [SgSink], [SgBind], Map.Map NodeName NodeName)
-graphsToComponents graphs
-  = (mconcat a, mconcat b, mconcat c, mconcat d, mconcat e)
-  where
-    (a, b, c, d, e) = unzip5 $ fmap graphToTuple graphs
+  -> (Set.Set SgNamedNode, (Set.Set Edge), (Set.Set SgSink), (SMap.StringMap Reference), Map.Map NodeName NodeName)
+graphsToComponents graphs = graphToTuple $ mconcat graphs
+
+  -- = (mconcat a, mconcat b, mconcat c, mconcat d, mconcat e)
+  -- where
+  --   (a, b, c, d, e) = unzip5 $ fmap graphToTuple graphs
 
 makeNestedPatternGraph ::
   NodeName
@@ -179,7 +184,7 @@ makeNestedPatternGraph applyIconName funStr argVals = nestedApplyResult
     icons = [Named applyIconName (mkEmbedder pAppNode)]
 
     asNameBinds = mapMaybe asNameBind argVals
-    allBinds = nestedBinds <> asNameBinds
+    allBinds = SMap.union nestedBinds (SMap.fromList asNameBinds)
 
     newEMap = Map.fromList
               ((\(Named n _) -> (n, applyIconName))  <$> nestedArgs)
@@ -650,8 +655,8 @@ showTopLevelBinds :: SyntaxGraph -> State IDState SyntaxGraph
 showTopLevelBinds gr = do
   let
     binds = sgBinds gr
-    addBind (SgBind _ (Left _)) = pure mempty
-    addBind (SgBind patName (Right port)) = do
+    addBind (_, (Left _)) = pure mempty
+    addBind (patName, (Right port)) = do
       uniquePatName <- getUniqueName
       let
         icons = [Named uniquePatName $ mkEmbedder (BindNameNode patName)]

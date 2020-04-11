@@ -82,7 +82,7 @@ drawingToGraphvizScaleFactor = 0.15
 drawingToIconGraph :: Drawing -> Gr NamedIcon (EmbedInfo Edge)
 drawingToIconGraph (Drawing nodes edges) =
   mkGraph nodes labeledEdges where
-    labeledEdges = fmap makeLabeledEdge edges
+    labeledEdges = fmap makeLabeledEdge (Set.toList edges)
 
     makeLabeledEdge :: Edge -> (NamedIcon, NamedIcon, EmbedInfo Edge)
     makeLabeledEdge e@(Edge _ (NameAndPort n1 _, NameAndPort n2 _))
