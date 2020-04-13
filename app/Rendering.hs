@@ -24,7 +24,7 @@ import           Diagrams.Prelude               ( toName
 import Diagrams.TwoD.GraphViz(mkGraph, getGraph, layoutGraph')
 import qualified Data.GraphViz as GV
 import qualified Data.GraphViz.Attributes.Complete as GVA
-import qualified Data.IntMap as IM
+import qualified Data.IntMap as IMap
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
@@ -284,7 +284,7 @@ renderIconGraph debugInfo fullGraphWithInfo = do
     parentGraph
       = ING.nmap niVal $ ING.labfilter (isNothing . niParent) fullGraphWithInfo
     fullGraph = ING.nmap niVal fullGraphWithInfo
-    iconInfo = IM.fromList
+    iconInfo = IMap.fromList
                  $ first nodeNameToInt . namedToTuple . snd
                  <$> ING.labNodes fullGraph
 

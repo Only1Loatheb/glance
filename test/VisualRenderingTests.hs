@@ -35,7 +35,7 @@ nodeNames@[n0, n1, n2, n3, n4, n5, n6, n7, n8, n9, n10]
 ni0, ni1, ni2, ni3, ni4, ni5, ni6, ni7, ni8, ni9, ni10 :: Icon -> NamedIcon
 [ni0, ni1, ni2, ni3, ni4, ni5, ni6, ni7, ni8, ni9, ni10]
   = fmap Named nodeNames
-
+{-
 textBoxIcons :: [NamedIcon]
 textBoxIcons =
   [ ni2 (TextBoxIcon "n2")
@@ -148,7 +148,7 @@ lambdaDia = Drawing icons []
 --       , ni1 CaseResultIcon
 --       , ni2 $ MultiIfIcon 3
 --       ]
-
+-}
 
 --renderTests :: IO (Diagram B)
 renderTests :: SpecialBackend b Double => IO (SpecialQDiagram b Double)
@@ -159,12 +159,12 @@ renderTests = do
   where
     -- TODO Re-enable tests
     allDrawings = [
-      nestedCaseDrawing
-      , nestedMultiIfDrawing
-      , flatCaseDrawing
-      , flatMultiIfDrawing
-      , nestedPatternAppDia
-      -- , nestedApplyDia
-      , lambdaDia
-      -- , nestedLambdaDia
+      -- nestedCaseDrawing
+      -- , nestedMultiIfDrawing
+      -- , flatCaseDrawing
+      -- , flatMultiIfDrawing
+      -- , nestedPatternAppDia
+      -- -- , nestedApplyDia
+      -- , lambdaDia
+      -- -- , nestedLambdaDia
       ]

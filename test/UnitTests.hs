@@ -6,6 +6,8 @@ import Test.HUnit
 
 import Data.List(foldl', sort, sortOn)
 import qualified Data.Map as Map
+import           Data.Set(Set)
+import qualified Data.Set as Set
 
 import Translate(translateStringToSyntaxGraph)
 import TranslateCore(SyntaxGraph(..), SgBind(..))
@@ -22,11 +24,11 @@ assertAllEqual items = case items of
 
 -- TODO Remove the Lambda node's node list.
 assertEqualSyntaxGraphs :: [String] -> Test
-assertEqualSyntaxGraphs ls = assertAllEqual $ fmap (renameGraph . translateStringToSyntaxGraph) ls
+assertEqualSyntaxGraphs ls = assertAllEqual $ fmap ( translateStringToSyntaxGraph) ls
 
 -- BEGIN renameGraph --
 type NameMap = [(NodeName, NodeName)]
-
+{-
 -- TODO Revisit this function
 renameNode
   :: NameMap -> Int -> SgNamedNode -> (SgNamedNode, NameMap, Int)
@@ -64,7 +66,7 @@ renameSyntaxNode nameMap node counter = case node of
 
 renameNodeFolder :: (Set.Set SgNamedNode, NameMap, Int) -> SgNamedNode -> (Set.Set SgNamedNode, NameMap, Int)
 renameNodeFolder state@(renamedNodes, nameMap, counter) node@(Named nodeName _) = case lookup nodeName nameMap of
-  Nothing -> (newNamedNode:renamedNodes, newNameMap, newCounter) where
+  Nothing -> (Set.insert newNamedNode renamedNodes, newNameMap, newCounter) where
     (newNamedNode, newNameMap, newCounter) = renameNode nameMap counter node
   Just _ -> error $ "renameNode: node already in name map. State = " ++ show state ++ " Node = " ++ show node
 
@@ -78,7 +80,7 @@ renameEdge nameMap (Edge options (np1, np2)) =
   Edge options (renameNamePort nameMap np1, renameNamePort nameMap np2)
 
 renameSource :: NameMap -> SgBind -> SgBind
-renameSource nameMap (SgBind str ref) = SgBind str newRef where
+renameSource nameMap (str, ref) = (str, newRef) where
   newRef = case ref of
     Left _ -> ref
     Right namePort@(NameAndPort _ _) -> Right $ renameNamePort nameMap namePort
@@ -103,7 +105,7 @@ renameGraph (SyntaxGraph nodes edges sinks sources embedMap) =
     renamedSources = sort $ fmap (renameSource nameMap) sources
     renamedEmbedMap
       = Map.fromList $ sort $ renameEmbed nameMap <$> Map.toList embedMap
-
+-}
 -- END renameGraph
 
 -- END Unit Test Helpers --

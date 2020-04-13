@@ -11,7 +11,7 @@ module Icons
     ) where
 
 import qualified Control.Arrow as Arrow
-import qualified Data.IntMap as IM
+import qualified Data.IntMap as IMap
 import Data.List(find)
 import Data.Maybe(listToMaybe, isJust, fromJust, mapMaybe)
 
@@ -26,7 +26,7 @@ import Types(Icon(..)
 
 findIconFromName :: IconInfo -> NodeName -> NamedIcon
 findIconFromName icons name@(NodeName nameInt)
-  = Named name $ IM.findWithDefault
+  = Named name $ IMap.findWithDefault
     (error $ "findIconFromName: icon not found.\nicons="
       <> show icons <> "\nname=" <> show name)
     nameInt

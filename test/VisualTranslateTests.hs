@@ -16,6 +16,9 @@ import Translate(translateStringToCollapsedGraphAndDecl
 import TranslateCore(syntaxGraphToFglGraph, SyntaxGraph(..))
 import Rendering(renderIngSyntaxGraph)
 import Symbols(textBox)
+import qualified Data.Set as Set
+import qualified Data.Map as Map
+import qualified Data.StringMap as SMap
 
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
@@ -25,13 +28,13 @@ prettyShowList ls = intercalate "\n" $ fmap show ls
 prettyShowSyntaxGraph :: SyntaxGraph -> String
 prettyShowSyntaxGraph (SyntaxGraph nodes edges sinks sources _) =
   "SyntaxGraph nodes:\n" ++
-  prettyShowList nodes ++
+  prettyShowList (Set.toList nodes) ++
   "\nSyntaxGraph edges:\n" ++
-  prettyShowList edges ++
+  prettyShowList (Set.toList edges) ++
   "\nSyntaxGRaph sinks:\n" ++
-  prettyShowList sinks ++
+  prettyShowList (Set.toList sinks) ++
   "\nSyntaxGraph sources:\n" ++
-  prettyShowList sources
+  prettyShowList (SMap.toList sources)
 
 composeTests :: [String]
 composeTests = [

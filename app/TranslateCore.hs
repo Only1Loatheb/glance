@@ -34,8 +34,8 @@ import qualified Data.Graph.Inductive.Graph as ING
 import qualified Data.Graph.Inductive.PatriciaTree as FGR
 import Data.List(find)
 import qualified Data.Map as Map
-import           Data.StringMap (StringMap)
 import qualified Data.StringMap as SMap
+import qualified Data.IntMap as IMap
 import Data.Semigroup(Semigroup, (<>))
 import qualified Data.Set as Set
 
@@ -71,10 +71,10 @@ data SyntaxGraph = SyntaxGraph {
   sgNodes :: (Set.Set SgNamedNode),
   sgEdges :: (Set.Set Edge),
   sgSinks :: (Set.Set SgSink),
-  sgBinds :: (SMap.StringMap Reference ),
+  sgBinds :: (SMap.StringMap Reference ), -- Reference -> Reference 
   -- sgEmbedMap keeps track of nodes embedded in other nodes. If (child, parent)
   -- is in the Map, then child is embedded inside parent.
-  sgEmbedMap :: Map.Map NodeName NodeName
+  sgEmbedMap :: IMap.IntMap NodeName -- NodeName -> NodeName
   } deriving (Show, Eq)
 
 instance Semigroup SyntaxGraph where
@@ -86,7 +86,7 @@ instance Semigroup SyntaxGraph where
       (Set.union edges1 edges2)
       (Set.union sinks1 sinks2)
       (SMap.union sources1 sources2)
-      (map1 <> map2)
+      (IMap.union map1 map2)
 
 instance Monoid SyntaxGraph where
   mempty = SyntaxGraph Set.empty Set.empty Set.empty SMap.empty mempty
@@ -99,16 +99,16 @@ data GraphAndRef = GraphAndRef SyntaxGraph Reference
 syntaxGraphFromNodes :: Set.Set SgNamedNode -> SyntaxGraph
 syntaxGraphFromNodes icons = SyntaxGraph icons Set.empty Set.empty SMap.empty mempty
 
-syntaxGraphFromNodesEdges :: Set.Set SgNamedNode -> (Set.Set Edge) -> SyntaxGraph
+syntaxGraphFromNodesEdges :: Set.Set SgNamedNode -> Set.Set Edge -> SyntaxGraph
 syntaxGraphFromNodesEdges icons edges = SyntaxGraph icons edges Set.empty SMap.empty mempty
 
-bindsToSyntaxGraph :: (SMap.StringMap Reference) -> SyntaxGraph
-bindsToSyntaxGraph binds = SyntaxGraph Set.empty Set.empty Set.empty SMap.empty mempty
+bindsToSyntaxGraph :: SMap.StringMap Reference -> SyntaxGraph
+bindsToSyntaxGraph binds = SyntaxGraph Set.empty Set.empty Set.empty binds mempty
 
-sinksToSyntaxGraph :: (Set.Set SgSink) -> SyntaxGraph
+sinksToSyntaxGraph :: Set.Set SgSink -> SyntaxGraph
 sinksToSyntaxGraph sinks = SyntaxGraph Set.empty Set.empty sinks SMap.empty mempty
 
-edgesToSyntaxGraph :: (Set.Set Edge) -> SyntaxGraph
+edgesToSyntaxGraph :: Set.Set Edge -> SyntaxGraph
 edgesToSyntaxGraph edges = SyntaxGraph Set.empty edges mempty SMap.empty mempty
 
 graphAndRefToGraph :: GraphAndRef -> SyntaxGraph
@@ -210,7 +210,7 @@ namesInPattern (graphAndRef, mName) = case mName of
   Just n -> n : otherNames
   where
     otherNames = namesInPatternHelper graphAndRef
-    
+
     namesInPatternHelper :: GraphAndRef -> [String]
     namesInPatternHelper (GraphAndRef graph ref) = case ref of
       Left str -> [str]
@@ -220,14 +220,14 @@ namesInPattern (graphAndRef, mName) = case mName of
 -- TODO: Might want to present some indication if there is a reference cycle.
 lookupReference :: (SMap.StringMap Reference) -> Reference -> Reference
 lookupReference _ ref@(Right _) = ref
-lookupReference bindings ref@(Left originalS) = lookupHelper bindings (Just ref) originalS where
+lookupReference bindings ref@(Left originalS) = lookupReference' (Just ref) where
 
-  lookupHelper :: (SMap.StringMap Reference) -> Maybe Reference -> String -> Reference
-  lookupHelper _ (Just newRef@(Right _)) _ = newRef
-  lookupHelper bindings (Just newRef@(Left s)) originalS = case  SMap.lookup s  bindings of
-    foundRef -> failIfCycle originalS foundRef $ lookupHelper bindings foundRef originalS
-    fail -> newRef
-  lookupHelper _ _Nothing _  = error "lookupReference filed"
+  lookupReference' :: Maybe Reference -> Reference
+  lookupReference'  (Just newRef@(Right _)) = newRef
+  lookupReference'  (Just newRef@(Left s)) = case  SMap.lookup s  bindings of
+    foundRef -> failIfCycle originalS foundRef $ lookupReference' foundRef
+    _ -> newRef
+  lookupReference'  _Nothing  = error "lookupReference filed"
 
 failIfCycle ::  String -> Maybe Reference -> Reference -> Reference
 failIfCycle originalS (Just r@(Left newStr)) res  = if newStr == originalS then r else res
@@ -289,7 +289,7 @@ nodeToIcon (Embedder embeddedNodes node) = case node of
   (BindNameNode s) -> BindTextBoxIcon s
   (LiteralNode s) -> TextBoxIcon s
   (FunctionDefNode labels str bodyNodes)
-    -> nestedLambdaToIcon labels embeddedNodes str bodyNodes 
+    -> nestedLambdaToIcon labels embeddedNodes str bodyNodes
   CaseResultNode -> CaseResultIcon
   (CaseOrMultiIfNode tag x)
     -> nestedCaseOrMultiIfNodeToIcon tag x embeddedNodes
@@ -318,16 +318,16 @@ nestedApplySyntaxNodeToIcon flavor numArgs args =
     headIcon = makeArg args (inputPort dummyNode)
     argList = fmap (makeArg args) argPorts
 
-nestedLambdaToIcon :: 
+nestedLambdaToIcon ::
   [String]  -- labels
   -> Set.Set (NodeName, Edge)  -- embedded icons
   -> String
   -> Set.Set NodeName  -- body nodes
   -> Icon
 nestedLambdaToIcon labels embeddedNodes str =
-  LambdaIcon labels (Labeled embeddedBodyNode str) 
+  LambdaIcon labels (Labeled embeddedBodyNode str)
   where
-    dummyNode = FunctionDefNode [] str Set.empty 
+    dummyNode = FunctionDefNode [] str Set.empty
     embeddedBodyNode = makeArg embeddedNodes (inputPort dummyNode)
 
 nestedCaseOrMultiIfNodeToIcon ::
@@ -352,9 +352,10 @@ nestedPatternNodeToIcon str children = NestedPatternApp
 makeLNode :: SgNamedNode -> ING.LNode SgNamedNode
 makeLNode namedNode@(Named (NodeName name) _) = (name, namedNode)
 
-lookupInEmbeddingMap :: NodeName -> Map.Map NodeName NodeName -> NodeName
+lookupInEmbeddingMap :: NodeName -> IMap.IntMap NodeName -> NodeName
 lookupInEmbeddingMap origName eMap = lookupHelper origName where
-  lookupHelper name = case Map.lookup name eMap of
+  lookupHelper :: NodeName -> NodeName
+  lookupHelper name@(NodeName nameInt) = case IMap.lookup nameInt eMap of
     Nothing -> name
     Just parent -> if parent == origName
       then error $ "lookupInEmbeddingMap: Found cycle. Node = "

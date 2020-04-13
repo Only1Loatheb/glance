@@ -39,7 +39,7 @@ import Diagrams.TwoD.Text(Text)
 
 import Control.Applicative(Applicative(..))
 import qualified Data.Graph.Inductive as ING
-import qualified Data.IntMap as IM
+import qualified Data.IntMap as IMap
 import Data.Set(Set, empty)
 import Data.Typeable(Typeable)
 
@@ -61,7 +61,7 @@ instance Applicative Labeled where
   pure x = Labeled x ""
   (Labeled f fStr) <*> (Labeled x xStr) = Labeled (f x) (fStr <> xStr)
 
-type IconInfo = IM.IntMap Icon
+type IconInfo = IMap.IntMap Icon
 
 -- | A datatype that represents an icon.
 -- The TextBoxIcon's data is the text that appears in the text box.

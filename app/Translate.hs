@@ -15,10 +15,9 @@ import qualified Data.Graph.Inductive.PatriciaTree as FGR
 import Data.List(unzip5, partition, intercalate)
 import qualified Data.Map as Map
 import Data.Maybe(fromMaybe, mapMaybe)
-import           Data.Set(Set)
 import qualified Data.Set as Set
-import           Data.StringMap (StringMap)
 import qualified Data.StringMap as SMap
+import qualified Data.IntMap as IMap
 
 import qualified Language.Haskell.Exts as Exts
 import qualified Language.Haskell.Exts.Pretty as PExts
@@ -38,7 +37,7 @@ import TranslateCore(Reference, SyntaxGraph(..), EvalContext, GraphAndRef(..)
                     , getUniqueString, bindsToSyntaxGraph, SgBind(..)
                     , graphAndRefToGraph, initialIdState)
 import Types(AnnotatedGraph, Labeled(..), NameAndPort(..), IDState,
-             Edge, SyntaxNode(..), NodeName, SgNamedNode,
+             Edge, SyntaxNode(..), NodeName(..), SgNamedNode,
              LikeApplyFlavor(..), CaseOrMultiIfTag(..), Named(..)
             , mkEmbedder)
 import Util(makeSimpleEdge, nameAndPort, justName)
@@ -141,12 +140,12 @@ patternArgumentMapper (asGraphAndRef@(graphAndRef, _), port)
 
 graphToTuple ::
   SyntaxGraph
-  -> (Set.Set SgNamedNode, (Set.Set Edge), (Set.Set SgSink), (SMap.StringMap Reference), Map.Map NodeName NodeName)
+  -> (Set.Set SgNamedNode, (Set.Set Edge), (Set.Set SgSink), (SMap.StringMap Reference), IMap.IntMap NodeName)
 graphToTuple (SyntaxGraph a b c d e) = (a, b, c, d, e)
 
 graphsToComponents ::
   [SyntaxGraph]
-  -> (Set.Set SgNamedNode, (Set.Set Edge), (Set.Set SgSink), (SMap.StringMap Reference), Map.Map NodeName NodeName)
+  -> (Set.Set SgNamedNode, (Set.Set Edge), (Set.Set SgSink), (SMap.StringMap Reference), IMap.IntMap NodeName)
 graphsToComponents graphs = graphToTuple $ mconcat graphs
 
   -- = (mconcat a, mconcat b, mconcat c, mconcat d, mconcat e)
@@ -181,18 +180,18 @@ makeNestedPatternGraph applyIconName funStr argVals = nestedApplyResult
     combinedGraph = combineExpressions True unnestedArgsAndPort
 
     pAppNode = PatternApplyNode funStr argList
-    icons = [Named applyIconName (mkEmbedder pAppNode)]
+    icons = Set.singleton (Named applyIconName (mkEmbedder pAppNode))
 
     asNameBinds = mapMaybe asNameBind argVals
     allBinds = SMap.union nestedBinds (SMap.fromList asNameBinds)
 
-    newEMap = Map.fromList
-              ((\(Named n _) -> (n, applyIconName))  <$> nestedArgs)
+    newEMap = IMap.fromList
+              ((\(Named (NodeName n) _) -> (n, applyIconName))  <$> (Set.toList nestedArgs))
               <> nestedEMaps
 
     newGraph = SyntaxGraph
                icons
-               []
+               Set.empty
                nestedSinks
                allBinds
                newEMap
@@ -472,7 +471,7 @@ evalCaseHelper numAlts caseIconName resultIconNames
     (patRhsConnected, altGraphs, patRefs, rhsRefs, asNames) = unzip5 evaledAlts
     combindedAltGraph = mconcat altGraphs
     caseNode = CaseOrMultiIfNode CaseTag numAlts
-    icons = [Named caseIconName (mkEmbedder caseNode)]
+    icons = Set.singleton (Named caseIconName (mkEmbedder caseNode))
     caseGraph = syntaxGraphFromNodes icons
     expEdge = (expRef, nameAndPort caseIconName (inputPort caseNode))
     patEdges = zip patRefs $ map (nameAndPort caseIconName) casePatternPorts
@@ -485,8 +484,8 @@ evalCaseHelper numAlts caseIconName resultIconNames
       Left _ -> mempty
       Right rhsPort -> syntaxGraphFromNodesEdges rhsNewIcons rhsNewEdges
         where
-          rhsNewIcons = [Named resultIconName (mkEmbedder CaseResultNode)]
-          rhsNewEdges = [makeSimpleEdge (rhsPort, justName resultIconName)]
+          rhsNewIcons = Set.singleton (Named resultIconName (mkEmbedder CaseResultNode))
+          rhsNewEdges = Set.singleton (makeSimpleEdge (rhsPort, justName resultIconName))
 
     caseResultGraphs =
       mconcat
@@ -550,20 +549,22 @@ evalLambda _ context patterns expr functionName = do
   GraphAndRef rhsRawGraph rhsRef <- evalExp rhsContext expr
   let
     paramNames = fmap patternName patternValsWithAsNames
-    enclosedNodeNames = Set.fromList $ naName <$> sgNodes combinedGraph
+    enclosedNodeNames =  Set.map naName (sgNodes combinedGraph)
     lambdaNode = FunctionDefNode paramNames functionName enclosedNodeNames  -- TODO shouldnt be functionName?
     lambdaPorts = map (nameAndPort lambdaName) $ argumentPorts lambdaNode
     patternGraph = mconcat $ fmap graphAndRefToGraph patternVals
 
-    (patternEdges, newBinds) =
+    (patternEdges', newBinds') =
       partitionEithers $ zipWith makePatternEdges patternVals lambdaPorts
 
-    icons = [Named lambdaName (mkEmbedder lambdaNode)]
+    patternEdges = Set.fromList patternEdges'
+    newBinds = SMap.fromList newBinds'
+    icons = Set.singleton (Named lambdaName (mkEmbedder lambdaNode))
     returnPort = nameAndPort lambdaName (inputPort lambdaNode)
     (newEdges, newSinks) = case rhsRef of
-      Left s -> (patternEdges, [SgSink s returnPort])
+      Left s -> (patternEdges, Set.singleton (SgSink s returnPort))
       Right rhsPort ->
-        (makeSimpleEdge (rhsPort, returnPort) : patternEdges, mempty)
+        (Set.insert (makeSimpleEdge (rhsPort, returnPort)) patternEdges, mempty)
     finalGraph = SyntaxGraph icons newEdges newSinks newBinds mempty
 
     asBindGraph = mconcat $ zipWith
@@ -582,7 +583,7 @@ evalLambda _ context patterns expr functionName = do
     makePatternEdges :: GraphAndRef -> NameAndPort -> Either Edge SgBind
     makePatternEdges (GraphAndRef _ ref) lamPort = case ref of
       Right patPort -> Left $ makeSimpleEdge (lamPort, patPort)
-      Left str -> Right $ SgBind str (Right lamPort)
+      Left str -> Right $ (str, (Right lamPort))
 
 -- END generalEvalLambda
 
@@ -604,7 +605,7 @@ evalListComp :: Show l =>
 evalListComp bindContext l  e1 e2 =  do
   listCompName <- getUniqueName
   let node = LiteralNode "listComp"
-  let graph = syntaxGraphFromNodes [Named listCompName (mkEmbedder node)]
+  let graph = syntaxGraphFromNodes $ Set.singleton $ Named listCompName (mkEmbedder node)
   pure (GraphAndRef graph  (Right( nameAndPort listCompName (resultPort node)))  )
   -- listCompName <- getUniqueName
   -- let finalGraph = SyntaxGraph mempty mempty mempty mempty mempty
@@ -617,14 +618,17 @@ evalPatBind _ c pat e = do
   ((GraphAndRef patGraph patRef, mPatAsName), GraphAndRef rhsGraph rhsRef) <-
     bindOrAltHelper c pat e
   let
-    (newEdges, newSinks, bindings) = case patRef of
-      (Left s) -> (mempty, mempty, [SgBind s rhsRef])
-      (Right patPort) -> case rhsRef of
-        (Left rhsStr) -> (mempty, [SgSink rhsStr patPort], mempty)
-        (Right rhsPort) -> ([makeSimpleEdge (rhsPort, patPort)], mempty, mempty)
+    (newEdges, newSinks, bindings) = evalPatBindHelper patRef rhsRef
     asBindGraph = makeAsBindGraph rhsRef [mPatAsName]
     gr = asBindGraph <> SyntaxGraph mempty newEdges newSinks bindings mempty
   pure . makeEdges $ (gr <> rhsGraph <> patGraph)
+
+evalPatBindHelper :: Reference -> Reference -> (Set.Set Edge, Set.Set SgSink, SMap.StringMap Reference)
+evalPatBindHelper patRef rhsRef = case patRef of
+  (Left s) -> (mempty, mempty, SMap.singleton s rhsRef)
+  (Right patPort) -> case rhsRef of
+    (Left rhsStr) -> (mempty, Set.singleton (SgSink rhsStr patPort), SMap.empty)
+    (Right rhsPort) -> (Set.singleton (makeSimpleEdge (rhsPort, patPort)), mempty, SMap.empty)
 
 -- Pretty printing the entire type sig results in extra whitespace in the middle
 -- TODO May want to trim whitespace from (prettyPrint typeForNames)
@@ -655,15 +659,16 @@ showTopLevelBinds :: SyntaxGraph -> State IDState SyntaxGraph
 showTopLevelBinds gr = do
   let
     binds = sgBinds gr
+    addBind :: (String, Reference) -> State IDState SyntaxGraph
     addBind (_, (Left _)) = pure mempty
     addBind (patName, (Right port)) = do
       uniquePatName <- getUniqueName
       let
-        icons = [Named uniquePatName $ mkEmbedder (BindNameNode patName)]
-        edges = [makeSimpleEdge (port, justName uniquePatName)]
+        icons = Set.singleton (Named uniquePatName $ mkEmbedder (BindNameNode patName))
+        edges = Set.singleton (makeSimpleEdge (port, justName uniquePatName))
         edgeGraph = syntaxGraphFromNodesEdges icons edges
       pure edgeGraph
-  newGraph <- mconcat <$> mapM addBind binds
+  newGraph <- mconcat <$> mapM addBind (SMap.toList binds)
   pure $ newGraph <> gr
 
 translateDeclToSyntaxGraph :: Show l => SimpDecl l -> SyntaxGraph
