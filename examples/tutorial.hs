@@ -14,6 +14,10 @@ Function Application:
 Let's start with y = f x.
 The function f is applied to the argument x, and the result is bound to y.
 -}
+f0 = f1 a where
+  f1 b = f2 c where
+    f2 d = f3 e
+
 f _ = 3
 a = 1
 {--}

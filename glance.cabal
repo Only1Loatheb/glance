@@ -52,6 +52,7 @@ executable glance-exe
                , Icons
                , Rendering
                , Symbols
+               , StringSymbols
                , TextBox
                , Types
                , Util
@@ -99,6 +100,7 @@ test-suite glance-test
                , VisualGraphAlgorithmTests
                , Rendering
                , Symbols
+               , StringSymbols
                , TextBox
                , Types
                , Util

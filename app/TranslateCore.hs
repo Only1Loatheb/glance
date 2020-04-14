@@ -4,7 +4,7 @@ module TranslateCore(
   EvalContext,
   GraphAndRef(..),
   SgSink(..),
-  SgBind(..),
+  SgBind,
   syntaxGraphFromNodes,
   syntaxGraphFromNodesEdges,
   bindsToSyntaxGraph,
@@ -33,7 +33,6 @@ import Data.Either(partitionEithers)
 import qualified Data.Graph.Inductive.Graph as ING
 import qualified Data.Graph.Inductive.PatriciaTree as FGR
 import Data.List(find)
-import qualified Data.Map as Map
 import qualified Data.StringMap as SMap
 import qualified Data.IntMap as IMap
 import Data.Semigroup(Semigroup, (<>))
@@ -48,6 +47,11 @@ import Types(Labeled(..), Icon(..), SyntaxNode(..), Edge(..), EdgeOption(..)
             , EmbedderSyntaxNode)
 import Util(nameAndPort, makeSimpleEdge, justName, maybeBoolToBool
            , nodeNameToInt)
+import StringSymbols(
+  nTupleString
+  , nTupleSectionString
+  , nListString
+  )
 
 {-# ANN module "HLint: ignore Use list comprehension" #-}
 
@@ -228,6 +232,12 @@ lookupReference bindings ref@(Left originalS) = lookupReference' (Just ref) wher
     foundRef -> failIfCycle originalS foundRef $ lookupReference' foundRef
     _ -> newRef
   lookupReference'  _Nothing  = error "lookupReference filed"
+  -- lookupReference' :: Maybe Reference -> Reference
+  -- lookupReference'  (Just newRef@(Right _)) = newRef
+  -- lookupReference'  (Just (Left s)) 
+  --   = failIfCycle originalS foundRef $ lookupReference' foundRef where
+  --     foundRef =SMap.lookup s  bindings
+  -- lookupReference'  _Nothing  = error "lookupReference filed"
 
 failIfCycle ::  String -> Maybe Reference -> Reference -> Reference
 failIfCycle originalS (Just r@(Left newStr)) res  = if newStr == originalS then r else res
@@ -259,25 +269,6 @@ makeBox str = do
   let graph
         = syntaxGraphFromNodes (Set.singleton (Named name (mkEmbedder (LiteralNode str))))
   pure (graph, justName name)
-
-nTupleString :: Int -> String
-nTupleString n = '(' : replicate (n -1) ',' ++ ")"
-
--- TODO Unit tests for this
-nTupleSectionString :: [Bool] -> String
-nTupleSectionString bools = '(' : (commas ++ ")") where
-  commas = case concatMap trueToUnderscore bools of
-    [] -> []
-    (_:xs) -> xs
-
-  trueToUnderscore x = if x
-    then ",_"
-    else ","
-
-
-nListString :: Int -> String
-nListString 1 = "[•]"
-nListString n = '[' : replicate (n -1) ',' ++ "]"
 
 nodeToIcon :: EmbedderSyntaxNode -> Icon
 nodeToIcon (Embedder embeddedNodes node) = case node of

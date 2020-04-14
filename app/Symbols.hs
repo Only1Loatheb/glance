@@ -22,25 +22,33 @@ import Diagrams.Prelude hiding ((&), (#), Name)
 import Data.Maybe(fromMaybe)
 import Data.Either(partitionEithers)
 import Data.Typeable(Typeable)
-import           Data.List                      ( isPrefixOf )
+import Data.List(isPrefixOf)
 
-import Icons(findIconFromName)
-import           TextBox  ( bindTextBox
-                          , defaultLineWidth
-                          , transformCorrectedTextBox
-                          , transformableBindTextBox
-                          , multilineComment
-                          , letterHeight
-                          )
+import Icons(
+  findMaybeIconFromName
+  ,findMaybeIconsFromNames
+  )
+import TextBox ( 
+  bindTextBox
+  , defaultLineWidth
+  , transformCorrectedTextBox
+  , transformableBindTextBox
+  , multilineComment
+  , letterHeight
+  )
 
 import PortConstants(
   pattern InputPortConst,
   pattern ResultPortConst,
   argPortsConst,
+  resultPortsConst,
   isInputPort,
   mixedPorts,
-  resultPortsConst,
   casePortPairs
+  )
+import StringSymbols(
+  ifConditionConst
+  , tempVarPrefix
   )
 
 import DrawingColors(colorScheme, ColorStyle(..))
@@ -201,7 +209,7 @@ choosePortDiagram :: SpecialBackend b n =>
 choosePortDiagram str portAndSymbol portSymbolAndLabel
   = centerX symbol where
     symbol
-      | " tempvar" `isPrefixOf` str  = portAndSymbol
+      | tempVarPrefix `isPrefixOf` str  = portAndSymbol
       | not (null str) = portSymbolAndLabel
       | otherwise = portAndSymbol
 
@@ -234,17 +242,17 @@ iconToDiagram iconInfo icon = case icon of
     -> nestedApplyDia
        iconInfo
        flavor
-       (fmap (findIconFromName iconInfo) headIcon)
-       ((fmap . fmap) (findIconFromName iconInfo) args)
+       (findMaybeIconFromName iconInfo headIcon)
+       (findMaybeIconsFromNames iconInfo args)
   NestedPatternApp constructor args
     -> nestedPatternAppDia iconInfo (repeat $ patternC colorScheme) constructor args
   NestedCaseIcon args -> nestedCaseDia
                          iconInfo
-                         ((fmap . fmap) (findIconFromName iconInfo) args)
+                         (findMaybeIconsFromNames iconInfo args)
                          CaseTag
   NestedMultiIfIcon args -> nestedMultiIfDia
                             iconInfo
-                            ((fmap . fmap) (findIconFromName iconInfo) args)
+                            (findMaybeIconsFromNames iconInfo args)
                             MultiIfTag
 
 makeInputDiagram :: SpecialBackend b n
@@ -418,7 +426,7 @@ generalNestedMultiIf iconInfo symbolColor inConstBox inputAndArgs flavor
     resultPort = makeResultDiagram name
 
     inputDiagram
-      | flavor == MultiIfTag = transformCorrectedTextBox "True" symbolColor symbolColor
+      | flavor == MultiIfTag = transformCorrectedTextBox ifConditionConst symbolColor symbolColor
       | otherwise = makeInputDiagram iconInfo tp (pure input) name
 
     (iFConstIcons, iFVarIcons)

@@ -6,8 +6,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Icons
     (
-    findIconFromName,
-    findIcon
+    findIcon,
+    findMaybeIconFromName,
+    findMaybeIconsFromNames
     ) where
 
 import qualified Control.Arrow as Arrow
@@ -22,7 +23,11 @@ import Types(Icon(..)
 {-# ANN module "HLint: ignore Use record patterns" #-}
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
--- BEGIN Exported icon functions --
+findMaybeIconsFromNames :: IconInfo -> [Maybe NodeName] -> [Maybe NamedIcon]
+findMaybeIconsFromNames iconInfo args = (fmap . fmap) (findIconFromName iconInfo) args
+
+findMaybeIconFromName :: IconInfo -> Maybe NodeName -> Maybe NamedIcon
+findMaybeIconFromName iconInfo maybeName = fmap (findIconFromName iconInfo) maybeName
 
 findIconFromName :: IconInfo -> NodeName -> NamedIcon
 findIconFromName icons name@(NodeName nameInt)
@@ -57,4 +62,3 @@ findNestedIcon iconInfo name icon = case icon of
   NestedPatternApp constructor args ->
     snd <$> findIcon iconInfo name (fmap laValue (constructor:args))
   _ -> Nothing
-

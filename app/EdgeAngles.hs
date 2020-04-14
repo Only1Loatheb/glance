@@ -20,7 +20,7 @@ import Types  ( Icon(..)
               , Labeled(..)
               , IconInfo
               )                         
-import Icons(findIconFromName,findIcon)
+import Icons(findIcon,findMaybeIconFromName,findMaybeIconsFromNames)
 
 import PortConstants(
     pattern InputPortConst
@@ -112,8 +112,8 @@ getPortAngleHelper _embedded iconInfo icon port maybeNodeName = case icon of
       iconInfo
       applyPortAngle
       -- TODO Refactor with iconToDiagram
-      (fmap (findIconFromName iconInfo) headIcon)
-      ((fmap . fmap) (findIconFromName iconInfo) args)
+      (findMaybeIconFromName iconInfo headIcon)
+      (findMaybeIconsFromNames iconInfo args)
       port
       maybeNodeName
   NestedPatternApp headIcon args
@@ -127,12 +127,12 @@ getPortAngleHelper _embedded iconInfo icon port maybeNodeName = case icon of
   NestedCaseIcon args
     -> nestedMultiIfPortAngle
       iconInfo
-      ((fmap . fmap) (findIconFromName iconInfo) args)
+      (findMaybeIconsFromNames iconInfo args)
       port
       maybeNodeName
   NestedMultiIfIcon args
     -> nestedMultiIfPortAngle
       iconInfo
-      ((fmap . fmap) (findIconFromName iconInfo) args)
+      (findMaybeIconsFromNames iconInfo args)
       port
       maybeNodeName

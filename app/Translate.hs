@@ -1,4 +1,5 @@
-{-# LANGUAGE NoMonomorphismRestriction, TupleSections #-}
+{-# LANGUAGE NoMonomorphismRestriction, TupleSections, PatternSynonyms #-}
+
 module Translate(
   translateStringToSyntaxGraph,
   translateStringToCollapsedGraphAndDecl,
@@ -13,7 +14,6 @@ import Control.Monad.State(State, evalState)
 import Data.Either(partitionEithers)
 import qualified Data.Graph.Inductive.PatriciaTree as FGR
 import Data.List(unzip5, partition, intercalate)
-import qualified Data.Map as Map
 import Data.Maybe(fromMaybe, mapMaybe)
 import qualified Data.Set as Set
 import qualified Data.StringMap as SMap
@@ -27,7 +27,8 @@ import PortConstants(inputPort, resultPort, argumentPorts, caseValuePorts,
              casePatternPorts)
 import SimplifySyntax(SimpAlt(..), stringToSimpDecl, SimpExp(..), SimpPat(..)
                      , qNameToString, nameToString, customParseDecl
-                     , SimpDecl(..), hsDeclToSimpDecl, SelectorAndVal(..))
+                     , SimpDecl(..), hsDeclToSimpDecl, SelectorAndVal(..)
+                     , pattern FunctionCompositionStr)
 import TranslateCore(Reference, SyntaxGraph(..), EvalContext, GraphAndRef(..)
                     , SgSink(..), syntaxGraphFromNodes
                     , syntaxGraphFromNodesEdges, getUniqueName
@@ -41,6 +42,16 @@ import Types(AnnotatedGraph, Labeled(..), NameAndPort(..), IDState,
              LikeApplyFlavor(..), CaseOrMultiIfTag(..), Named(..)
             , mkEmbedder)
 import Util(makeSimpleEdge, nameAndPort, justName)
+
+import StringSymbols(
+  listCompositionPlaceholderStr
+  , typeSignatureSeparatorStr
+  , typeNameSeparatorStr
+  , negativeLiteralStr
+  , patternWildCardStr
+  , unusedArgumentStr
+  , defaultPatternNameStr
+  )
 
 {-# ANN module "HLint: ignore Use record patterns" #-}
 
@@ -87,7 +98,7 @@ patternName :: (GraphAndRef, Maybe String) -> String
 patternName (GraphAndRef _ ref, mStr) = fromMaybe
   (case ref of
     Left str -> str
-    Right _ -> ""
+    Right _ -> defaultPatternNameStr
   )
   mStr
 
@@ -159,7 +170,7 @@ makeNestedPatternGraph ::
   -> (SyntaxGraph, NameAndPort)
 makeNestedPatternGraph applyIconName funStr argVals = nestedApplyResult
   where
-    dummyNode = PatternApplyNode "" []
+    dummyNode = PatternApplyNode defaultPatternNameStr []
 
     argsAndPorts
       = zip argVals $ map (nameAndPort applyIconName) $ argumentPorts dummyNode
@@ -233,7 +244,7 @@ evalPatternLit ::
   Exts.Sign l -> Exts.Literal l -> State IDState (SyntaxGraph, NameAndPort)
 evalPatternLit sign l = case sign of
   Exts.Signless _ -> evalLit l
-  Exts.Negative _ -> makeBox ('-' : showLiteral l)
+  Exts.Negative _ -> makeBox (negativeLiteralStr ++ showLiteral l)
 -- END evalPatternLit
 
 evalPAsPat :: Show l =>
@@ -257,7 +268,7 @@ evalPattern p = case p of
   SpLit _ sign lit -> makePatternResult $ evalPatternLit sign lit
   SpApp _ name patterns -> makePatternResult $ evalPatternApp name patterns
   SpAsPat _ name pat -> evalPAsPat name pat
-  SpWildCard _ -> makePatternResult $ makeBox "_"
+  SpWildCard _ -> makePatternResult $ makeBox patternWildCardStr
   -- _ -> error ("evalPattern todo: " <> show p)
 
 -- END evalPattern
@@ -294,7 +305,7 @@ evalFunctionComposition :: Show l =>
 evalFunctionComposition c functions = do
   let reversedFunctios = reverse functions
   evaluatedFunctions <- mapM (evalExp c) reversedFunctios
-  neverUsedPort <- Left <$> getUniqueString "unusedArgument"
+  neverUsedPort <- Left <$> getUniqueString unusedArgumentStr
   applyIconName <- getUniqueName
   pure $ makeApplyGraph
     (length evaluatedFunctions)
@@ -307,7 +318,7 @@ evalFunctionComposition c functions = do
 -- | Turn (a . b . c) into [a, b, c]
 compositionToList :: SimpExp l -> [SimpExp l]
 compositionToList e = case e of
-  (SeApp _ (SeApp _ (SeName  _ ".") f1) f2)
+  (SeApp _ (SeApp _ (SeName  _ FunctionCompositionStr) f1) f2)
     -> f1 : compositionToList f2
   x -> [x]
 
@@ -359,14 +370,13 @@ appExpToArgFuncs e = case e of
       (argExp, funcs) = appExpToArgFuncs exp2
   simpleExp -> (simpleExp, [])
 
-
 -- TODO Refactor this and all sub-expressions
 evalApp :: Show l =>
   EvalContext -> SimpExp l
   -> State IDState (SyntaxGraph, NameAndPort)
 evalApp c expr = case expr of
   -- TODO This pattern for "." appears at least twice in this file. Refactor?
-  (SeApp _ (SeApp _ (SeName  _ ".") _) _)
+  (SeApp _ (SeApp _ (SeName  _ FunctionCompositionStr) _) _)
     -> evalFunctionComposition c (compositionToList expr)
   _ -> if appScore <= compScore
     then evalFunExpAndArgs c ApplyNodeFlavor (appExpToFuncArgs expr)
@@ -550,7 +560,7 @@ evalLambda _ context patterns expr functionName = do
   let
     paramNames = fmap patternName patternValsWithAsNames
     enclosedNodeNames =  Set.map naName (sgNodes combinedGraph)
-    lambdaNode = FunctionDefNode paramNames functionName enclosedNodeNames  -- TODO shouldnt be functionName?
+    lambdaNode = FunctionDefNode paramNames functionName enclosedNodeNames
     lambdaPorts = map (nameAndPort lambdaName) $ argumentPorts lambdaNode
     patternGraph = mconcat $ fmap graphAndRefToGraph patternVals
 
@@ -599,12 +609,12 @@ evalExp c x = case x of
     -> grNamePortToGrRef <$> evalMultiIf c selectorsAndVals
   SeListComp l e1 e2 -> evalListComp c l e1 e2
 
-
+-- TODO make list composition work
 evalListComp :: Show l =>
   EvalContext -> l -> SimpExp l -> SimpExp l -> State IDState GraphAndRef
 evalListComp bindContext l  e1 e2 =  do
   listCompName <- getUniqueName
-  let node = LiteralNode "listComp"
+  let node = LiteralNode listCompositionPlaceholderStr
   let graph = syntaxGraphFromNodes $ Set.singleton $ Named listCompName (mkEmbedder node)
   pure (GraphAndRef graph  (Right( nameAndPort listCompName (resultPort node)))  )
   -- listCompName <- getUniqueName
@@ -631,13 +641,12 @@ evalPatBindHelper patRef rhsRef = case patRef of
     (Right rhsPort) -> (Set.singleton (makeSimpleEdge (rhsPort, patPort)), mempty, SMap.empty)
 
 -- Pretty printing the entire type sig results in extra whitespace in the middle
--- TODO May want to trim whitespace from (prettyPrint typeForNames)
 evalTypeSig :: Show l =>
   [Exts.Name l] -> Exts.Type l
   -> State IDState (SyntaxGraph, NameAndPort)
 evalTypeSig names typeForNames = makeBox
-  (intercalate "," (fmap prettyPrintWithoutNewlines names)
-   ++ " :: "
+  (intercalate typeNameSeparatorStr (fmap prettyPrintWithoutNewlines names)
+   ++ typeSignatureSeparatorStr
    ++ prettyPrintWithoutNewlines typeForNames)
   where
     -- TODO Make custom version of prettyPrint for type signitures.

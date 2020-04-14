@@ -38,7 +38,7 @@ import GHC.Stack(HasCallStack)
 --import qualified Data.GraphViz.Types
 --import Data.GraphViz.Commands
 
-import Icons(findIconFromName)
+import Icons(findMaybeIconFromName)
 import Symbols  ( iconToDiagram
                 , lambdaRegionToDiagram
                 , getArrowShadowOpts
@@ -219,7 +219,7 @@ drawLambdaRegions iconInfo placedNodes
         -> mconcat
            $ drawRegion (Set.insert parentName parentNames)
            <$> mapMaybe
-           (fmap (findIconFromName iconInfo))
+           (findMaybeIconFromName iconInfo)
            (headIcon:icons)
       _ -> mempty
 
