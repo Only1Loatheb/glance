@@ -611,17 +611,39 @@ evalExp c x = case x of
 
 -- TODO make list composition work
 evalListComp :: Show l =>
-  EvalContext -> l -> SimpExp l -> SimpExp l -> State IDState GraphAndRef
-evalListComp bindContext l  e1 e2 =  do
+  EvalContext -> l -> SimpExp l -> Maybe (SimpExp l) -> State IDState GraphAndRef
+evalListComp bindContext l  e1 Nothing =  do
   listCompName <- getUniqueName
   let node = LiteralNode listCompositionPlaceholderStr
-  let graph = syntaxGraphFromNodes $ Set.singleton $ Named listCompName (mkEmbedder node)
-  pure (GraphAndRef graph  (Right( nameAndPort listCompName (resultPort node)))  )
-  -- listCompName <- getUniqueName
-  -- let finalGraph = SyntaxGraph mempty mempty mempty mempty mempty
-    
-  -- pure (finalGraph, nameAndPort listCompName (resultPort lambdaNode))
+  graph <- getGraphEvalListComp bindContext l  e1 node listCompName
 
+  pure (GraphAndRef graph  (Right( nameAndPort listCompName (resultPort node)))  )
+
+evalListComp bindContext l  e1 (Just e2) =  do
+  listCompName <- getUniqueName
+  let node = LiteralNode listCompositionPlaceholderStr
+  graph <- getGraphEvalListComp bindContext l  e1 node listCompName
+  GraphAndRef rhsRawGraph2 rhsRef2 <- evalExp bindContext e2
+  let graph2 = graph <> rhsRawGraph2
+  pure (GraphAndRef graph2  (Right( nameAndPort listCompName (resultPort node)))  )
+
+
+getGraphEvalListComp bindContext l  e1 node  listCompName = do
+    GraphAndRef rhsRawGraph1 rhsRef1 <- evalExp bindContext e1  
+    let graph = syntaxGraphFromNodes $ Set.singleton $ Named listCompName (mkEmbedder node)
+    pure $ graph <> rhsRawGraph1
+
+-- getBasicGraph :: Show l 
+--   => EvalContext -> l -> SimpExp l-> SyntaxNode -> NodeName
+--   -> SyntaxGraph
+
+  -- pure (finalGraph, nameAndPort listCompName (resultPort lambdaNode))
+  
+  -- graph2 = case  maybeE2 of 
+  --   Just e2 -> graph <> rhsRawGraph1 <> rhsRawGraph2 
+  --     GraphAndRef rhsRawGraph2 rhsRef2 <- evalExp bindContext e2
+  --   _ -> graph <> rhsRawGraph1
+    
 evalPatBind :: Show l =>
   l -> EvalContext -> SimpPat l -> SimpExp l -> State IDState SyntaxGraph
 evalPatBind _ c pat e = do

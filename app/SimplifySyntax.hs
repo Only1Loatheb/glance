@@ -80,7 +80,7 @@ data SimpExp l =
   | SeListComp
     { lSeListComp  :: l
     , bodyExpresion :: SimpExp l
-    , qualifyingExpresion :: SimpExp l} -- TODO  [SimpStmt l]
+    , qualifyingExpresion :: Maybe (SimpExp l)} -- TODO  [SimpStmt l]
   deriving (Show, Eq)
 
 data SimpStmt l = SimpStmt l String deriving (Show, Eq)
@@ -400,36 +400,43 @@ hsExpToSimpExp x = simplifyExp $ case x of
   Exts.EnumFromThen l e1 e2 -> desugarEnums l enumFromThenStr [e1, e2]
   Exts.EnumFromThenTo l e1 e2 e3 -> desugarEnums l enumFromThenToStr [e1, e2, e3]
   Exts.MultiIf l rhss -> SeMultiIf l (fmap guardedRhsToSelectorAndVal rhss)
-  Exts.ListComp l e1 qStmts -> SeListComp l (hsExpToSimpExp e1) (hsExpToSimpExp (hsQStmtsToSimpStmts qStmts))
+  Exts.ListComp l e1 qStmts -> SeListComp l (hsExpToSimpExp e1) (fmap hsExpToSimpExp (hsQStmtsToSimpStmts qStmts))
   _ -> error $ "Unsupported syntax in hsExpToSimpExp: " ++ show x
 
-hsQStmtsToSimpStmts :: Show l => [Exts.QualStmt l] -> Exts.Exp l
-hsQStmtsToSimpStmts qStmts = desugarListComp list where
-  list = [ x | (Exts.QualStmt _l x) <- qStmts]
+hsQStmtsToSimpStmts :: Show l => [Exts.QualStmt l] -> Maybe (Exts.Exp l)
+hsQStmtsToSimpStmts [] = Nothing
+hsQStmtsToSimpStmts (Exts.QualStmt _ (Exts.Generator l pat e) : stmtsTail) 
+  | Just (Exts.App l (Exts.App l (makeVarExp l listCompositionPlaceholderStr) e) (Exts.Lambda l [pat] (hsQStmtsToSimpStmts stmtsTail)))
+  | 
+hsQStmtsToSimpStmts (Exts.QualStmt _ (Exts.Qualifier l e) : stmtsTail)     
+  = Just (Exts.App l (Exts.App l (makeVarExp l listCompositionPlaceholderStr) e) (hsQStmtsToSimpStmts stmtsTail))
+hsQStmtsToSimpStmts (Exts.QualStmt _ (Exts.LetStmt l binds) : stmtsTail)   
+  = Just (Exts.Let l binds (hsQStmtsToSimpStmts stmtsTail))
+hsQStmtsToSimpStmts stmt                                 = error $ "Unsupported syntax in hsQStmtsToSimpStmts: " <> show stmt
+-- hsQStmtsToSimpStmts (Exts.ThenTrans _ _:_) = 
+  -- hsQStmtsToSimpStmts (Exts.ThenBy _ _ _:_) = 
+    -- list = [ x | (Exts.QualStmt _l x) <- qStmts]
 -- TODO implement for other Exts.QualStmt l
 
-desugarListComp :: Show l => [Exts.Stmt l] -> Exts.Exp l
-desugarListComp (Exts.Generator l pat e : stmtsTail) = Exts.App l (Exts.App l (makeVarExp l listCompositionPlaceholderStr) e) (Exts.Lambda l [pat] (desugarListComp stmtsTail))
-desugarListComp (Exts.Qualifier l e : stmtsTail)     = Exts.App l (Exts.App l (makeVarExp l listCompositionPlaceholderStr) e) (desugarListComp stmtsTail)
-desugarListComp (Exts.LetStmt l binds : stmtsTail)   = Exts.Let l binds (desugarListComp stmtsTail)
-desugarListComp stmt                                 = error $ "Unsupported syntax in desugarListComp: " <> show stmt
+
 
 simpExpToHsExp :: Show a => SimpExp a -> Exts.Exp a
 simpExpToHsExp x = case x of
   -- TODO Sometimes SeName comes from Exts.Con
   --
   -- Put names in parens in case it's an operator
-  SeName l str -> Exts.Paren l (Exts.Var l (strToQName l str))
+  SeName l str  -> Exts.Paren l (Exts.Var l (strToQName l str))
   -- SeName l str -> (Exts.Var l (strToQName l str))
-  SeLit l lit -> Exts.Lit l lit
+  SeLit  l lit  -> Exts.Lit l lit
   SeApp l e1 e2 -> Exts.App l (simpExpToHsExp e1) (simpExpToHsExp e2)
-  SeLambda l pats e _name
-    -> Exts.Lambda l (fmap simpPatToHsPat pats) (simpExpToHsExp e)
+  SeLambda l pats e _name ->
+    Exts.Lambda l (fmap simpPatToHsPat pats) (simpExpToHsExp e)
   SeLet l decls e -> Exts.Let l (simpDeclsToHsBinds l decls) (simpExpToHsExp e)
-  SeCase l e alts
-    -> Exts.Case l (simpExpToHsExp e) $ fmap (simpAltToHsAlt l) alts
-  SeMultiIf l selsAndVal
-    -> Exts.MultiIf l (fmap (selAndValToGuardedRhs l) selsAndVal)
+  SeCase l e alts ->
+    Exts.Case l (simpExpToHsExp e) $ fmap (simpAltToHsAlt l) alts
+  SeMultiIf l selsAndVal ->
+    Exts.MultiIf l (fmap (selAndValToGuardedRhs l) selsAndVal)
+  SeListComp l e1 me2 -> error "TODO simpExpToHsExp SeListComp l e1 me2 " 
 
 -- Parsing
 
