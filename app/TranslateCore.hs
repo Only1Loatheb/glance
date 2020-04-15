@@ -68,7 +68,6 @@ type SgBind = (String, Reference)
 
 data SgSink = SgSink String NameAndPort deriving (Eq, Ord, Show)
 
--- TODO Replace lists with sets or MAP  StringMap
 -- | A SyntaxGraph is an abstract representation of Haskell syntax. SyntaxGraphs
 -- are generated from the Haskell syntax tree and are used to generate Drawings.
 data SyntaxGraph = SyntaxGraph {
@@ -228,16 +227,10 @@ lookupReference bindings ref@(Left originalS) = lookupReference' (Just ref) wher
 
   lookupReference' :: Maybe Reference -> Reference
   lookupReference'  (Just newRef@(Right _)) = newRef
-  lookupReference'  (Just newRef@(Left s)) = case  SMap.lookup s  bindings of
-    foundRef -> failIfCycle originalS foundRef $ lookupReference' foundRef
-    _ -> newRef
+  lookupReference'  (Just (Left s)) 
+    = failIfCycle originalS foundRef $ lookupReference' foundRef where
+      foundRef =SMap.lookup s  bindings
   lookupReference'  _Nothing  = error "lookupReference filed"
-  -- lookupReference' :: Maybe Reference -> Reference
-  -- lookupReference'  (Just newRef@(Right _)) = newRef
-  -- lookupReference'  (Just (Left s)) 
-  --   = failIfCycle originalS foundRef $ lookupReference' foundRef where
-  --     foundRef =SMap.lookup s  bindings
-  -- lookupReference'  _Nothing  = error "lookupReference filed"
 
 failIfCycle ::  String -> Maybe Reference -> Reference -> Reference
 failIfCycle originalS (Just r@(Left newStr)) res  = if newStr == originalS then r else res

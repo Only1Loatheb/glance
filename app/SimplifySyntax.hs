@@ -51,69 +51,83 @@ import StringSymbols(
 
 -- A simplified Haskell expression.
 data SimpExp l =
-  SeName l String
-  | SeLit l (Exts.Literal l)
-  | SeApp l
-    (SimpExp l)  -- function
-    (SimpExp l)  -- argument
-  | SeLambda l [SimpPat l] (SimpExp l) String
-  | SeLet l [SimpDecl l] (SimpExp l)
-  | SeCase l (SimpExp l) [SimpAlt l]
-  | SeMultiIf l [SelectorAndVal l]
-  | SeListComp l (SimpExp l) (SimpExp l) -- TODO  [SimpStmt l]
+    SeName 
+    { lSeName :: l
+    , nameStr :: String }
+  | SeLit
+    { lSeLit  :: l
+    , literal :: Exts.Literal l}
+  | SeApp
+    { lSeApp  :: l
+    , function :: SimpExp l
+    , argument :: SimpExp l}
+  | SeLambda
+    { lSeLambda  :: l
+    , patAplications :: [SimpPat l]
+    , bodyExpresion :: SimpExp l
+    , nameStr :: String}
+  | SeLet
+    { lSeLet  :: l
+    , declarations :: [SimpDecl l]
+    , bodyExpresion :: SimpExp l}
+  | SeCase
+    { lSeCase  :: l
+    , bodyExpresion :: SimpExp l
+    , alternatives :: [SimpAlt l]}
+  | SeMultiIf
+    { lSeMultiIf  :: l
+    , selectorAndVal :: [SelectorAndVal l] }
+  | SeListComp
+    { lSeListComp  :: l
+    , bodyExpresion :: SimpExp l
+    , qualifyingExpresion :: SimpExp l} -- TODO  [SimpStmt l]
   deriving (Show, Eq)
--- data SimpExp l =
---     SeName 
---     { name :: String }
---   | SeLit
---     {literal :: Exts.Literal l}
---   | SeApp
---     { function :: SimpExp l
---     , argument :: SimpExp l}
---   | SeLambda
---     { patterns :: [SimpPat l]
---     , bodyExpresion :: SimpExp l
---     , name :: String}
---   | SeLet
---     { declarations :: [SimpDecl l]
---     , bodyExpresion :: SimpExp l}
---   | SeCase
---     { bodyExpresion :: SimpExp l
---     , alternatives :: [SimpAlt l]}
---   | SeMultiIf
---     { selectorAndVal :: [SelectorAndVal l] }
---   | SeListComp
---     { bodyExpresion :: SimpExp l
---     , qualifyingExpresion :: SimpExp l} -- TODO  [SimpStmt l]
---   deriving (Show, Eq)
 
 data SimpStmt l = SimpStmt l String deriving (Show, Eq)
 
-data SelectorAndVal l = SelectorAndVal {
-  svSelector :: SimpExp l
+data SelectorAndVal l = SelectorAndVal
+  { svSelector :: SimpExp l
   , svVal :: SimpExp l
   }
   deriving (Show, Eq)
 
-data SimpAlt l = SimpAlt {
-  saPat :: SimpPat l
+data SimpAlt l = SimpAlt
+  { saPat :: SimpPat l
   , saVal :: SimpExp l
   }
   deriving (Show, Eq)
 
 data SimpDecl l =
   -- These don't have decl lists, since only lets have decl lists
-  SdPatBind l (SimpPat l) (SimpExp l)
-  | SdTypeSig l [Exts.Name l] (Exts.Type l)
+  SdPatBind
+    { lSdPatBind  :: l
+    , patternBind :: SimpPat l
+    , bindedExp :: SimpExp l}
+  | SdTypeSig 
+    { lSdTypeSig  :: l
+    , typeSigNames :: [Exts.Name l]
+    , typeBody :: Exts.Type l}
   -- TODO Add a visual representation of data declarations
-  | SdCatchAll (Exts.Decl l)
+  | SdCatchAll 
+    { declaration :: Exts.Decl l}
   deriving (Show, Eq)
 
 data SimpPat l =
-  SpVar l (Exts.Name l)
-  | SpLit l (Exts.Sign l) (Exts.Literal l)
-  | SpApp l (Exts.QName l) [SimpPat l]
-  | SpAsPat l (Exts.Name l) (SimpPat l)
+  SpVar 
+    { lSpVar  :: l
+    ,varName :: Exts.Name l}
+  | SpLit 
+    { lSpLit  :: l
+    , litName :: Exts.Sign l
+    , value :: Exts.Literal l}
+  | SpApp 
+    { lSpApp  :: l
+    , appliedCons :: Exts.QName l
+    , arguments :: [SimpPat l]}
+  | SpAsPat 
+    { lSpAsPat  :: l
+    , alias :: Exts.Name l
+    , aliasedPattern :: SimpPat l}
   | SpWildCard l
   deriving (Show, Eq)
 
