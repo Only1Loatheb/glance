@@ -35,7 +35,7 @@ import TranslateCore(Reference, SyntaxGraph(..), EvalContext, GraphAndRef(..)
                     , edgesForRefPortList, makeApplyGraph, makeMultiIfGraph
                     , combineExpressions, namesInPattern, lookupReference
                     , deleteBindings, makeEdges, makeBox, syntaxGraphToFglGraph
-                    , getUniqueString, bindsToSyntaxGraph, SgBind(..)
+                    , getUniqueString, bindsToSyntaxGraph, SgBind
                     , graphAndRefToGraph, initialIdState)
 import Types(AnnotatedGraph, Labeled(..), NameAndPort(..), IDState,
              Edge, SyntaxNode(..), NodeName(..), SgNamedNode,
@@ -351,7 +351,7 @@ applyComposeScore e = case e of
   SeApp _ exp1 exp2 -> applyComposeScoreHelper exp1 exp2
   _ -> (0, 0)
 
--- Todo add test for this function
+-- TODO add test for this function
 -- | Given an App expression, return
 -- (function, list of arguments)
 appExpToFuncArgs :: SimpExp l -> (SimpExp l, [SimpExp l])
@@ -607,42 +607,25 @@ evalExp c x = case x of
   SeCase _ expr alts -> grNamePortToGrRef <$> evalCase c expr alts
   SeMultiIf _ selectorsAndVals
     -> grNamePortToGrRef <$> evalMultiIf c selectorsAndVals
-  SeListComp l e1 e2 -> evalListComp c l e1 e2
+  SeListComp l e eList -> evalListComp c l e eList
 
 -- TODO make list composition work
 evalListComp :: Show l =>
-  EvalContext -> l -> SimpExp l -> Maybe (SimpExp l) -> State IDState GraphAndRef
-evalListComp bindContext l  e1 Nothing =  do
+  EvalContext -> l -> SimpExp l -> [SimpExp l] -> State IDState GraphAndRef
+evalListComp bindContext l  e1 eList =  do
   listCompName <- getUniqueName
   let node = LiteralNode listCompositionPlaceholderStr
-  graph <- getGraphEvalListComp bindContext l  e1 node listCompName
+  let graph = syntaxGraphFromNodes $ Set.singleton $ Named listCompName (mkEmbedder node)
+  
+  qualifiersGraph <- mapM (evalExp bindContext) eList
+  let graphs = fmap graphAndRefToGraph qualifiersGraph
 
-  pure (GraphAndRef graph  (Right( nameAndPort listCompName (resultPort node)))  )
+  GraphAndRef rhsRawGraph1 rhsRef1 <- evalExp bindContext e1  
+  -- GraphAndRef rhsRawGraph2 rhsRef2
+  let graph2 = graph <> rhsRawGraph1 <> mconcat graphs
 
-evalListComp bindContext l  e1 (Just e2) =  do
-  listCompName <- getUniqueName
-  let node = LiteralNode listCompositionPlaceholderStr
-  graph <- getGraphEvalListComp bindContext l  e1 node listCompName
-  GraphAndRef rhsRawGraph2 rhsRef2 <- evalExp bindContext e2
-  let graph2 = graph <> rhsRawGraph2
   pure (GraphAndRef graph2  (Right( nameAndPort listCompName (resultPort node)))  )
 
-
-getGraphEvalListComp bindContext l  e1 node  listCompName = do
-    GraphAndRef rhsRawGraph1 rhsRef1 <- evalExp bindContext e1  
-    let graph = syntaxGraphFromNodes $ Set.singleton $ Named listCompName (mkEmbedder node)
-    pure $ graph <> rhsRawGraph1
-
--- getBasicGraph :: Show l 
---   => EvalContext -> l -> SimpExp l-> SyntaxNode -> NodeName
---   -> SyntaxGraph
-
-  -- pure (finalGraph, nameAndPort listCompName (resultPort lambdaNode))
-  
-  -- graph2 = case  maybeE2 of 
-  --   Just e2 -> graph <> rhsRawGraph1 <> rhsRawGraph2 
-  --     GraphAndRef rhsRawGraph2 rhsRef2 <- evalExp bindContext e2
-  --   _ -> graph <> rhsRawGraph1
     
 evalPatBind :: Show l =>
   l -> EvalContext -> SimpPat l -> SimpExp l -> State IDState SyntaxGraph

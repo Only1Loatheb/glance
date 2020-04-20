@@ -80,7 +80,7 @@ data SimpExp l =
   | SeListComp
     { lSeListComp  :: l
     , bodyExpresion :: SimpExp l
-    , qualifyingExpresion :: Maybe (SimpExp l)} -- TODO  [SimpStmt l]
+    , qualifyingExpresion ::[SimpExp l]} -- TODO  [SimpStmt l]
   deriving (Show, Eq)
 
 data SimpStmt l = SimpStmt l String deriving (Show, Eq)
@@ -366,6 +366,13 @@ desugarEnums :: Show l => l -> String -> [Exts.Exp l] -> SimpExp l
 desugarEnums l funcName exprs = hsExpToSimpExp $ deListifyApp l
                                 (makeVarExp l funcName)
                                 exprs
+
+desugarListComp :: Show l => Exts.Exp l -> Exts.Stmt l ->  Exts.Exp l
+desugarListComp e1  (Exts.Qualifier l e) = Exts.App l (Exts.App l (makeVarExp l thenOperatorStr) e) e1
+desugarListComp e1  (Exts.Generator l pat e) = (Exts.App l (Exts.App l (makeVarExp l bindOperatorStr) e) (Exts.Lambda l [pat]  e1))
+desugarListComp e1 (Exts.LetStmt l binds) = Exts.Let l binds e1
+desugarListComp _ _ = error "Unsupported syntax in hsQStmtsToSimpStmts'"
+                            
 -- http://hackage.haskell.org/package/haskell-src-exts-1.23.0/docs/Language-Haskell-Exts-Syntax.html#g:8
 hsExpToSimpExp :: Show a => Exts.Exp a -> SimpExp a
 hsExpToSimpExp x = simplifyExp $ case x of
@@ -400,25 +407,21 @@ hsExpToSimpExp x = simplifyExp $ case x of
   Exts.EnumFromThen l e1 e2 -> desugarEnums l enumFromThenStr [e1, e2]
   Exts.EnumFromThenTo l e1 e2 e3 -> desugarEnums l enumFromThenToStr [e1, e2, e3]
   Exts.MultiIf l rhss -> SeMultiIf l (fmap guardedRhsToSelectorAndVal rhss)
-  Exts.ListComp l e1 qStmts -> SeListComp l (hsExpToSimpExp e1) (fmap hsExpToSimpExp (hsQStmtsToSimpStmts qStmts))
+  Exts.ListComp l e1 qStmts -> SeListComp l (hsExpToSimpExp e1) ( fmap (hsExpToSimpExp . desugarListComp e1) $ filterQStmts qStmts)
   _ -> error $ "Unsupported syntax in hsExpToSimpExp: " ++ show x
+  -- BDecls l [Decl l]	
+  -- IPBinds l [IPBind l]
 
-hsQStmtsToSimpStmts :: Show l => [Exts.QualStmt l] -> Maybe (Exts.Exp l)
-hsQStmtsToSimpStmts [] = Nothing
-hsQStmtsToSimpStmts (Exts.QualStmt _ (Exts.Generator l pat e) : stmtsTail) 
-  | Just (Exts.App l (Exts.App l (makeVarExp l listCompositionPlaceholderStr) e) (Exts.Lambda l [pat] (hsQStmtsToSimpStmts stmtsTail)))
-  | 
-hsQStmtsToSimpStmts (Exts.QualStmt _ (Exts.Qualifier l e) : stmtsTail)     
-  = Just (Exts.App l (Exts.App l (makeVarExp l listCompositionPlaceholderStr) e) (hsQStmtsToSimpStmts stmtsTail))
-hsQStmtsToSimpStmts (Exts.QualStmt _ (Exts.LetStmt l binds) : stmtsTail)   
-  = Just (Exts.Let l binds (hsQStmtsToSimpStmts stmtsTail))
-hsQStmtsToSimpStmts stmt                                 = error $ "Unsupported syntax in hsQStmtsToSimpStmts: " <> show stmt
--- hsQStmtsToSimpStmts (Exts.ThenTrans _ _:_) = 
-  -- hsQStmtsToSimpStmts (Exts.ThenBy _ _ _:_) = 
-    -- list = [ x | (Exts.QualStmt _l x) <- qStmts]
--- TODO implement for other Exts.QualStmt l
-
-
+  -- (map (hsExpToSimpExp) (mapMaybe hsQStmtsToSimpStmts qStmts))
+  -- https://www.haskell.org/onlinereport/exps.html#sect3.11
+filterQStmts :: Show l => [Exts.QualStmt l] -> [Exts.Stmt l] 
+filterQStmts qStmts = [ x | (Exts.QualStmt _l x) <- qStmts]
+-- other are TransformListComp - SQL like syntax in list comp
+-- ThenTrans Exp	-- then exp
+-- ThenBy Exp Exp	-- then exp by exp
+-- GroupBy Exp	-- then group by exp
+-- GroupUsing Exp	-- then group using exp
+-- GroupByUsing Exp Exp -- then group by exp using exp
 
 simpExpToHsExp :: Show a => SimpExp a -> Exts.Exp a
 simpExpToHsExp x = case x of

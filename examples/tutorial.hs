@@ -14,6 +14,32 @@ Function Application:
 Let's start with y = f x.
 The function f is applied to the argument x, and the result is bound to y.
 -}
+mapToUpper :: [a]
+mapToUpper = [toUpper c | c <- s]
+
+multipleGenerators :: (Num a, Num b, Enum b) => [(a, b)]
+multipleGenerators = [(i,j) | i <- [1,2],
+                              j <- [1..4] ]
+
+nested :: (Enum b, Num b, Num a) => [[(a, b)]]
+nested = take 5 [ [ (i,j) | i <- [1,2] ] | j <- [1..] ]
+
+booleanGuards :: Integral b => [(b, b)]
+booleanGuards = take 10 [ (i,j) | i <- [1..], 
+                                  j <- [1..i-1], 
+                                  gcd i j == 1 ]
+
+localLet :: (Enum b, Num b) => [(b, b)]
+localLet = take 10 [ (i,j) | i <- [1..], 
+                              let k = i*i, 
+                              j <- [1..k] ]
+
+mymap :: (a0 -> b0) -> [a0] -> [b0]
+mymap f xs = [f x | x <- xs]
+
+myfilter :: (a0 -> Bool) -> [a0] -> [a0]
+myfilter f xs = [x | x <- xs, f x]
+{-
 f0 = f1 a where
   f1 b = f2 c where
     f2 d = f3 e
@@ -345,3 +371,4 @@ factorial x =
 
 lambdaUsage a = 
   map (\x -> x+2) a
+-}
