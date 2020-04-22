@@ -113,7 +113,7 @@ data SyntaxNode =
   ApplyNode LikeApplyFlavor Int
   | PatternApplyNode String [Labeled (Maybe SgNamedNode)]
   | NameNode String -- Identifiers or symbols
-  | BindNameNode String
+  | BindNameNode String -- for top level bindings
   | LiteralNode String -- Literal values like the string "Hello World"
   | FunctionDefNode  -- Function definition (ie. lambda expression)
     [String]  -- Parameter labels

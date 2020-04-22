@@ -553,47 +553,61 @@ evalLambda _ context patterns expr functionName = do
   lambdaName <- getUniqueName
   patternValsWithAsNames <- mapM evalPattern patterns
   let
-    patternVals = fmap fst patternValsWithAsNames
     patternStrings = concatMap namesInPattern patternValsWithAsNames
     rhsContext = patternStrings <> context
   GraphAndRef rhsRawGraph rhsRef <- evalExp rhsContext expr
   let
-    paramNames = fmap patternName patternValsWithAsNames
-    enclosedNodeNames =  Set.map naName (sgNodes combinedGraph)
-    lambdaNode = FunctionDefNode paramNames functionName enclosedNodeNames
+    patternVals = fmap fst patternValsWithAsNames
+    lambdaNode = makeLambdaNode combinedGraph patternValsWithAsNames functionName
     lambdaPorts = map (nameAndPort lambdaName) $ argumentPorts lambdaNode
     patternGraph = mconcat $ fmap graphAndRefToGraph patternVals
 
     (patternEdges', newBinds') =
-      partitionEithers $ zipWith makePatternEdges patternVals lambdaPorts
+      partitionEithers $ zipWith makeEdge patternVals lambdaPorts
 
-    patternEdges = Set.fromList patternEdges'
-    newBinds = SMap.fromList newBinds'
-    icons = Set.singleton (Named lambdaName (mkEmbedder lambdaNode))
-    returnPort = nameAndPort lambdaName (inputPort lambdaNode)
-    (newEdges, newSinks) = case rhsRef of
-      Left s -> (patternEdges, Set.singleton (SgSink s returnPort))
-      Right rhsPort ->
-        (Set.insert (makeSimpleEdge (rhsPort, returnPort)) patternEdges, mempty)
-    finalGraph = SyntaxGraph icons newEdges newSinks newBinds mempty
+
+    lambdaIconAndOutputGraph
+      = makeOutputGraph rhsRef patternEdges' newBinds' lambdaName lambdaNode
 
     asBindGraph = mconcat $ zipWith
                   asBindGraphZipper
                   (fmap snd patternValsWithAsNames)
                   lambdaPorts
     combinedGraph = deleteBindings . makeEdges
-                    $ (asBindGraph <> rhsRawGraph <> patternGraph <> finalGraph)
+                    $ (asBindGraph <> rhsRawGraph <> patternGraph <> lambdaIconAndOutputGraph)
 
   pure (combinedGraph, nameAndPort lambdaName (resultPort lambdaNode))
-  where
+  
     -- TODO Like evalPatBind, this edge should have an indicator that it is the
     -- input to a pattern.
-    -- makePatternEdges creates the edges between the patterns and the parameter
+    -- makeEdge creates the edges between the patterns and the parameter
     -- ports.
-    makePatternEdges :: GraphAndRef -> NameAndPort -> Either Edge SgBind
-    makePatternEdges (GraphAndRef _ ref) lamPort = case ref of
-      Right patPort -> Left $ makeSimpleEdge (lamPort, patPort)
-      Left str -> Right $ (str, (Right lamPort))
+makeEdge :: GraphAndRef -> NameAndPort -> Either Edge SgBind
+makeEdge (GraphAndRef _ ref) lamPort = case ref of
+  Right patPort -> Left $ makeSimpleEdge (lamPort, patPort)
+  Left str -> Right $ (str, (Right lamPort))
+
+makeLambdaNode :: SyntaxGraph -> [(GraphAndRef, Maybe String)] -> String -> SyntaxNode
+makeLambdaNode combinedGraph patternValsWithAsNames functionName = node where
+  enclosedNodeNames =  Set.map naName (sgNodes combinedGraph)
+  paramNames = fmap patternName patternValsWithAsNames
+  node = FunctionDefNode paramNames functionName enclosedNodeNames
+
+makeOutputGraph :: Either String NameAndPort -> [Edge] -> [(SMap.Key, Reference)] -> NodeName -> SyntaxNode -> SyntaxGraph
+makeOutputGraph rhsRef patternEdges' newBinds' lambdaName lambdaNode = graph where
+  patternEdges = Set.fromList patternEdges'
+  lambdaIconSet = Set.singleton (Named lambdaName (mkEmbedder lambdaNode))
+  newBinds = SMap.fromList newBinds'
+  returnPort = nameAndPort lambdaName (inputPort lambdaNode)
+  (newEdges, newSinks) = makeOutputEdgesAndSinks rhsRef patternEdges returnPort
+  graph = SyntaxGraph lambdaIconSet newEdges newSinks newBinds mempty
+
+  makeOutputEdgesAndSinks :: Either String NameAndPort
+                      -> Set.Set Edge -> NameAndPort -> (Set.Set Edge, Set.Set SgSink)
+  makeOutputEdgesAndSinks rhsRef patternEdges returnPort = case rhsRef of
+    Left s -> (patternEdges, Set.singleton (SgSink s returnPort))
+    Right rhsPort -> (Set.insert (makeSimpleEdge (rhsPort, returnPort)) patternEdges, mempty)
+
 
 -- END generalEvalLambda
 
@@ -614,17 +628,30 @@ evalListComp :: Show l =>
   EvalContext -> l -> SimpExp l -> [SimpExp l] -> State IDState GraphAndRef
 evalListComp bindContext l  e1 eList =  do
   listCompName <- getUniqueName
-  let node = LiteralNode listCompositionPlaceholderStr
-  let graph = syntaxGraphFromNodes $ Set.singleton $ Named listCompName (mkEmbedder node)
+  let listCompNode = LiteralNode listCompositionPlaceholderStr
+  let nodeGraph = syntaxGraphFromNodes $ Set.singleton $ Named listCompName (mkEmbedder listCompNode)
   
-  qualifiersGraph <- mapM (evalExp bindContext) eList
-  let graphs = fmap graphAndRefToGraph qualifiersGraph
+  qualifiersGraphs <- mapM (evalExp bindContext) eList
+  let graphs = fmap graphAndRefToGraph qualifiersGraphs
 
-  GraphAndRef rhsRawGraph1 rhsRef1 <- evalExp bindContext e1  
-  -- GraphAndRef rhsRawGraph2 rhsRef2
-  let graph2 = graph <> rhsRawGraph1 <> mconcat graphs
+  GraphAndRef listCompItem listCompItemRef <- evalExp bindContext e1  
 
-  pure (GraphAndRef graph2  (Right( nameAndPort listCompName (resultPort node)))  )
+  let (edges, binds) = makeListCompEdges listCompName listCompNode qualifiersGraphs
+
+  let graph2 = nodeGraph <> listCompItem <> mconcat graphs
+  -- combinedGraph = deleteBindings . makeEdges
+  -- $ (asBindGraph)
+
+  pure (GraphAndRef graph2  (Right( nameAndPort listCompName (resultPort listCompNode)))  )
+
+makeListCompEdges listCompName listCompNode qualifiersGraph = (edges, binds) where
+  listCompPorts = map (nameAndPort listCompName) $ argumentPorts listCompNode
+  (edges, binds) = partitionEithers $ zipWith makeEdge qualifiersGraph listCompPorts
+-- bindElemConstructorsInListCompItem = 
+--   asBindGraph = mconcat $ zipWith
+--     asBindGraphZipper
+--     (fmap snd patternValsWithAsNames)
+--     lambdaPorts
 
     
 evalPatBind :: Show l =>
