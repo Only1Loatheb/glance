@@ -85,6 +85,7 @@ data Icon = TextBoxIcon String
     [Labeled (Maybe NamedIcon)]  -- Arguments
   | NestedCaseIcon [Maybe NodeName]
   | NestedMultiIfIcon [Maybe NodeName]
+  | ListCompIcon
   deriving (Show, Eq, Ord)
 
 data LikeApplyFlavor = ApplyNodeFlavor | ComposeNodeFlavor
@@ -121,6 +122,7 @@ data SyntaxNode =
     (Set NodeName)  -- Nodes inside the lambda
   | CaseResultNode -- TODO remove caseResultNode
   | CaseOrMultiIfNode CaseOrMultiIfTag Int
+  | ListCompNode
   deriving (Show, Eq, Ord)
 
 newtype Port = Port Int deriving (Typeable, Eq, Ord, Show)

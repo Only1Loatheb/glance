@@ -68,3 +68,4 @@ argumentPorts n = case n of
   BindNameNode {} -> []
   LiteralNode {} -> []
   CaseResultNode {}-> []
+  ListCompNode {} -> argPortsConst

@@ -628,21 +628,25 @@ evalListComp :: Show l =>
   EvalContext -> l -> SimpExp l -> [SimpExp l] -> State IDState GraphAndRef
 evalListComp bindContext l  e1 eList =  do
   listCompName <- getUniqueName
-  let listCompNode = LiteralNode listCompositionPlaceholderStr
+  let listCompNode = ListCompNode
   let nodeGraph = syntaxGraphFromNodes $ Set.singleton $ Named listCompName (mkEmbedder listCompNode)
   
-  qualifiersGraphs <- mapM (evalExp bindContext) eList
-  let graphs = fmap graphAndRefToGraph qualifiersGraphs
+  expGraphsAndRefs <- mapM (evalExp bindContext) eList
+  let expGraphs = fmap graphAndRefToGraph expGraphsAndRefs
+  let expGraph = mconcat expGraphs
 
   GraphAndRef listCompItem listCompItemRef <- evalExp bindContext e1  
 
-  let (edges, binds) = makeListCompEdges listCompName listCompNode qualifiersGraphs
+  let (edges, binds) = makeListCompEdges listCompName listCompNode expGraphsAndRefs
 
-  let graph2 = nodeGraph <> listCompItem <> mconcat graphs
+  let outputGraph = makeOutputGraph listCompItemRef edges binds listCompName listCompNode 
+
+
+  let combinedGraph = deleteBindings . makeEdges $ nodeGraph <> listCompItem <> expGraph <> outputGraph
   -- combinedGraph = deleteBindings . makeEdges
   -- $ (asBindGraph)
 
-  pure (GraphAndRef graph2  (Right( nameAndPort listCompName (resultPort listCompNode)))  )
+  pure (GraphAndRef combinedGraph  (Right( nameAndPort listCompName (resultPort listCompNode)))  )
 
 makeListCompEdges listCompName listCompNode qualifiersGraph = (edges, binds) where
   listCompPorts = map (nameAndPort listCompName) $ argumentPorts listCompNode

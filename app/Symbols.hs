@@ -254,6 +254,7 @@ iconToDiagram iconInfo icon = case icon of
                             iconInfo
                             (findMaybeIconsFromNames iconInfo args)
                             MultiIfTag
+  ListCompIcon -> textBox "LISTCOMP"
 
 makeInputDiagram :: SpecialBackend b n
   => IconInfo
