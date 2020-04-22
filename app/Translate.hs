@@ -25,10 +25,11 @@ import qualified Language.Haskell.Exts.Pretty as PExts
 import GraphAlgorithms(annotateGraph, collapseAnnotatedGraph)
 import PortConstants(inputPort, resultPort, argumentPorts, caseValuePorts,
              casePatternPorts)
-import SimplifySyntax(SimpAlt(..), stringToSimpDecl, SimpExp(..), SimpPat(..)
+import SimplifySyntax(SimpAlt(..), stringToSimpDecl, SimpExp(..), SimpPat(..), SimpQStmt(..)
                      , qNameToString, nameToString, customParseDecl
                      , SimpDecl(..), hsDeclToSimpDecl, SelectorAndVal(..)
-                     , pattern FunctionCompositionStr)
+                     , pattern FunctionCompositionStr )
+
 import TranslateCore(Reference, SyntaxGraph(..), EvalContext, GraphAndRef(..)
                     , SgSink(..), syntaxGraphFromNodes
                     , syntaxGraphFromNodesEdges, getUniqueName
@@ -625,39 +626,62 @@ evalExp c x = case x of
 
 -- TODO make list composition work
 evalListComp :: Show l =>
-  EvalContext -> l -> SimpExp l -> [SimpExp l] -> State IDState GraphAndRef
-evalListComp bindContext l  e1 eList =  do
+  EvalContext -> l -> SimpExp l -> [SimpQStmt l] -> State IDState GraphAndRef
+evalListComp context l  e1 eList =  do
   listCompName <- getUniqueName
   let listCompNode = ListCompNode
   let nodeGraph = syntaxGraphFromNodes $ Set.singleton $ Named listCompName (mkEmbedder listCompNode)
   
-  expGraphsAndRefs <- mapM (evalExp bindContext) eList
+  let decls = [d | (SqLet _l d ) <- eList]
+  -- let a =  fmap (evalDecls context) decls -- TODO add decls to context and graph
+
+  let quals = [x | x@(SqQual {}) <- eList]
+  let gens  = [x | x@(SqGen {}) <- eList]
+  expGraphsAndRefs <- mapM (evalSimpQStmt context) (quals ++ gens)
+
   let expGraphs = fmap graphAndRefToGraph expGraphsAndRefs
   let expsGraph = mconcat expGraphs
 
-  GraphAndRef listCompItem listCompItemRef <- evalExp bindContext e1  
+  GraphAndRef listCompItem listCompItemRef <- evalExp context e1  
 
   let (edges, binds) = makeListCompEdges listCompName listCompNode expGraphsAndRefs
 
   let outputGraph = makeOutputGraph listCompItemRef edges binds listCompName listCompNode 
 
-
   let combinedGraph = deleteBindings . makeEdges $ nodeGraph <> listCompItem <> expsGraph <> outputGraph
-  -- combinedGraph = deleteBindings . makeEdges
-  -- $ (asBindGraph)
 
   pure (GraphAndRef combinedGraph  (Right( nameAndPort listCompName (resultPort listCompNode)))  )
 
+makeListCompEdges :: NodeName -> SyntaxNode -> [GraphAndRef] -> ([Edge], [SgBind])
 makeListCompEdges listCompName listCompNode qualifiersGraph = (edges, binds) where
   listCompPorts = map (nameAndPort listCompName) $ argumentPorts listCompNode
   (edges, binds) = partitionEithers $ zipWith makeEdge qualifiersGraph listCompPorts
+
+
+evalSimpQStmt :: Show l => EvalContext -> SimpQStmt l -> State IDState GraphAndRef
+evalSimpQStmt context (SqQual l qual) = evalExp context qual
+evalSimpQStmt context (SqGen l values itemPat) = evalExp context values -- TODO use "pat" to put value into item constructor
+
 -- bindElemConstructorsInListCompItem = 
 --   asBindGraph = mconcat $ zipWith
 --     asBindGraphZipper
 --     (fmap snd patternValsWithAsNames)
 --     lambdaPorts
 
-    
+-- evalLet :: Show l =>
+--   EvalContext
+--   -> [SimpDecl l]
+--   -> SimpExp l
+--   -> State IDState GraphAndRef
+-- evalLet c decls expr = do
+--   (bindGraph, bindContext) <- evalDecls c decls
+--   expVal <- evalExp bindContext expr
+--   let
+--     GraphAndRef expGraph expResult = expVal
+--     newGraph = deleteBindings . makeEdges $ expGraph <> bindGraph
+--     bindings = sgBinds bindGraph
+--   pure $ GraphAndRef newGraph (lookupReference bindings expResult)
+
 evalPatBind :: Show l =>
   l -> EvalContext -> SimpPat l -> SimpExp l -> State IDState SyntaxGraph
 evalPatBind _ c pat e = do
@@ -722,6 +746,7 @@ translateDeclToSyntaxGraph d = graph where
   graph = evalState evaluatedDecl initialIdState
 
 -- | Convert a single function declaration into a SyntaxGraph
+-- Used in Unit Tests
 translateStringToSyntaxGraph :: String -> SyntaxGraph
 translateStringToSyntaxGraph = translateDeclToSyntaxGraph . stringToSimpDecl
 
