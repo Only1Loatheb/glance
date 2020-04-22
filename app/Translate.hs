@@ -633,7 +633,7 @@ evalListComp bindContext l  e1 eList =  do
   
   expGraphsAndRefs <- mapM (evalExp bindContext) eList
   let expGraphs = fmap graphAndRefToGraph expGraphsAndRefs
-  let expGraph = mconcat expGraphs
+  let expsGraph = mconcat expGraphs
 
   GraphAndRef listCompItem listCompItemRef <- evalExp bindContext e1  
 
@@ -642,7 +642,7 @@ evalListComp bindContext l  e1 eList =  do
   let outputGraph = makeOutputGraph listCompItemRef edges binds listCompName listCompNode 
 
 
-  let combinedGraph = deleteBindings . makeEdges $ nodeGraph <> listCompItem <> expGraph <> outputGraph
+  let combinedGraph = deleteBindings . makeEdges $ nodeGraph <> listCompItem <> expsGraph <> outputGraph
   -- combinedGraph = deleteBindings . makeEdges
   -- $ (asBindGraph)
 

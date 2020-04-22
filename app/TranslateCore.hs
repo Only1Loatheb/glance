@@ -277,7 +277,14 @@ nodeToIcon (Embedder embeddedNodes node) = case node of
   CaseResultNode -> CaseResultIcon
   (CaseOrMultiIfNode tag x)
     -> nestedCaseOrMultiIfNodeToIcon tag x embeddedNodes
-  (ListCompNode) -> ListCompIcon -- TODO add more to ListCompIcon
+  (ListCompNode) -> listCompIcon embeddedNodes -- TODO actualy embede nodes
+
+listCompIcon embeddedNodes =  
+  ListCompIcon argList
+  where
+    dummyNode = ListCompNode
+    argPorts = take (Set.size embeddedNodes) (argumentPorts dummyNode)
+    argList = fmap (makeArg embeddedNodes) argPorts
 
 -- | Helper for makeArg
 findArg :: Port -> (NodeName, Edge) -> Bool

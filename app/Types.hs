@@ -85,7 +85,7 @@ data Icon = TextBoxIcon String
     [Labeled (Maybe NamedIcon)]  -- Arguments
   | NestedCaseIcon [Maybe NodeName]
   | NestedMultiIfIcon [Maybe NodeName]
-  | ListCompIcon
+  | ListCompIcon [Maybe NodeName]
   deriving (Show, Eq, Ord)
 
 data LikeApplyFlavor = ApplyNodeFlavor | ComposeNodeFlavor

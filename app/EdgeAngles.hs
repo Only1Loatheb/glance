@@ -136,3 +136,4 @@ getPortAngleHelper _embedded iconInfo icon port maybeNodeName = case icon of
       (findMaybeIconsFromNames iconInfo args)
       port
       maybeNodeName
+  ListCompIcon {} -> applyPortAngle port -- TODO better angles for ListCompIcon 

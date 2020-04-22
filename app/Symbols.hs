@@ -28,7 +28,7 @@ import Icons(
   findMaybeIconFromName
   ,findMaybeIconsFromNames
   )
-import TextBox ( 
+import TextBox (
   bindTextBox
   , defaultLineWidth
   , transformCorrectedTextBox
@@ -254,7 +254,7 @@ iconToDiagram iconInfo icon = case icon of
                             iconInfo
                             (findMaybeIconsFromNames iconInfo args)
                             MultiIfTag
-  ListCompIcon -> textBox "LISTCOMP"
+  ListCompIcon args -> listCompDiagram iconInfo (nestingC colorScheme) Nothing (replicate (1 + 3) Nothing) --(findMaybeIconsFromNames iconInfo args) -- listCompDiagram
 
 makeInputDiagram :: SpecialBackend b n
   => IconInfo
@@ -377,6 +377,36 @@ generalNestedDia
 
       finalDia = vcat [ argsDiagram,functionDiagramInBox, resultDiagram]
 
+listCompDiagram :: SpecialBackend b n
+  => IconInfo
+  -> [Colour Double]
+  -> Maybe NamedIcon
+  -> [Maybe NamedIcon]
+  -> TransformableDia b n
+listCompDiagram
+  iconInfo
+  borderColors
+  maybeFunText
+  args
+  tp@(TransformParams name nestingLevel)
+  = named name finalDia
+    where
+      borderColor = borderColors !! nestingLevel
+      boxWidth =  max (width transformedName) (width argPorts)
+
+      argPortsUncentred =  zipWith ( makeAppInnerIcon iconInfo tp False) argPortsConst (fmap pure args)
+      argPortsCentred  = fmap alignB argPortsUncentred
+      argPorts = centerX $ hsep portSeparationSize argPortsCentred
+      argsDiagram = boxForDiagram argPorts borderColor boxWidth (height argPorts)
+
+      resultDiagram =  makeResultDiagram name
+
+      transformedName = makeInputDiagram iconInfo tp (pure maybeFunText) name
+
+      functionDiagramInBox = boxForDiagram transformedName borderColor boxWidth (height transformedName)
+
+      finalDia = vcat [ argsDiagram,functionDiagramInBox, resultDiagram]
+
 nestedApplyDia :: SpecialBackend b n
   => IconInfo
   -> LikeApplyFlavor
@@ -455,7 +485,7 @@ generalNestedMultiIf iconInfo symbolColor inConstBox inputAndArgs flavor
     inputLambdaLine = lwG defaultLineWidth $ lc symbolColor $ vrule (height allCases)
     allCasesAtRight = alignT inputLambdaLine <> alignTL allCases
 
-    
+
 
 nestedLambda ::  SpecialBackend b n
   => TransformableDia b n
