@@ -4,7 +4,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Symbols
+module IconToSymbolDiagram
   ( ColorStyle(..)
   , colorScheme
   , defaultLineWidth
@@ -193,7 +193,7 @@ makeQualifiedPort port name = portAndSymbol where
   portAndSymbol = namedPort <> symbol
   symbol = if isInputPort port then inputPortSymbol else resultPortSymbol
 
--- Don't display " tempvar" from Translate.hs/matchesToCase
+-- Don't display " tempvar" from SimpSyntaxToSyntaxGraph.hs/matchesToCase
 makeLabelledPort :: SpecialBackend b n =>
   NodeName -> Port -> String ->  SpecialQDiagram b n
 makeLabelledPort name port str

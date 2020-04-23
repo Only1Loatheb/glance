@@ -15,9 +15,9 @@ import qualified Data.Graph.Inductive.PatriciaTree as FGR
 
 import Types(SpecialQDiagram, SpecialBackend, SyntaxNode(..), SgNamedNode
             , NodeInfo(..), Named(..), Embedder(..))
-import Translate(translateStringToSyntaxGraph)
-import TranslateCore(syntaxGraphToFglGraph)
-import GraphAlgorithms(annotateGraph, collapseAnnotatedGraph)
+import SimpSyntaxToSyntaxGraph(translateStringToSyntaxGraph)
+import SyntaxNodeToIcon(syntaxGraphToFglGraph)
+import CollapseGraph(annotateGraph, collapseAnnotatedGraph)
 import Rendering(customLayoutParams)
 import TextBox(coloredTextBox)
 

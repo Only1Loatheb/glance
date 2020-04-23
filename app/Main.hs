@@ -18,9 +18,9 @@ import Options.Applicative(header, progDesc, fullDesc, helper, info
                           , metavar, auto, argument, str, prefShowHelpOnError
                           , Parser)
 
-import Symbols(ColorStyle(..), colorScheme, multilineComment)
+import IconToSymbolDiagram(ColorStyle(..), colorScheme, multilineComment)
 import Rendering(renderIngSyntaxGraph)
-import Translate(translateModuleToCollapsedGraphs)
+import SimpSyntaxToSyntaxGraph(translateModuleToCollapsedGraphs)
 import Util(customRenderSVG)
 
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
@@ -92,7 +92,7 @@ translateFileMain = customExecParser parserPrefs  opts >>= renderFile where
 
   opts = info (helper <*> optionParser)
     (fullDesc
-    Dia.<> progDesc "Translate a Haskell source file (.hs) into an SVG image."
+    Dia.<> progDesc "SimpSyntaxToSyntaxGraph a Haskell source file (.hs) into an SVG image."
     Dia.<> header "Glance - a visual representation of Haskell")
 
 main :: IO ()

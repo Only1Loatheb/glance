@@ -51,16 +51,16 @@ executable glance-exe
   Other-modules: EdgeAngles
                , Icons
                , Rendering
-               , Symbols
+               , IconToSymbolDiagram
                , StringSymbols
                , TextBox
                , Types
                , Util
-               , Translate
-               , TranslateCore
+               , SimpSyntaxToSyntaxGraph
+               , SyntaxNodeToIcon
                , DrawingColors
-               , GraphAlgorithms
-               , SimplifySyntax
+               , CollapseGraph
+               , HsSyntaxToSimpSyntax
                , PortConstants
 
 test-suite glance-test
@@ -99,16 +99,16 @@ test-suite glance-test
                , VisualTranslateTests
                , VisualGraphAlgorithmTests
                , Rendering
-               , Symbols
+               , IconToSymbolDiagram
                , StringSymbols
                , TextBox
                , Types
                , Util
-               , Translate
-               , TranslateCore
+               , SimpSyntaxToSyntaxGraph
+               , SyntaxNodeToIcon
                , DrawingColors
-               , GraphAlgorithms
-               , SimplifySyntax
+               , CollapseGraph
+               , HsSyntaxToSimpSyntax
                , PortConstants
 
 source-repository head

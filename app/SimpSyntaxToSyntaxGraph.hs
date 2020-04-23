@@ -1,6 +1,6 @@
 {-# LANGUAGE NoMonomorphismRestriction, TupleSections, PatternSynonyms #-}
 
-module Translate(
+module SimpSyntaxToSyntaxGraph(
   translateStringToSyntaxGraph,
   translateStringToCollapsedGraphAndDecl,
   translateModuleToCollapsedGraphs,
@@ -11,7 +11,9 @@ import Diagrams.Prelude((<>))
 
 import Control.Monad(replicateM)
 import Control.Monad.State(State, evalState)
-import Data.Either(partitionEithers)
+import           Data.Either( partitionEithers
+                            , fromRight
+                            )
 import qualified Data.Graph.Inductive.PatriciaTree as FGR
 import Data.List(unzip5, partition, intercalate)
 import Data.Maybe(fromMaybe, mapMaybe)
@@ -22,15 +24,15 @@ import qualified Data.IntMap as IMap
 import qualified Language.Haskell.Exts as Exts
 import qualified Language.Haskell.Exts.Pretty as PExts
 
-import GraphAlgorithms(annotateGraph, collapseAnnotatedGraph)
+import CollapseGraph(annotateGraph, collapseAnnotatedGraph)
 import PortConstants(inputPort, resultPort, argumentPorts, caseValuePorts,
-             casePatternPorts)
-import SimplifySyntax(SimpAlt(..), stringToSimpDecl, SimpExp(..), SimpPat(..), SimpQStmt(..)
+             casePatternPorts, argPortsConst)
+import HsSyntaxToSimpSyntax(SimpAlt(..), stringToSimpDecl, SimpExp(..), SimpPat(..)
                      , qNameToString, nameToString, customParseDecl
                      , SimpDecl(..), hsDeclToSimpDecl, SelectorAndVal(..)
                      , pattern FunctionCompositionStr )
 
-import TranslateCore(Reference, SyntaxGraph(..), EvalContext, GraphAndRef(..)
+import SyntaxNodeToIcon(Reference, SyntaxGraph(..), EvalContext, GraphAndRef(..)
                     , SgSink(..), syntaxGraphFromNodes
                     , syntaxGraphFromNodesEdges, getUniqueName
                     , edgesForRefPortList, makeApplyGraph, makeMultiIfGraph
@@ -57,13 +59,13 @@ import StringSymbols(
 {-# ANN module "HLint: ignore Use record patterns" #-}
 
 -- OVERVIEW --
--- Translate SimpExp into subgraf of type SyntaxGraph
+-- SimpSyntaxToSyntaxGraph SimpExp into subgraf of type SyntaxGraph
 -- Generated SyntaxGraph has sgNodes sgEdges sgSinks sgBinds sgEmbedMap
 -- for one SimpExp
 -- sgNodes has unik ID called Name
 -- ARCHITECTURE NOTE --
--- The core functions and data types used in this module are in TranslateCore.
--- The TranslateCore also contains most/all of the translation functions that
+-- The core functions and data types used in this module are in SyntaxNodeToIcon.
+-- The SyntaxNodeToIcon also contains most/all of the translation functions that
 -- do not use Language.Haskell.Exts.
 
 -- BEGIN Helper Functions --
@@ -107,7 +109,7 @@ patternName (GraphAndRef _ ref, mStr) = fromMaybe
 
 -- BEGIN evalLit
 
--- This is in Translate and not Translate core since currently it is only used
+-- This is in SimpSyntaxToSyntaxGraph and not SimpSyntaxToSyntaxGraph core since currently it is only used
 -- by evalLit.
 makeLiteral :: (Show x) => x -> State IDState (SyntaxGraph, NameAndPort)
 makeLiteral = makeBox . show
@@ -276,7 +278,7 @@ evalPattern p = case p of
 
 -- BEGIN evalQName
 
--- strToGraphRef is not in TranslateCore, since it is only used by evalQName.
+-- strToGraphRef is not in SyntaxNodeToIcon, since it is only used by evalQName.
 strToGraphRef :: EvalContext -> String -> State IDState GraphAndRef
 strToGraphRef c str = fmap mapper (makeBox str) where
   mapper gr = if str `elem` c
@@ -603,11 +605,11 @@ makeOutputGraph rhsRef patternEdges' newBinds' lambdaName lambdaNode = graph whe
   (newEdges, newSinks) = makeOutputEdgesAndSinks rhsRef patternEdges returnPort
   graph = SyntaxGraph lambdaIconSet newEdges newSinks newBinds mempty
 
-  makeOutputEdgesAndSinks :: Either String NameAndPort
-                      -> Set.Set Edge -> NameAndPort -> (Set.Set Edge, Set.Set SgSink)
-  makeOutputEdgesAndSinks rhsRef patternEdges returnPort = case rhsRef of
-    Left s -> (patternEdges, Set.singleton (SgSink s returnPort))
-    Right rhsPort -> (Set.insert (makeSimpleEdge (rhsPort, returnPort)) patternEdges, mempty)
+makeOutputEdgesAndSinks :: Either String NameAndPort
+                    -> Set.Set Edge -> NameAndPort -> (Set.Set Edge, Set.Set SgSink)
+makeOutputEdgesAndSinks rhsRef patternEdges returnPort = case rhsRef of
+  Left s -> (patternEdges, Set.singleton (SgSink s returnPort))
+  Right rhsPort -> (Set.insert (makeSimpleEdge (rhsPort, returnPort)) patternEdges, mempty)
 
 
 -- END generalEvalLambda
@@ -624,63 +626,35 @@ evalExp c x = case x of
     -> grNamePortToGrRef <$> evalMultiIf c selectorsAndVals
   SeListComp l e eList -> evalListComp c l e eList
 
--- TODO make list composition work
 evalListComp :: Show l =>
-  EvalContext -> l -> SimpExp l -> [SimpQStmt l] -> State IDState GraphAndRef
-evalListComp context l  e1 eList =  do
-  listCompName <- getUniqueName
-  let listCompNode = ListCompNode
-  let nodeGraph = syntaxGraphFromNodes $ Set.singleton $ Named listCompName (mkEmbedder listCompNode)
-  
-  let decls = [d | (SqLet _l d ) <- eList]
-  -- let a =  fmap (evalDecls context) decls -- TODO add decls to context and graph
+  EvalContext -> l -> SimpExp l -> [SimpExp l] -> State IDState GraphAndRef
+evalListComp context l  itemExp qualExps =  do
+  GraphAndRef listCompItem listCompItemRef  <- evalExp context itemExp
+  let returnNamedPort@(NameAndPort listCompName _port)  = fromRight (error "list_comp ref is not namedPort") listCompItemRef
 
-  let quals = [x | x@(SqQual {}) <- eList]
-  let gens  = [x | x@(SqGen {}) <- eList]
-  expGraphsAndRefs <- mapM (evalSimpQStmt context) (quals ++ gens)
-
+  expGraphsAndRefs <- mapM (evalExp context) qualExps
   let expGraphs = fmap graphAndRefToGraph expGraphsAndRefs
   let expsGraph = mconcat expGraphs
 
-  GraphAndRef listCompItem listCompItemRef <- evalExp context e1  
+  let (edges, binds) = makeListCompEdges listCompName expGraphsAndRefs
 
-  let (edges, binds) = makeListCompEdges listCompName listCompNode expGraphsAndRefs
+  let outputGraph = listCompOutputGraph listCompItemRef edges binds returnNamedPort
 
-  let outputGraph = makeOutputGraph listCompItemRef edges binds listCompName listCompNode 
+  let combinedGraph = deleteBindings . makeEdges $  listCompItem <> expsGraph <> outputGraph
 
-  let combinedGraph = deleteBindings . makeEdges $ nodeGraph <> listCompItem <> expsGraph <> outputGraph
+  pure (GraphAndRef combinedGraph  listCompItemRef)
 
-  pure (GraphAndRef combinedGraph  (Right( nameAndPort listCompName (resultPort listCompNode)))  )
+listCompOutputGraph :: Either String NameAndPort -> [Edge] -> [(SMap.Key, Reference)] -> NameAndPort -> SyntaxGraph
+listCompOutputGraph rhsRef patternEdges' newBinds' returnPort = graph where
+  patternEdges = Set.fromList patternEdges'
+  newBinds = SMap.fromList newBinds'
+  (newEdges, newSinks) = makeOutputEdgesAndSinks rhsRef patternEdges returnPort
+  graph = SyntaxGraph mempty newEdges newSinks newBinds mempty
 
-makeListCompEdges :: NodeName -> SyntaxNode -> [GraphAndRef] -> ([Edge], [SgBind])
-makeListCompEdges listCompName listCompNode qualifiersGraph = (edges, binds) where
-  listCompPorts = map (nameAndPort listCompName) $ argumentPorts listCompNode
+makeListCompEdges :: NodeName -> [GraphAndRef] -> ([Edge], [SgBind])
+makeListCompEdges listCompName qualifiersGraph = (edges, binds) where
+  listCompPorts = map (nameAndPort listCompName) $ argPortsConst
   (edges, binds) = partitionEithers $ zipWith makeEdge qualifiersGraph listCompPorts
-
-
-evalSimpQStmt :: Show l => EvalContext -> SimpQStmt l -> State IDState GraphAndRef
-evalSimpQStmt context (SqQual l qual) = evalExp context qual
-evalSimpQStmt context (SqGen l values itemPat) = evalExp context values -- TODO use "pat" to put value into item constructor
-
--- bindElemConstructorsInListCompItem = 
---   asBindGraph = mconcat $ zipWith
---     asBindGraphZipper
---     (fmap snd patternValsWithAsNames)
---     lambdaPorts
-
--- evalLet :: Show l =>
---   EvalContext
---   -> [SimpDecl l]
---   -> SimpExp l
---   -> State IDState GraphAndRef
--- evalLet c decls expr = do
---   (bindGraph, bindContext) <- evalDecls c decls
---   expVal <- evalExp bindContext expr
---   let
---     GraphAndRef expGraph expResult = expVal
---     newGraph = deleteBindings . makeEdges $ expGraph <> bindGraph
---     bindings = sgBinds bindGraph
---   pure $ GraphAndRef newGraph (lookupReference bindings expResult)
 
 evalPatBind :: Show l =>
   l -> EvalContext -> SimpPat l -> SimpExp l -> State IDState SyntaxGraph

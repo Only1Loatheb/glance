@@ -1,4 +1,4 @@
-module TranslateCore(
+module SyntaxNodeToIcon(
   Reference,
   SyntaxGraph(..),
   EvalContext,
@@ -56,7 +56,7 @@ import StringSymbols(
 {-# ANN module "HLint: ignore Use list comprehension" #-}
 
 -- OVERVIEW --
--- This module has the core functions and data types used by Translate.
+-- This module has the core functions and data types used by SimpSyntaxToSyntaxGraph.
 -- This module also contains most/all of the translation functions that
 -- do not require Language.Haskell.Exts.
 
@@ -277,14 +277,14 @@ nodeToIcon (Embedder embeddedNodes node) = case node of
   CaseResultNode -> CaseResultIcon
   (CaseOrMultiIfNode tag x)
     -> nestedCaseOrMultiIfNodeToIcon tag x embeddedNodes
-  (ListCompNode) -> listCompIcon embeddedNodes -- TODO actualy embede nodes
+  -- (ListCompNode) -> listCompIcon embeddedNodes -- TODO actualy embede nodes
 
-listCompIcon embeddedNodes =  
-  ListCompIcon argList
-  where
-    dummyNode = ListCompNode
-    argPorts = take (Set.size embeddedNodes) (argumentPorts dummyNode)
-    argList = fmap (makeArg embeddedNodes) argPorts
+-- listCompIcon embeddedNodes =  
+--   ListCompIcon argList
+--   where
+--     dummyNode = ListCompNode
+--     argPorts = take (Set.size embeddedNodes) (argumentPorts dummyNode)
+--     argList = fmap (makeArg embeddedNodes) argPorts
 
 -- | Helper for makeArg
 findArg :: Port -> (NodeName, Edge) -> Bool

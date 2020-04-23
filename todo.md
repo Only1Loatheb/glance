@@ -25,9 +25,9 @@
 
 * Make an icon font/library with labeled ports. E.g. the apply icon would have text labels "function", "result", "arg 0", "arg 1", etc.
 
-### Translate todos
+### SimpSyntaxToSyntaxGraph todos
 
-* Fix applyComposeScore in Translate.hs not counting expressions that nest via reference. May need to move compose generation to after translate.
+* Fix applyComposeScore in SimpSyntaxToSyntaxGraph.hs not counting expressions that nest via reference. May need to move compose generation to after SimpSyntaxToSyntaxGraph.
 
 * Add proper RecConstr, and RecUpdate support.
 

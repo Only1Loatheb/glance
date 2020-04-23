@@ -122,7 +122,6 @@ data SyntaxNode =
     (Set NodeName)  -- Nodes inside the lambda
   | CaseResultNode -- TODO remove caseResultNode
   | CaseOrMultiIfNode CaseOrMultiIfTag Int
-  | ListCompNode
   deriving (Show, Eq, Ord)
 
 newtype Port = Port Int deriving (Typeable, Eq, Ord, Show)

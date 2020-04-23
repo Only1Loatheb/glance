@@ -9,8 +9,8 @@ import qualified Data.Map as Map
 import           Data.Set(Set)
 import qualified Data.Set as Set
 
-import Translate(translateStringToSyntaxGraph)
-import TranslateCore(SyntaxGraph(..), SgBind(..))
+import SimpSyntaxToSyntaxGraph(translateStringToSyntaxGraph)
+import SyntaxNodeToIcon(SyntaxGraph(..), SgBind(..))
 import Types(Embedder(..), Labeled(..), SgNamedNode, Edge(..), SyntaxNode(..),
              NodeName(..), NameAndPort(..), Named(..), mkEmbedder)
 import Util(fromMaybeError)
@@ -109,7 +109,7 @@ renameGraph (SyntaxGraph nodes edges sinks sources embedMap) =
 -- END renameGraph
 
 -- END Unit Test Helpers --
--- Translate unit tests
+-- SimpSyntaxToSyntaxGraph unit tests
 
 applyTests :: Test
 applyTests = TestList [

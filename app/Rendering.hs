@@ -39,14 +39,14 @@ import GHC.Stack(HasCallStack)
 --import Data.GraphViz.Commands
 
 import Icons(findMaybeIconFromName)
-import Symbols  ( iconToDiagram
+import IconToSymbolDiagram  ( iconToDiagram
                 , lambdaRegionToDiagram
                 , getArrowShadowOpts
                 , getArrowBaseOpts
                 )
 import EdgeAngles(getPortAngle)
 
-import TranslateCore(nodeToIcon)
+import SyntaxNodeToIcon(nodeToIcon)
 import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
             , Drawing(..), NameAndPort(..)
             , SpecialQDiagram, SpecialBackend, SpecialNum, NodeName(..)
@@ -77,7 +77,7 @@ drawingToGraphvizScaleFactor :: Fractional a => a
 -- For Neato, PrismOverlap
 drawingToGraphvizScaleFactor = 0.15
 
--- TODO Refactor with syntaxGraphToFglGraph in TranslateCore
+-- TODO Refactor with syntaxGraphToFglGraph in SyntaxNodeToIcon
 -- TODO Make this work with nested icons now that names are not qualified.
 drawingToIconGraph :: Drawing -> Gr NamedIcon (EmbedInfo Edge)
 drawingToIconGraph (Drawing nodes edges) =

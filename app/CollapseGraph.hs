@@ -1,6 +1,6 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE PatternSynonyms #-}
-module GraphAlgorithms(
+module CollapseGraph(
   ParentType(..),
   annotateGraph,
   collapseAnnotatedGraph

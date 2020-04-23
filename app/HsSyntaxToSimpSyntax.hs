@@ -1,11 +1,10 @@
 {-# LANGUAGE PatternSynonyms #-}
-module SimplifySyntax (
+module HsSyntaxToSimpSyntax (
   SimpExp(..)
   , SelectorAndVal(..)
   , SimpAlt(..)
   , SimpDecl(..)
   , SimpPat(..)
-  , SimpQStmt(..)
   , stringToSimpDecl
   , qNameToString
   , nameToString
@@ -20,7 +19,7 @@ import Data.Maybe(catMaybes, isJust)
 
 import qualified Language.Haskell.Exts as Exts
 
-import TranslateCore(nTupleSectionString, nTupleString, nListString)
+import SyntaxNodeToIcon(nTupleSectionString, nTupleString, nListString)
 import StringSymbols(
   qualifiedSeparatorStr
   , unitConstructorStr
@@ -81,7 +80,7 @@ data SimpExp l =
   | SeListComp
     { lSeListComp  :: l
     , bodyExpresion :: SimpExp l
-    , qualifyingExpresion ::[SimpQStmt l]} -- TODO  [SimpStmt l]
+    , qualifyingExpresion ::[SimpExp l]} -- TODO  [SimpStmt l]
   deriving (Show, Eq)
 
 data SimpStmt l = SimpStmt l String deriving (Show, Eq)
@@ -131,20 +130,6 @@ data SimpPat l =
     , aliasedPattern :: SimpPat l}
   | SpWildCard l
   deriving (Show, Eq)
-
-data SimpQStmt l = 
-  SqQual
-    { lSqQual :: l
-    , qualifier :: SimpExp l }
-  | SqGen
-    { lSqGen :: l 
-    , valueGenerator :: SimpExp l
-    , itemPattern :: SimpPat l}
-  | SqLet 
-    { lSqLet :: l
-    , declarationBinds :: [SimpDecl l]}
-  deriving (Show, Eq)
-  
 
 -- Helper functions
 
@@ -382,11 +367,11 @@ desugarEnums l funcName exprs = hsExpToSimpExp $ deListifyApp l
                                 (makeVarExp l funcName)
                                 exprs
 
-desugarListComp :: Show l => Exts.Stmt l ->  SimpQStmt l
-desugarListComp (Exts.Qualifier l e) = SqQual l (hsExpToSimpExp e)
-desugarListComp (Exts.Generator l pat e) = SqGen l (hsExpToSimpExp e) (hsPatToSimpPat pat)
-desugarListComp (Exts.LetStmt l binds) = SqLet l (hsBindsToDecls binds)
-desugarListComp _ = error "Unsupported syntax in hsQStmtsToSimpStmts'"
+desugarListComp :: Show l => Exts.Exp l -> Exts.Stmt l ->  Exts.Exp l
+desugarListComp e1  (Exts.Qualifier l e) = Exts.App l (Exts.App l (makeVarExp l thenOperatorStr) e) e1
+desugarListComp e1  (Exts.Generator l pat e) = (Exts.App l (Exts.App l (makeVarExp l bindOperatorStr) e) (Exts.Lambda l [pat]  e1))
+desugarListComp e1 (Exts.LetStmt l binds) = Exts.Let l binds e1
+desugarListComp _ _ = error "Unsupported syntax in hsQStmtsToSimpStmts'"
                             
 -- http://hackage.haskell.org/package/haskell-src-exts-1.23.0/docs/Language-Haskell-Exts-Syntax.html#g:8
 hsExpToSimpExp :: Show a => Exts.Exp a -> SimpExp a
@@ -422,7 +407,7 @@ hsExpToSimpExp x = simplifyExp $ case x of
   Exts.EnumFromThen l e1 e2 -> desugarEnums l enumFromThenStr [e1, e2]
   Exts.EnumFromThenTo l e1 e2 e3 -> desugarEnums l enumFromThenToStr [e1, e2, e3]
   Exts.MultiIf l rhss -> SeMultiIf l (fmap guardedRhsToSelectorAndVal rhss)
-  Exts.ListComp l e1 qStmts -> SeListComp l (hsExpToSimpExp e1) ( fmap desugarListComp $ filterQStmts qStmts)
+  Exts.ListComp l e1 qStmts -> SeListComp l (hsExpToSimpExp e1) ( fmap (hsExpToSimpExp . desugarListComp e1) $ filterQStmts qStmts)
   _ -> error $ "Unsupported syntax in hsExpToSimpExp: " ++ show x
   -- BDecls l [Decl l]	
   -- IPBinds l [IPBind l]

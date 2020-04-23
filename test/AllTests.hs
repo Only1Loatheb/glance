@@ -7,7 +7,7 @@ import Diagrams.Prelude hiding ((#), (&))
 import GHC.Stack(HasCallStack)
 import Test.HUnit
 
-import Symbols(colorScheme, ColorStyle(..))
+import IconToSymbolDiagram(colorScheme, ColorStyle(..))
 import Util(customRenderSVG)
 
 import UnitTests(allUnitTests)
@@ -19,7 +19,7 @@ import VisualTranslateTests(visualTranslateTests)
 
 drawingsAndNames :: [(String, IO (Diagram B))]
 drawingsAndNames =
-  [ ("translate-tests", visualTranslateTests)
+  [ ("SimpSyntaxToSyntaxGraph-tests", visualTranslateTests)
   , ("render-tests", renderTests)
   , ("collapse-tests", visualCollapseTests)
   ]
