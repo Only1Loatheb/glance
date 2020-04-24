@@ -20,9 +20,9 @@ module SyntaxGraph(
   , makeBox
   , makeOutputEdgesAndSinks
   , makeEdge
-  , EvalContext(..)
+  , EvalContext
   , GraphAndRef(..)
-  , Reference(..)
+  , Reference
   , SgSink(..)
   , SgBind
   , strToGraphRef
@@ -103,7 +103,7 @@ type Reference = Either String NameAndPort
 
 type EvalContext = [String]
 
-type SgBind = (String, Reference)
+type SgBind = (SMap.Key, Reference)
 
 data SgSink = SgSink String NameAndPort deriving (Eq, Ord, Show)
 

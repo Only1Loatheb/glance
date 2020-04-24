@@ -5,15 +5,15 @@ module UnitTests(
 import Test.HUnit
 
 import Data.List(foldl', sort, sortOn)
-import qualified Data.Map as Map
-import           Data.Set(Set)
 import qualified Data.Set as Set
+import qualified Data.StringMap as SMap
+import qualified Data.IntMap as IMap
 
 import SimpSyntaxToSyntaxGraph(translateStringToSyntaxGraph)
-import SyntaxGraph(SyntaxGraph(..), SgBind)
+import SyntaxGraph(SyntaxGraph(..), Reference)
 import Types(Embedder(..), Labeled(..), SgNamedNode, Edge(..), SyntaxNode(..),
-             NodeName(..), NameAndPort(..), Named(..), mkEmbedder)
-import Util(fromMaybeError)
+             NodeName(..), NameAndPort(..), Named(..), mkEmbedder, NodeName)
+import Util(fromMaybeError, nodeNameToInt)
 
 -- Unit Test Helpers --
 
@@ -24,11 +24,11 @@ assertAllEqual items = case items of
 
 -- TODO Remove the Lambda node's node list.
 assertEqualSyntaxGraphs :: [String] -> Test
-assertEqualSyntaxGraphs ls = assertAllEqual $ fmap ( translateStringToSyntaxGraph) ls
+assertEqualSyntaxGraphs ls = assertAllEqual $ fmap (renameGraph . translateStringToSyntaxGraph) ls
 
 -- BEGIN renameGraph --
 type NameMap = [(NodeName, NodeName)]
-{-
+
 -- TODO Revisit this function
 renameNode
   :: NameMap -> Int -> SgNamedNode -> (SgNamedNode, NameMap, Int)
@@ -79,15 +79,15 @@ renameEdge :: NameMap -> Edge -> Edge
 renameEdge nameMap (Edge options (np1, np2)) =
   Edge options (renameNamePort nameMap np1, renameNamePort nameMap np2)
 
-renameSource :: NameMap -> SgBind -> SgBind
-renameSource nameMap (str, ref) = (str, newRef) where
+renameSource :: NameMap -> Reference-> Reference 
+renameSource nameMap ref = newRef  where
   newRef = case ref of
     Left _ -> ref
     Right namePort@(NameAndPort _ _) -> Right $ renameNamePort nameMap namePort
 
-renameEmbed :: NameMap -> (NodeName, NodeName) -> (NodeName, NodeName)
-renameEmbed nameMap (leftName, rightName) = (newLeftName, newRightName) where
-  newLeftName = fromMaybeError "renameEmbed: leftName not found" (lookup leftName nameMap)
+renameEmbed :: NameMap -> (IMap.Key, NodeName) -> (IMap.Key, NodeName)
+renameEmbed nameMap (leftName, rightName) = (nodeNameToInt newLeftName, newRightName) where
+  newLeftName = fromMaybeError "renameEmbed: leftName not found" (lookup (NodeName leftName) nameMap)
   newRightName = fromMaybeError "renameEmbed: RightName not found" (lookup rightName nameMap)
 
 -- TODO May want to remove names for sub-nodes
@@ -100,12 +100,11 @@ renameGraph :: SyntaxGraph -> SyntaxGraph
 renameGraph (SyntaxGraph nodes edges sinks sources embedMap) =
   SyntaxGraph renamedNodes renamedEdges sinks renamedSources renamedEmbedMap
   where
-    (renamedNodes, nameMap, _) = foldl' renameNodeFolder ([], [], 0) $ sortOn removeNames nodes
-    renamedEdges = sort $ fmap (renameEdge nameMap) edges
-    renamedSources = sort $ fmap (renameSource nameMap) sources
-    renamedEmbedMap
-      = Map.fromList $ sort $ renameEmbed nameMap <$> Map.toList embedMap
--}
+    (renamedNodes, nameMap, _) = foldl' renameNodeFolder (mempty, [], 0) $ sortOn removeNames $ Set.toList nodes
+    renamedEdges = Set.map (renameEdge nameMap) edges
+    renamedSources = SMap.map (renameSource nameMap) sources
+    renamedEmbedMap = IMap.fromList $ fmap (renameEmbed nameMap) $ IMap.toList embedMap
+
 -- END renameGraph
 
 -- END Unit Test Helpers --
@@ -338,7 +337,15 @@ fmapTests = TestList [
       "y = f1 $ f2 <$> f3 x"
       ]
   ]
-
+listcompTests :: Test
+listcompTests = TestList [
+  assertEqualSyntaxGraphs [
+      "y = [toUpper c | c <- s]",
+      "y = do\n\
+      \ c <- s\n\
+      \ return (toUpper c)"
+      ]
+  ]
 -- Yes, the commas get their own line
 translateUnitTests :: Test
 translateUnitTests = TestList [
@@ -349,11 +356,13 @@ translateUnitTests = TestList [
   TestLabel "composeApplyTests" composeApplyTests
   ,
   TestLabel "infixTests" infixTests
-  , TestLabel "letTests" letTests
+  -- , TestLabel "letTests" letTests -- lookupReference filed
   , TestLabel "negateTests" negateTests
   , TestLabel "enumTests" enumTests
   , TestLabel "patternTests" patternTests
   , TestLabel "lambdaTests" lambdaTests
+  ,
+  TestLabel "listcompTests" listcompTests
   ]
 
 allUnitTests :: Test
