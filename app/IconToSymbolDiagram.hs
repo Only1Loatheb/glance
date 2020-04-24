@@ -10,7 +10,6 @@ module IconToSymbolDiagram
   , defaultLineWidth
   , iconToDiagram
   , multilineComment
-  , lambdaRegionSymbol
   , getArrowShadowOpts
   , getArrowBaseOpts
   , textBox

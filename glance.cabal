@@ -62,6 +62,7 @@ executable glance-exe
                , CollapseGraph
                , HsSyntaxToSimpSyntax
                , PortConstants
+               , SyntaxGraph
 
 test-suite glance-test
   type:                exitcode-stdio-1.0
@@ -110,6 +111,7 @@ test-suite glance-test
                , CollapseGraph
                , HsSyntaxToSimpSyntax
                , PortConstants
+               , SyntaxGraph
 
 source-repository head
   type:     git

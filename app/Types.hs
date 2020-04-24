@@ -2,36 +2,36 @@
 {-# LANGUAGE DeriveFunctor #-}
 
 module Types (
-  Named(..),
-  NamedIcon,
-  IconInfo,
-  Icon(..),
-  SyntaxNode(..),
-  NodeName(..),
-  Port(..),
-  NameAndPort(..),
-  Connection,
-  Edge(..),
-  EdgeOption(..),
-  Drawing(..),
-  IDState(..),
-  SpecialQDiagram,
-  SpecialBackend,
-  SpecialNum,
-  SgNamedNode,
-  IngSyntaxGraph,
-  LikeApplyFlavor(..),
-  CaseOrMultiIfTag(..),
-  Labeled(..),
-  EmbedDirection(..),
-  EmbedInfo(..),
-  AnnotatedGraph,
-  NodeInfo(..),
-  Embedder(..),
-  mkEmbedder,
-  EmbedderSyntaxNode,
-  TransformParams(..),
-  TransformableDia,
+  Named(..)
+  , NamedIcon
+  , IconInfo
+  , Icon(..)
+  , SyntaxNode(..)
+  , NodeName(..)
+  , Port(..)
+  , NameAndPort(..)
+  , Connection
+  , Edge(..)
+  , EdgeOption(..)
+  , Drawing(..)
+  , IDState(..)
+  , SpecialQDiagram
+  , SpecialBackend
+  , SpecialNum
+  , SgNamedNode
+  , IngSyntaxGraph
+  , LikeApplyFlavor(..)
+  , CaseOrMultiIfTag(..)
+  , Labeled(..)
+  , EmbedDirection(..)
+  , EmbedInfo(..)
+  , AnnotatedGraph
+  , NodeInfo(..)
+  , Embedder(..)
+  , mkEmbedder
+  , EmbedderSyntaxNode
+  , TransformParams(..)
+  , TransformableDia
 ) where
 
 import Diagrams.Prelude(QDiagram, V2, Any, Renderable, Path, IsName)

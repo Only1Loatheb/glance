@@ -11,9 +11,9 @@ import Data.List(intercalate)
 import GHC.Stack(HasCallStack)
 
 import Types(SpecialQDiagram, SpecialBackend, NodeName(..),TransformParams(..))
-import SimpSyntaxToSyntaxGraph(translateStringToCollapsedGraphAndDecl
-                , translateStringToSyntaxGraph)
-import SyntaxNodeToIcon(syntaxGraphToFglGraph, SyntaxGraph(..))
+import CollapseGraph(translateStringToCollapsedGraphAndDecl, syntaxGraphToFglGraph)
+import SimpSyntaxToSyntaxGraph(translateStringToSyntaxGraph)
+import SyntaxGraph( SyntaxGraph(..))
 import Rendering(renderIngSyntaxGraph)
 import IconToSymbolDiagram(textBox)
 import qualified Data.Set as Set

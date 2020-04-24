@@ -19,7 +19,6 @@ import Data.Maybe(catMaybes, isJust)
 
 import qualified Language.Haskell.Exts as Exts
 
-import SyntaxNodeToIcon(nTupleSectionString, nTupleString, nListString)
 import StringSymbols(
   qualifiedSeparatorStr
   , unitConstructorStr
@@ -39,6 +38,9 @@ import StringSymbols(
   , bindOperatorStr
   , listCompositionPlaceholderStr
   , actionOverParameterizedType
+  , nTupleString
+  , nTupleSectionString
+  , nListString
   )
 
 -- TODO use a data constructor for the special case instead of using string

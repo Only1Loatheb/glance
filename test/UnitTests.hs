@@ -10,7 +10,7 @@ import           Data.Set(Set)
 import qualified Data.Set as Set
 
 import SimpSyntaxToSyntaxGraph(translateStringToSyntaxGraph)
-import SyntaxNodeToIcon(SyntaxGraph(..), SgBind(..))
+import SyntaxGraph(SyntaxGraph(..), SgBind)
 import Types(Embedder(..), Labeled(..), SgNamedNode, Edge(..), SyntaxNode(..),
              NodeName(..), NameAndPort(..), Named(..), mkEmbedder)
 import Util(fromMaybeError)

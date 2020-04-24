@@ -1,11 +1,15 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE PatternSynonyms #-}
 module CollapseGraph(
-  ParentType(..),
-  annotateGraph,
-  collapseAnnotatedGraph
+  translateStringToCollapsedGraphAndDecl
+  , translateModuleToCollapsedGraphs
+  , annotateGraph
+  , syntaxGraphToFglGraph
+  , collapseAnnotatedGraph
   ) where
 
+import qualified Data.Graph.Inductive.PatriciaTree as FGR
+import qualified Language.Haskell.Exts as Exts
 import qualified Data.Graph.Inductive as ING
 import Data.List(foldl', find)
 import qualified Data.Set as Set
@@ -18,6 +22,18 @@ import Types(SyntaxNode(..), IngSyntaxGraph, Edge(..),
             , AnnotatedGraph, EmbedInfo(..), EmbedDirection(..), NodeInfo(..)
             , Embedder(..), Named(..), EmbedderSyntaxNode, NodeName)
 import Util(fromMaybeError)
+import SyntaxGraph(SyntaxGraph(..))
+import SimpSyntaxToSyntaxGraph(
+  translateStringToSyntaxGraph
+  , translateDeclToSyntaxGraph
+  , customParseDecl
+  )
+import SyntaxNodeToIcon(
+  lookupInEmbeddingMap
+  , makeLNode
+  )
+import HsSyntaxToSimpSyntax(hsDeclToSimpDecl)
+import Util(nodeNameToInt)
 
 {-# ANN module "HLint: ignore Use record patterns" #-}
 
@@ -263,3 +279,38 @@ collapseAnnotatedGraph origGraph = moveEdges newGraph
     defaultNodeInfoGraph = ING.nmap (NodeInfo Nothing) origGraph
    -- TODO Check that there are no embedded edges left.
     newGraph = foldl' collapseEdge defaultNodeInfoGraph (ING.labEdges origGraph)
+
+-- Exported functions
+syntaxGraphToFglGraph :: SyntaxGraph -> FGR.Gr SgNamedNode Edge
+syntaxGraphToFglGraph (SyntaxGraph nodes edges _ _ eMap) =
+  ING.mkGraph (fmap makeLNode (Set.toList nodes)) labeledEdges where
+    labeledEdges = fmap makeLabeledEdge (Set.toList edges)
+
+    makeLabeledEdge e@(Edge _ (NameAndPort name1 _, NameAndPort name2 _)) =
+      (nodeNameToInt $ lookupInEmbeddingMap name1 eMap
+      , nodeNameToInt $ lookupInEmbeddingMap name2 eMap
+      , e)
+
+syntaxGraphToCollapsedGraph :: SyntaxGraph -> AnnotatedGraph FGR.Gr
+syntaxGraphToCollapsedGraph
+  = collapseAnnotatedGraph . annotateGraph . syntaxGraphToFglGraph
+  -- = annotateGraph . syntaxGraphToFglGraph
+
+translateDeclToCollapsedGraph :: Show l => Exts.Decl l -> AnnotatedGraph FGR.Gr
+translateDeclToCollapsedGraph
+  = syntaxGraphToCollapsedGraph . translateDeclToSyntaxGraph . hsDeclToSimpDecl
+
+-- Profiling: At one point, this was about 1.5% of total time.
+translateStringToCollapsedGraphAndDecl ::
+  String -> (AnnotatedGraph FGR.Gr, Exts.Decl Exts.SrcSpanInfo)
+translateStringToCollapsedGraphAndDecl s = (drawing, decl) where
+  decl = customParseDecl s -- :: ParseResult Module
+  drawing = translateDeclToCollapsedGraph decl
+
+translateModuleToCollapsedGraphs :: Show l =>
+  Exts.Module l -> [AnnotatedGraph FGR.Gr]
+translateModuleToCollapsedGraphs (Exts.Module _ _ _ _ decls)
+  = fmap translateDeclToCollapsedGraph decls
+translateModuleToCollapsedGraphs moduleSyntax
+  = error $ "Unsupported syntax in translateModuleToCollapsedGraphs: "
+    <> show moduleSyntax

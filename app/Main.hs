@@ -20,7 +20,7 @@ import Options.Applicative(header, progDesc, fullDesc, helper, info
 
 import IconToSymbolDiagram(ColorStyle(..), colorScheme, multilineComment)
 import Rendering(renderIngSyntaxGraph)
-import SimpSyntaxToSyntaxGraph(translateModuleToCollapsedGraphs)
+import CollapseGraph(translateModuleToCollapsedGraphs)
 import Util(customRenderSVG)
 
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}

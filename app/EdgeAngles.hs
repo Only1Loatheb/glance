@@ -4,10 +4,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module EdgeAngles
-    (
-      getPortAngle
-    ) where
+module EdgeAngles(
+  getPortAngle
+  ) where
 
 import Diagrams.Prelude hiding ((&), (#), Name)
 
