@@ -17,6 +17,12 @@ The function f is applied to the argument x, and the result is bound to y.
 mapToUpper :: [a]
 mapToUpper = [toUpper c | c <- s]
 
+multipleGeneratorsM :: [a]
+multipleGeneratorsM = do
+  i <- [1,2]
+  j <- [1..4]
+  return (i,j)
+
 multipleGenerators :: (Num a, Num b, Enum b) => [(a, b)]
 multipleGenerators = [(i,j) | i <- [1,2],
                               j <- [1..4] ]

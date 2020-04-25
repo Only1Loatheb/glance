@@ -23,11 +23,13 @@ import qualified Language.Haskell.Exts.Pretty as PExts
 
 import PortConstants(inputPort, resultPort, argumentPorts, caseValuePorts,
              casePatternPorts, argPortsConst)
-import HsSyntaxToSimpSyntax(SimpAlt(..), stringToSimpDecl, SimpExp(..), SimpPat(..)
+import HsSyntaxToSimpSyntax(
+  SimpAlt(..), stringToSimpDecl, SimpExp(..), SimpPat(..)
                     , qNameToString, nameToString, customParseDecl
                     , SimpDecl(..), hsDeclToSimpDecl, SelectorAndVal(..)
                     , pattern FunctionCompositionStr
-                    )
+  , SimpQStmt(..)
+  )
 import Types(AnnotatedGraph, Labeled(..), NameAndPort(..), IDState,
              Edge, SyntaxNode(..), NodeName(..), SgNamedNode,
              LikeApplyFlavor(..), CaseOrMultiIfTag(..), Named(..)
@@ -132,7 +134,7 @@ makePatternGraph :: Show l =>
 makePatternGraph c pat e = do
   patGraphAndRef <- evalPattern pat
   let
-    rhsContext = namesInPattern patGraphAndRef <> c
+    rhsContext = Set.union (namesInPattern patGraphAndRef) c
   rhsGraphAndRef <- evalExp rhsContext e
   pure (patGraphAndRef, rhsGraphAndRef)
 
@@ -302,20 +304,20 @@ evalApp c expr = case expr of
 
 -- BEGIN evalGeneralLet
 
-getBoundVarName :: Show l => SimpDecl l -> [String]
+getBoundVarName :: Show l => SimpDecl l -> EvalContext
 getBoundVarName d = case d of
   SdPatBind _ pat _ -> namesInPattern
                      -- TODO Should evalState be used here?
                      $ evalState (evalPattern pat) initialIdState
-  SdTypeSig _ _ _ -> []
-  SdCatchAll _ -> []
+  SdTypeSig _ _ _ -> Set.empty
+  SdCatchAll _ -> Set.empty
 
 evalDecls :: Show l =>
   EvalContext -> [SimpDecl l] -> State IDState (SyntaxGraph, EvalContext)
 evalDecls c decls =
   let
-    boundNames = concatMap getBoundVarName decls
-    augmentedContext = boundNames <> c
+    boundNames = Set.unions (fmap getBoundVarName decls)
+    augmentedContext = Set.union boundNames c
   in
     (,augmentedContext) . mconcat <$> mapM (evalDecl augmentedContext) decls
 
@@ -467,8 +469,8 @@ evalLambda _ context patterns expr functionName = do
   lambdaName <- getUniqueName
   patternValsWithAsNames <- mapM evalPattern patterns
   let
-    patternStrings = concatMap namesInPattern patternValsWithAsNames
-    rhsContext = patternStrings <> context
+    patternStrings = Set.unions $ fmap namesInPattern patternValsWithAsNames
+    rhsContext = Set.union patternStrings context
   GraphAndRef rhsRawGraph rhsRef <- evalExp rhsContext expr
   let
     patternVals = fmap fst patternValsWithAsNames
@@ -516,15 +518,61 @@ makeOutputGraph rhsRef patternEdges' newBinds' lambdaName lambdaNode = graph whe
 -- END generalEvalLambda
 
 evalListComp :: Show l =>
-  EvalContext -> l -> SimpExp l -> [SimpExp l] -> State IDState GraphAndRef
-evalListComp context l  itemExp qualExps =  do
+  EvalContext -> l -> SimpExp l -> [SimpQStmt l] -> State IDState GraphAndRef
+evalListComp context l  itemExp qualExps =  do  
   GraphAndRef listCompItem listCompItemRef  <- evalExp context itemExp
+  
+  let decls = [d | (SqLet _l d ) <- qualExps]
+  declGraphRefsAndContexts <- mapM (evalDecls context) decls -- TODO add decls to context and graph
+  let declGraphsAndRefs = fmap (getRefForListCompItem listCompItemRef) (fmap fst declGraphRefsAndContexts)
+  let declContext =  Set.unions (context : (fmap snd  declGraphRefsAndContexts))
+  
 
-  expGraphsAndRefs <- mapM (evalExp context) qualExps
+  let gens  = [x | x@(SqGen {}) <- qualExps]
+  genGraphRefsAndContexts <- mapM (evalSqGen context)  gens
+  let genContext = Set.unions (declContext : (fmap namesInPattern genGraphRefsAndContexts))
+
+  let quals = [x | x@(SqQual {}) <- qualExps]
+  qualsGraphsAndRefs <- mapM (evalSqQual genContext)  quals
+  
+  -- listCompName <- getUniqueName
+
+  let expGraphsAndRefs = qualsGraphsAndRefs ++ fmap fst genGraphRefsAndContexts ++ declGraphsAndRefs
 
   let combinedGraph = makeListCompGraph listCompItemRef listCompItem expGraphsAndRefs 
 
   pure (GraphAndRef combinedGraph  listCompItemRef)
+
+evalSqQual :: Show l =>
+                EvalContext -> SimpQStmt l -> State IDState GraphAndRef
+evalSqQual context (SqQual l qual) = evalExp context qual
+evalSqQual _ _ = error "SimpQStmt must be SqQual" 
+
+getRefForListCompItem :: Reference -> SyntaxGraph -> GraphAndRef
+getRefForListCompItem expResultRef bindGraph = GraphAndRef bindGraph ref where
+  bindings = sgBinds bindGraph
+  ref = lookupReference bindings expResultRef
+
+-- evalLet :: Show l =>
+--   EvalContext
+--   -> [SimpDecl l]
+--   -> SimpExp l
+--   -> State IDState GraphAndRef
+-- evalLet c decls expr = do
+--   (bindGraph, bindContext) <- evalDecls c decls
+--   expVal <- evalExp bindContext expr
+--   let
+--     GraphAndRef expGraph expResult = expVal
+--     newGraph = deleteBindings . makeEdges $ expGraph <> bindGraph
+--     bindings = sgBinds bindGraph
+--   pure $ GraphAndRef newGraph (lookupReference bindings expResult)
+
+evalSqGen context (SqGen _l values itemPat) = do 
+  (GraphAndRef patternGraph patternRef, itemContext) <- evalPattern itemPat
+  (GraphAndRef valueGraph valueRef) <- evalExp context values -- TODO use "pat" to put value into item constructor
+  let graph = valueGraph <> patternGraph
+  pure (GraphAndRef graph patternRef, itemContext)
+evalSqGen _ _ = error "SimpQStmt must be SqGen" 
 
 evalPatBind :: Show l =>
   l -> EvalContext -> SimpPat l -> SimpExp l -> State IDState SyntaxGraph

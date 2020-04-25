@@ -101,7 +101,7 @@ import StringSymbols(
 
 type Reference = Either String NameAndPort
 
-type EvalContext = [String]
+type EvalContext = Set.Set String
 
 type SgBind = (SMap.Key, Reference)
 
@@ -376,17 +376,17 @@ combineExpressions inPattern portExpPairs
 grNamePortToGrRef :: (SyntaxGraph, NameAndPort) -> GraphAndRef
 grNamePortToGrRef (graph, np) = GraphAndRef graph (Right np)
 
-namesInPattern :: (GraphAndRef, Maybe String) -> [String]
+namesInPattern :: (GraphAndRef, Maybe String) -> EvalContext
 namesInPattern (graphAndRef, mName) = case mName of
   Nothing -> otherNames
-  Just n -> n : otherNames
+  Just n -> Set.insert n  otherNames
   where
     otherNames = namesInPatternHelper graphAndRef
 
-    namesInPatternHelper :: GraphAndRef -> [String]
+    namesInPatternHelper :: GraphAndRef -> EvalContext
     namesInPatternHelper (GraphAndRef graph ref) = case ref of
-      Left str -> [str]
-      Right _ -> SMap.keys (sgBinds graph)
+      Left str -> Set.singleton str
+      Right _ -> Set.fromList $ SMap.keys (sgBinds graph)
 
 -- | Recursivly find the matching reference in a list of bindings.
 -- TODO: Might want to present some indication if there is a reference cycle.
