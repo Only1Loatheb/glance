@@ -215,7 +215,6 @@ evalFunExpAndArgs c flavor (funExp, argExps) = do
     $ makeApplyGraph (length argExps) flavor False applyIconName funVal argVals
 
 -- END apply and compose helper functions
-
 evalFunctionComposition :: Show l =>
   EvalContext -> [SimpExp l] -> State IDState (SyntaxGraph, NameAndPort)
 evalFunctionComposition c functions = do
@@ -516,56 +515,41 @@ makeOutputGraph rhsRef patternEdges' newBinds' lambdaName lambdaNode = graph whe
 
 
 -- END generalEvalLambda
-
+-- valus form ListCompNode are connected to (item constructor, guard expresion)
+-- valus form generators are NOT connected to ListCompNode TODO connect them
+-- TODO value from constructor should be dangling or connected to "inputPort"
 evalListComp :: Show l =>
   EvalContext -> l -> SimpExp l -> [SimpQStmt l] -> State IDState GraphAndRef
 evalListComp context l  itemExp qualExps =  do  
-  GraphAndRef listCompItem listCompItemRef  <- evalExp context itemExp
   
   let decls = [d | (SqLet _l d ) <- qualExps]
   declGraphRefsAndContexts <- mapM (evalDecls context) decls -- TODO add decls to context and graph
-  let declGraphsAndRefs = fmap (getRefForListCompItem listCompItemRef) (fmap fst declGraphRefsAndContexts)
   let declContext =  Set.unions (context : (fmap snd  declGraphRefsAndContexts))
-  
 
   let gens  = [x | x@(SqGen {}) <- qualExps]
-  genGraphRefsAndContexts <- mapM (evalSqGen context)  gens
-  let genContext = Set.unions (declContext : (fmap namesInPattern genGraphRefsAndContexts))
+  genGraphRefsAndContexts <- mapM (evalSqGen declContext)  gens
+  let genContext = Set.unions (context : (fmap namesInPattern genGraphRefsAndContexts))
 
-  let quals = [x | x@(SqQual {}) <- qualExps]
-  qualsGraphsAndRefs <- mapM (evalSqQual genContext)  quals
+  GraphAndRef listCompItem listCompItemRef  <- evalExp genContext itemExp
+  let declGraphsAndRefs = fmap (getRefForListCompItem listCompItemRef) (fmap fst declGraphRefsAndContexts)
+
+  let quals = [q | (SqQual _l q) <- qualExps]
+  qualsGraphsAndRefs <- mapM (evalExp genContext) quals
   
-  -- listCompName <- getUniqueName
+  listCompName <- getUniqueName
+  let listCompNode = ListCompNode
+  let listCompNodeRef = nameAndPort listCompName (resultPort listCompNode)
 
-  let expGraphsAndRefs = qualsGraphsAndRefs ++ fmap fst genGraphRefsAndContexts ++ declGraphsAndRefs
+  let expGraphsAndRefs =( qualsGraphsAndRefs , fmap fst genGraphRefsAndContexts , declGraphsAndRefs)
 
-  let combinedGraph = makeListCompGraph listCompItemRef listCompItem expGraphsAndRefs 
+  let combinedGraph = makeListCompGraph listCompNode listCompNodeRef listCompItem expGraphsAndRefs 
 
-  pure (GraphAndRef combinedGraph  listCompItemRef)
-
-evalSqQual :: Show l =>
-                EvalContext -> SimpQStmt l -> State IDState GraphAndRef
-evalSqQual context (SqQual l qual) = evalExp context qual
-evalSqQual _ _ = error "SimpQStmt must be SqQual" 
+  pure (GraphAndRef combinedGraph (Right listCompNodeRef))
 
 getRefForListCompItem :: Reference -> SyntaxGraph -> GraphAndRef
 getRefForListCompItem expResultRef bindGraph = GraphAndRef bindGraph ref where
   bindings = sgBinds bindGraph
   ref = lookupReference bindings expResultRef
-
--- evalLet :: Show l =>
---   EvalContext
---   -> [SimpDecl l]
---   -> SimpExp l
---   -> State IDState GraphAndRef
--- evalLet c decls expr = do
---   (bindGraph, bindContext) <- evalDecls c decls
---   expVal <- evalExp bindContext expr
---   let
---     GraphAndRef expGraph expResult = expVal
---     newGraph = deleteBindings . makeEdges $ expGraph <> bindGraph
---     bindings = sgBinds bindGraph
---   pure $ GraphAndRef newGraph (lookupReference bindings expResult)
 
 evalSqGen context (SqGen _l values itemPat) = do 
   (GraphAndRef patternGraph patternRef, itemContext) <- evalPattern itemPat

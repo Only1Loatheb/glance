@@ -1,6 +1,6 @@
 {-# LANGUAGE NoMonomorphismRestriction, TupleSections, PatternSynonyms #-}
 
-module SyntaxGraph( 
+module SyntaxGraph(
     SyntaxGraph(..)
   , patternName
   , syntaxGraphFromNodes
@@ -32,7 +32,7 @@ module SyntaxGraph(
   , makePatternResult
   , initialIdState
   , makeListCompGraph
-) where 
+) where
 
 import Control.Monad.State(State, state)
 import Diagrams.Prelude((<>))
@@ -60,9 +60,11 @@ import           PortConstants(
   , argPortsConst
   , multiIfValuePorts
   , multiIfBoolPorts
+  , mixedPorts
+  , resultPortsConst
   )
 
-import           Types( 
+import           Types(
   AnnotatedGraph
   , Labeled(..)
   , NameAndPort(..)
@@ -290,11 +292,11 @@ patternArgumentMapper (asGraphAndRef@(graphAndRef, _), port)
     graph = graphAndRefToGraph graphAndRef
     patName = patternName asGraphAndRef
 
-    nodes = sgNodes graph 
+    nodes = sgNodes graph
     eitherVal = if Set.size nodes == 1 && Set.size (sgEdges graph) == 0
       then Right ((Set.elemAt 0 nodes), graph)
       else Left (graphAndRef, port)
-                      
+
 asNameBind :: (GraphAndRef, Maybe String) -> Maybe SgBind
 asNameBind (GraphAndRef _ ref, mAsName) = case mAsName of
   Nothing -> Nothing
@@ -305,34 +307,40 @@ makePatternResult :: Functor f =>
 makePatternResult
   = fmap (\(graph, namePort) -> (GraphAndRef graph (Right namePort), Nothing))
 
-makeListCompGraph listCompItemRef listCompItem expGraphsAndRefs = combinedGraph where
-  returnNamedPort@(NameAndPort listCompName _port)  = fromRight (error "list_comp ref is not namedPort") listCompItemRef
+makeListCompGraph :: SyntaxNode -> NameAndPort
+                       -> SyntaxGraph -> ([GraphAndRef], [GraphAndRef], [GraphAndRef]) -> SyntaxGraph
+makeListCompGraph listCompNode listCompItemRef listCompItem graphsAndRefs = combinedGraph where
+  (NameAndPort listCompName _port) = listCompItemRef
 
-  expGraphs = fmap graphAndRefToGraph expGraphsAndRefs
+  ( qualsGraphsAndRefs , genGraphsAndRefs , declGraphsAndRefs) = graphsAndRefs
+  allGraphsAndRefs = qualsGraphsAndRefs ++ genGraphsAndRefs ++ declGraphsAndRefs 
+
+  expGraphs = fmap graphAndRefToGraph allGraphsAndRefs
   expsGraph = mconcat expGraphs
 
-  (edges, binds) = makeListCompEdges listCompName expGraphsAndRefs
+  (edges, binds) = makeListCompEdges listCompName allGraphsAndRefs
 
-  outputGraph = listCompOutputGraph listCompItemRef edges binds returnNamedPort
+  outputGraph = listCompOutputGraph edges binds listCompItemRef
 
   combinedGraph = deleteBindings . makeEdges $  listCompItem <> expsGraph <> outputGraph
 
-  listCompOutputGraph :: Either String NameAndPort -> [Edge] -> [(SMap.Key, Reference)] -> NameAndPort -> SyntaxGraph
-  listCompOutputGraph rhsRef patternEdges' newBinds' returnPort = graph where
+  listCompOutputGraph ::  [Edge] -> [(SMap.Key, Reference)] -> NameAndPort -> SyntaxGraph
+  listCompOutputGraph  patternEdges' newBinds' returnPort = graph where
     patternEdges = Set.fromList patternEdges'
     newBinds = SMap.fromList newBinds'
-    (newEdges, newSinks) = makeOutputEdgesAndSinks rhsRef patternEdges returnPort
-    graph = SyntaxGraph mempty newEdges newSinks newBinds mempty
+    (newEdges, newSinks) = makeOutputEdgesAndSinks (Right returnPort) patternEdges returnPort
+    listCompIconSet = Set.singleton (Named listCompName (mkEmbedder listCompNode))
+    graph = SyntaxGraph listCompIconSet newEdges newSinks newBinds mempty
 
   makeListCompEdges :: NodeName -> [GraphAndRef] -> ([Edge], [SgBind])
   makeListCompEdges listCompName qualifiersGraph = (edges, binds) where
-    listCompPorts = map (nameAndPort listCompName) $ argPortsConst
+    listCompPorts = map (nameAndPort listCompName) $ resultPortsConst
     (edges, binds) = partitionEithers $ zipWith makeEdge qualifiersGraph listCompPorts
 
 -- strToGraphRef is not in SyntaxNodeToIcon, since it is only used by evalQName.
 strToGraphRef :: EvalContext -> String -> State IDState GraphAndRef
 strToGraphRef c str = fmap mapper (makeBox str) where
-  mapper gr = if str `elem` c
+  mapper gr = if Set.member str c
     then GraphAndRef mempty (Left str)
     else grNamePortToGrRef gr
 
@@ -341,7 +349,7 @@ strToGraphRef c str = fmap mapper (makeBox str) where
 makeEdge :: GraphAndRef -> NameAndPort -> Either Edge SgBind
 makeEdge (GraphAndRef _ ref) lamPort = case ref of
   Right patPort -> Left $ makeSimpleEdge (lamPort, patPort)
-  Left str -> Right $ (str, (Right lamPort))
+  Left str -> Right (str, Right lamPort)
 
 -- TODO: Refactor with combineExpressions
 edgesForRefPortList :: Bool -> [(Reference, NameAndPort)] -> SyntaxGraph
@@ -396,7 +404,7 @@ lookupReference bindings ref@(Left originalS) = lookupReference' (Just ref) wher
 
   lookupReference' :: Maybe Reference -> Reference
   lookupReference'  (Just newRef@(Right _)) = newRef
-  lookupReference'  (Just (Left s)) 
+  lookupReference'  (Just (Left s))
     = failIfCycle originalS foundRef $ lookupReference' foundRef where
       foundRef =SMap.lookup s  bindings
   lookupReference'  _Nothing  = error "lookupReference filed"

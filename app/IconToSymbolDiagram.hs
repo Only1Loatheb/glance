@@ -253,7 +253,7 @@ iconToDiagram iconInfo icon = case icon of
                             iconInfo
                             (findMaybeIconsFromNames iconInfo args)
                             MultiIfTag
-  ListCompIcon args -> listCompDiagram iconInfo (nestingC colorScheme) Nothing (replicate (1 + 3) Nothing) --(findMaybeIconsFromNames iconInfo args) -- listCompDiagram
+  ListCompIcon {} -> listCompDiagram iconInfo (nestingC colorScheme) Nothing (replicate (1 + 6) Nothing) --(findMaybeIconsFromNames iconInfo args) -- listCompDiagram
 
 makeInputDiagram :: SpecialBackend b n
   => IconInfo
@@ -393,7 +393,7 @@ listCompDiagram
       borderColor = borderColors !! nestingLevel
       boxWidth =  max (width transformedName) (width argPorts)
 
-      argPortsUncentred =  zipWith ( makeAppInnerIcon iconInfo tp False) argPortsConst (fmap pure args)
+      argPortsUncentred =  zipWith ( makeAppInnerIcon iconInfo tp False) mixedPorts (fmap pure args)
       argPortsCentred  = fmap alignB argPortsUncentred
       argPorts = centerX $ hsep portSeparationSize argPortsCentred
       argsDiagram = boxForDiagram argPorts borderColor boxWidth (height argPorts)
