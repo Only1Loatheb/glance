@@ -51,14 +51,16 @@ import SyntaxGraph(
   , namesInPattern
   , lookupReference
   , deleteBindings
+  , makeEdgesAndDeleteBindings
   , makeEdges
   , makeBox
   , makeOutputEdgesAndSinks
-  , makeEdge
+  , makeLambdaEdge
   , EvalContext(..)
   , GraphAndRef(..)
   , Reference(..)
   , SgSink(..)
+  , GraphInPatternRef(..)
   , strToGraphRef
   , grNamePortToGrRef
   , makeNestedPatternGraph
@@ -330,7 +332,7 @@ evalLet c decls expr = do
   expVal <- evalExp bindContext expr
   let
     GraphAndRef expGraph expResult = expVal
-    newGraph = deleteBindings . makeEdges $ expGraph <> bindGraph
+    newGraph = makeEdgesAndDeleteBindings $ expGraph <> bindGraph
     bindings = sgBinds bindGraph
   pure $ GraphAndRef newGraph (lookupReference bindings expResult)
 
@@ -421,7 +423,7 @@ evalCaseHelper numAlts caseIconName resultIconNames
 
     bindGraph = makeAsBindGraph expRef asNames
 
-    finalGraph = deleteBindings $ makeEdges $ mconcat [bindGraph
+    finalGraph = makeEdgesAndDeleteBindings $ mconcat [bindGraph
                                                       , patternEdgesGraph
                                                       , caseResultGraphs
                                                       , expGraph
@@ -478,7 +480,7 @@ evalLambda _ context patterns expr functionName = do
     patternGraph = mconcat $ fmap graphAndRefToGraph patternVals
 
     (patternEdges', newBinds') =
-      partitionEithers $ zipWith makeEdge patternVals lambdaPorts
+      partitionEithers $ zipWith makeLambdaEdge patternVals lambdaPorts
 
 
     lambdaIconAndOutputGraph
@@ -488,14 +490,14 @@ evalLambda _ context patterns expr functionName = do
                   asBindGraphZipper
                   (fmap snd patternValsWithAsNames)
                   lambdaPorts
-    combinedGraph = deleteBindings . makeEdges
+    combinedGraph = makeEdgesAndDeleteBindings
                     $ (asBindGraph <> rhsRawGraph <> patternGraph <> lambdaIconAndOutputGraph)
 
   pure (combinedGraph, nameAndPort lambdaName (resultPort lambdaNode))
   
     -- TODO Like evalPatBind, this edge should have an indicator that it is the
     -- input to a pattern.
-    -- makeEdge creates the edges between the patterns and the parameter
+    -- makeLambdaEdge creates the edges between the patterns and the parameter
     -- ports.
 
 makeLambdaNode :: SyntaxGraph -> [(GraphAndRef, Maybe String)] -> String -> SyntaxNode
@@ -528,7 +530,9 @@ evalListComp context l  itemExp qualExps =  do
   let declContext =  Set.unions (context : (fmap snd  declGraphRefsAndContexts))
 
   let gens  = [x | x@(SqGen {}) <- qualExps]
-  genGraphRefsAndContexts <- mapM (evalSqGen declContext)  gens
+  genGRContextsAndGRpatRef <- mapM (evalSqGen declContext)  gens
+  let genGraphRefsAndContexts = fmap fst genGRContextsAndGRpatRef
+  let genGraphsAndRefs =  fmap snd genGRContextsAndGRpatRef
   let genContext = Set.unions (declContext : (fmap namesInPattern genGraphRefsAndContexts))
 
   listCompItemGraphAndRef@(GraphAndRef _ listCompItemRef)  <- evalExp genContext itemExp
@@ -541,9 +545,9 @@ evalListComp context l  itemExp qualExps =  do
   let listCompNode = ListCompNode
   let listCompNodeRef = nameAndPort listCompName (resultPort listCompNode)
 
-  let expGraphsAndRefs =( qualsGraphsAndRefs , fmap fst genGraphRefsAndContexts , declGraphsAndRefs)
+  let expGraphsAndRefs = qualsGraphsAndRefs ++ declGraphsAndRefs
 
-  let combinedGraph = makeListCompGraph listCompNode listCompNodeRef listCompItemGraphAndRef expGraphsAndRefs 
+  let combinedGraph = makeListCompGraph listCompNode listCompNodeRef listCompItemGraphAndRef expGraphsAndRefs genGraphsAndRefs
 
   pure (GraphAndRef combinedGraph (Right listCompNodeRef))
 
@@ -552,11 +556,15 @@ getRefForListCompItem expResultRef bindGraph = GraphAndRef bindGraph ref where
   bindings = sgBinds bindGraph
   ref = lookupReference bindings expResultRef
 
+-- evalSqGen :: EvalContext
+--                -> SimpQStmt l
+--                -> (State IDState GraphAndRef, Maybe String)
 evalSqGen context (SqGen _l values itemPat) = do 
   (GraphAndRef patternGraph patternRef, itemContext) <- evalPattern itemPat
   (GraphAndRef valueGraph valueRef) <- evalExp context values -- TODO use "pat" to put value into item constructor
   let graph = valueGraph <> patternGraph
-  pure (GraphAndRef graph patternRef, itemContext)
+  pure ((GraphAndRef graph patternRef, itemContext),(GraphInPatternRef graph valueRef patternRef))
+
 evalSqGen _ _ = error "SimpQStmt must be SqGen" 
 
 evalPatBind :: Show l =>
