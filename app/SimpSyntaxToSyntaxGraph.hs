@@ -513,11 +513,12 @@ makeOutputGraph rhsRef patternEdges' newBinds' lambdaName lambdaNode = graph whe
   (newEdges, newSinks) = makeOutputEdgesAndSinks rhsRef patternEdges returnPort
   graph = SyntaxGraph lambdaIconSet newEdges newSinks newBinds mempty
 
-
 -- END generalEvalLambda
--- valus form ListCompNode are connected to (item constructor, guard expresion)
--- valus form generators are NOT connected to ListCompNode TODO connect them
--- TODO value from constructor should be dangling or connected to "inputPort"
+
+-- valus form ListCompNode are connected to item constructor
+-- TODO reconsider PORT architecture choise to identfy arguments
+-- TODO improve connection to guard expresion
+-- TODO connect valus from generators to ListCompNode 
 evalListComp :: Show l =>
   EvalContext -> l -> SimpExp l -> [SimpQStmt l] -> State IDState GraphAndRef
 evalListComp context l  itemExp qualExps =  do  
@@ -528,21 +529,21 @@ evalListComp context l  itemExp qualExps =  do
 
   let gens  = [x | x@(SqGen {}) <- qualExps]
   genGraphRefsAndContexts <- mapM (evalSqGen declContext)  gens
-  let genContext = Set.unions (context : (fmap namesInPattern genGraphRefsAndContexts))
+  let genContext = Set.unions (declContext : (fmap namesInPattern genGraphRefsAndContexts))
 
-  GraphAndRef listCompItem listCompItemRef  <- evalExp genContext itemExp
+  listCompItemGraphAndRef@(GraphAndRef _ listCompItemRef)  <- evalExp genContext itemExp
   let declGraphsAndRefs = fmap (getRefForListCompItem listCompItemRef) (fmap fst declGraphRefsAndContexts)
 
   let quals = [q | (SqQual _l q) <- qualExps]
   qualsGraphsAndRefs <- mapM (evalExp genContext) quals
-  
+
   listCompName <- getUniqueName
   let listCompNode = ListCompNode
   let listCompNodeRef = nameAndPort listCompName (resultPort listCompNode)
 
   let expGraphsAndRefs =( qualsGraphsAndRefs , fmap fst genGraphRefsAndContexts , declGraphsAndRefs)
 
-  let combinedGraph = makeListCompGraph listCompNode listCompNodeRef listCompItem expGraphsAndRefs 
+  let combinedGraph = makeListCompGraph listCompNode listCompNodeRef listCompItemGraphAndRef expGraphsAndRefs 
 
   pure (GraphAndRef combinedGraph (Right listCompNodeRef))
 
