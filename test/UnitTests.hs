@@ -337,15 +337,15 @@ fmapTests = TestList [
       "y = f1 $ f2 <$> f3 x"
       ]
   ]
-listcompTests :: Test
-listcompTests = TestList [
-  assertEqualSyntaxGraphs [
-      "y = [toUpper c | c <- s]",
-      "y = do\n\
-      \ c <- s\n\
-      \ return (toUpper c)"
-      ]
-  ]
+-- listcompTests :: Test
+-- listcompTests = TestList [
+--   assertEqualSyntaxGraphs [
+--       "y = [toUpper c | c <- s]",
+--       "y = do\n\
+--       \ c <- s\n\
+--       \ return (toUpper c)"
+--       ]
+--   ]
 -- Yes, the commas get their own line
 translateUnitTests :: Test
 translateUnitTests = TestList [
@@ -361,8 +361,8 @@ translateUnitTests = TestList [
   , TestLabel "enumTests" enumTests
   , TestLabel "patternTests" patternTests
   , TestLabel "lambdaTests" lambdaTests
-  ,
-  TestLabel "listcompTests" listcompTests
+  -- ,
+  -- TestLabel "listcompTests" listcompTests
   ]
 
 allUnitTests :: Test

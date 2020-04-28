@@ -253,7 +253,7 @@ iconToDiagram iconInfo icon = case icon of
                             iconInfo
                             (findMaybeIconsFromNames iconInfo args)
                             MultiIfTag
-  ListCompIcon {} -> listCompDiagram iconInfo (nestingC colorScheme) Nothing (replicate (1 + 6) Nothing) --(findMaybeIconsFromNames iconInfo args) -- listCompDiagram
+  ListCompIcon {} -> listCompDiagram iconInfo (nestingC colorScheme) Nothing (replicate (1 + 7) Nothing) --(findMaybeIconsFromNames iconInfo args) -- listCompDiagram
 
 makeInputDiagram :: SpecialBackend b n
   => IconInfo

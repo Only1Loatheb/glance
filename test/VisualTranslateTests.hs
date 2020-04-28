@@ -36,6 +36,36 @@ prettyShowSyntaxGraph (SyntaxGraph nodes edges sinks sources _) =
   "\nSyntaxGraph sources:\n" ++
   prettyShowList (SMap.toList sources)
 
+simpleTests :: [String]
+simpleTests = [
+  "y = x"
+  , "y = 1"
+  , "f = \\x -> x"
+  , "f x = x"
+  , "f x = 1"
+  , "y = \"foo\""
+  , "y = f x"
+  -- TODO Fix y = f . g
+  , "y = f . g"
+  , "y = f . g . h"
+  , "y = f . g . h . i"
+  , "y = (f . g) x"
+  , "y = f (g x)"
+  , "y = f $ g x"
+  ]
+
+typeSigTests :: [String]
+typeSigTests = [
+  "f :: a"
+  , "f :: Int -> Bool"
+  ]
+
+dataDeclTests :: [String]
+dataDeclTests = [
+  "data Foo"
+  , "data Foo = Foo Int"
+  ]
+  
 composeTests :: [String]
 composeTests = [
   "y = f (g x)",
@@ -202,6 +232,7 @@ lambdaTests = [
   "y = (\\x -> (\\x -> (\\x -> x)))",
   "y = (\\y -> y)",
   "y = (\\x1 -> (\\x2 -> (\\x3 -> x1 x2 x3)))",
+  "y = f1 a where f1 b = f2 c where f2 d = f3 e"
   "y x = (\\z -> x)",
   "y x = x",
   "y x = y x",
@@ -219,6 +250,7 @@ lambdaTests = [
 
 letTests :: [String]
 letTests = [
+  "letInExpression = let a = x in a",
   -- TODO fix. See UnitTests/letTests
   "y x = f x x",
   "y x1 = let x2 = f x1 in x2 x1",
@@ -263,36 +295,6 @@ otherTests = [
   "y = \" foo  bar   baz    \""
   ]
 
-simpleTests :: [String]
-simpleTests = [
-  "y = x"
-  , "y = 1"
-  , "f = \\x -> x"
-  , "f x = x"
-  , "f x = 1"
-  , "y = \"foo\""
-  , "y = f x"
-  -- TODO Fix y = f . g
-  , "y = f . g"
-  , "y = f . g . h"
-  , "y = f . g . h . i"
-  , "y = (f . g) x"
-  , "y = f (g x)"
-  , "y = f $ g x"
-  ]
-
-typeSigTests :: [String]
-typeSigTests = [
-  "f :: a"
-  , "f :: Int -> Bool"
-  ]
-
-dataDeclTests :: [String]
-dataDeclTests = [
-  "data Foo"
-  , "data Foo = Foo Int"
-  ]
-
 multiWayIfTests :: [String]
 multiWayIfTests = [
   "y = if | x == 0 -> 1"
@@ -300,29 +302,51 @@ multiWayIfTests = [
   \  | x == 0 -> 1\n\
   \  | otherwise -> 2"
   , "y = if\n\
-  \  | x == 0 -> if {| y > z -> 2; | pizza -> 3} \n\
+  \  | x == 0 -> if {| y > z -> 2; | somethingElse -> 3} \n\
   \  | otherwise -> 2"
   ]
 
+listCompTests :: [String]
+listCompTests = [
+  "myfilter f xs = [x | x <- xs, f x]"
+  ,
+  "mymap f xs = [f x | x <- xs]"
+  ,
+  "multipleGenerators = [(i,j) | i <- [1,2],\n\
+  \                                 j <- [1..4] ]"
+  ,
+  "nested = take 5 [ [ (i,j) | i <- [1,2] ] | j <- [1..] ]"
+  ,
+  "booleanGuards = take 10 [ (i,j) | i <- [1..], \n\
+  \                                   j <- [1..i-1], \n\
+  \                                   gcd i j == 1 ]"
+  ,
+  "localLet = take 10 [ (i,j) | i <- [1..], \n\
+  \                               let k = i*i, \n\
+  \                               j <- [1..k] ]"
+  ]
+
+
 testDecls :: [String]
 testDecls = mconcat [
-  simpleTests,
-  composeTests,
-  nestedTests,
-  doTests,
-  caseTests,
-  lambdaTests,
-  guardTests,
-  patternTests,
-  specialTests,
-  tupleTests,
-  listTests,
-  letTests,
-  operatorTests,
-  otherTests,
-  typeSigTests,
-  dataDeclTests,
-  multiWayIfTests
+  simpleTests
+  , composeTests
+  , nestedTests
+  , doTests
+  , caseTests
+  , lambdaTests
+  , guardTests
+  , patternTests
+  , specialTests
+  , tupleTests
+  , listTests
+  , letTests
+  , operatorTests
+  , otherTests
+  , typeSigTests
+  , dataDeclTests
+  , multiWayIfTests
+  , listCompTests
   ]
 
 
