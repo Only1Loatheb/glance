@@ -2,18 +2,18 @@
 module PortConstants
   ( pattern InputPortConst
   , pattern ResultPortConst
+  , pattern PatternValuePortConst
   , isInputPort
-  , inputPort,
-  resultPort,
-  argumentPorts,
-  caseValuePorts,
-  casePatternPorts,
-  multiIfValuePorts,
-  multiIfBoolPorts,
-  argPortsConst,
-  mixedPorts,
-  resultPortsConst,
-  casePortPairs
+  , inputPort
+  , resultPort
+  , argumentPorts
+  , caseValuePorts
+  , casePatternPorts
+  , multiIfValuePorts
+  , multiIfBoolPorts
+  , argPortsConst
+  , mixedPorts
+  , resultPortsConst
   ) where
 
 import Types( Port(..),
@@ -27,6 +27,9 @@ pattern InputPortConst = Port 0
 
 pattern ResultPortConst :: Port
 pattern ResultPortConst = Port 1
+
+pattern PatternValuePortConst :: Port
+pattern PatternValuePortConst = Port 2
 
 argPortsConst :: [Port]
 argPortsConst = fmap Port [2,4..]
@@ -49,8 +52,6 @@ multiIfBoolPorts = argPortsConst
 mixedPorts :: [Port]
 mixedPorts = fmap Port [2,3..]
 
-casePortPairs :: [(Port, Port)]
-casePortPairs = zip argPortsConst resultPortsConst
 -- TODO It's a bit strange that the parameter is a SyntaxNode, not an Icon.
 inputPort :: SyntaxNode -> Port
 inputPort = const InputPortConst

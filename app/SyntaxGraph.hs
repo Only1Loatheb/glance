@@ -20,7 +20,7 @@ module SyntaxGraph(
   , makeEdges
   , makeBox
   , makeOutputEdgesAndSinks
-  , makeLambdaEdge
+  , makePatternEdgeInLambda
   , EvalContext
   , GraphAndRef(..)
   , Reference
@@ -34,44 +34,35 @@ module SyntaxGraph(
   , initialIdState
   , makeListCompGraph
   , GraphInPatternRef(..)
+  , evalPatBindHelper
 ) where
 
-import Control.Monad.State(State, state)
+import Control.Monad.State ( State, state )
 import Diagrams.Prelude((<>))
-import Control.Monad(replicateM)
-import Control.Monad.State(State, evalState)
-import           Data.Either( partitionEithers
-                            , fromRight
-                            )
-import qualified Data.Graph.Inductive.PatriciaTree as FGR
-import Data.List(unzip5, partition, intercalate)
-import           Data.Maybe                     ( fromMaybe
-                                                , mapMaybe
-                                                , catMaybes
-                                                )
+import           Data.Either( partitionEithers)
+import           Data.Maybe(
+  fromMaybe
+  , mapMaybe
+  , catMaybes
+  )
 import qualified Data.Set as Set
 import qualified Data.StringMap as SMap
 import qualified Data.IntMap as IMap
 
-import qualified Language.Haskell.Exts as Exts
-import qualified Language.Haskell.Exts.Pretty as PExts
 
 import           PortConstants(
   inputPort
   , resultPort
   , argumentPorts
-  , caseValuePorts
-  , casePatternPorts
   , argPortsConst
   , multiIfValuePorts
   , multiIfBoolPorts
-  , mixedPorts
   , resultPortsConst
+  , pattern PatternValuePortConst
   )
 
 import           Types(
-  AnnotatedGraph
-  , Labeled(..)
+  Labeled(..)
   , NameAndPort(..)
   , IDState(..)
   , Edge(..)
@@ -83,22 +74,9 @@ import           Types(
   , Named(..)
   , EdgeOption(..)
   , mkEmbedder
-  , Port(..)
   )
 import Util(makeSimpleEdge, nameAndPort, justName)
-import HsSyntaxToSimpSyntax( SimpPat(..),  SimpExp(..))
-import StringSymbols(
-  listCompositionPlaceholderStr
-  , typeSignatureSeparatorStr
-  , typeNameSeparatorStr
-  , negativeLiteralStr
-  , patternWildCardStr
-  , unusedArgumentStr
-  , defaultPatternNameStr
-  , nTupleString
-  , nTupleSectionString
-  , nListString
-  )
+import StringSymbols(defaultPatternNameStr)
 
 {-# ANN module "HLint: ignore Use list comprehension" #-}
 
@@ -382,10 +360,24 @@ makeInnerInputEdge (GraphAndRef _ ref) listCompPort = case ref of
 
 
 -- lambda
-makeLambdaEdge :: GraphAndRef -> NameAndPort -> Either Edge SgBind
-makeLambdaEdge (GraphAndRef _ ref) lamPort = case ref of
-  Right namedPort -> Left $ makeSimpleEdge (lamPort, namedPort)
+makePatternEdgeInLambda :: GraphAndRef -> NameAndPort -> Either Edge SgBind
+makePatternEdgeInLambda (GraphAndRef _ ref) lamPort = case ref of
+  Right (NameAndPort name _) 
+    -> Left $ makeSimpleEdge (lamPort, patternValueInputPort name )
   Left str -> Right (str, Right lamPort)
+
+patternValueInputPort :: NodeName -> NameAndPort
+patternValueInputPort name = NameAndPort name (Just PatternValuePortConst)
+
+-- TODO refactor with similar pattern functions
+evalPatBindHelper :: Reference -> Reference -> (Set.Set Edge, Set.Set SgSink, SMap.StringMap Reference)
+evalPatBindHelper patRef rhsRef = case patRef of
+  (Left s) -> (mempty, mempty, SMap.singleton s rhsRef)
+  (Right (NameAndPort name _)) -> 
+    let patternValuePort = patternValueInputPort name in
+      case rhsRef of
+      (Left rhsStr) -> (mempty, Set.singleton (SgSink rhsStr patternValuePort), SMap.empty)
+      (Right rhsPort) -> (Set.singleton (makeSimpleEdge (rhsPort, patternValuePort)), mempty, SMap.empty)
 
 -- strToGraphRef is not in SyntaxNodeToIcon, since it is only used by evalQName.
 strToGraphRef :: EvalContext -> String -> State IDState GraphAndRef

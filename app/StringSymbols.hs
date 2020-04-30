@@ -28,6 +28,7 @@ module StringSymbols
   , nTupleSectionString
   , nListString
   , actionOverParameterizedType
+  , patternSubscribedValueStr
   ) where
 
 ifConditionConst :: String
@@ -123,3 +124,6 @@ nListString n = '[' : replicate (n -1) ',' ++ "]"
 
 actionOverParameterizedType :: String
 actionOverParameterizedType = "fmap"
+
+patternSubscribedValueStr :: String
+patternSubscribedValueStr = "@"

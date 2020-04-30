@@ -25,7 +25,7 @@ import Data.List(isPrefixOf)
 
 import Icons(
   findMaybeIconFromName
-  ,findMaybeIconsFromNames
+  , findMaybeIconsFromNames
   )
 import TextBox (
   bindTextBox
@@ -37,17 +37,18 @@ import TextBox (
   )
 
 import PortConstants(
-  pattern InputPortConst,
-  pattern ResultPortConst,
-  argPortsConst,
-  resultPortsConst,
-  isInputPort,
-  mixedPorts,
-  casePortPairs
+  pattern InputPortConst
+  , pattern ResultPortConst
+  , argPortsConst
+  , resultPortsConst
+  , isInputPort
+  , mixedPorts
+  , pattern PatternValuePortConst
   )
 import StringSymbols(
   ifConditionConst
   , tempVarPrefix
+  , patternSubscribedValueStr
   )
 
 import DrawingColors(colorScheme, ColorStyle(..))
@@ -291,25 +292,6 @@ makeAppInnerIcon iconInfo (TransformParams _ nestingLevel ) isSameNestingLevel _
   where
     innerLevel = if isSameNestingLevel then nestingLevel else nestingLevel + 1
 
-makePassthroughIcon :: SpecialBackend b n
-  => IconInfo
-  -> TransformParams n
-  -> Bool  -- If False then add one to the nesting level. 
-  -> (Port, Port)  -- Port number (if the NamedIcon is Nothing)
-  -> Labeled (Maybe NamedIcon) -- The icon 
-  -> SpecialQDiagram b n
-makePassthroughIcon _iconInfo (TransformParams name _) _isSameNestingLevel  ports
-  (Labeled Nothing str)
-  = makePassthroughPorts name ports str
-makePassthroughIcon iconInfo (TransformParams _ nestingLevel ) isSameNestingLevel _ports
-  (Labeled (Just (Named iconNodeName icon)) _)
-  = iconToDiagram
-    iconInfo
-    icon
-    (TransformParams iconNodeName innerLevel)
-  where
-    innerLevel = if isSameNestingLevel then nestingLevel else nestingLevel + 1
-
 nestedPatternAppDia :: forall b n. SpecialBackend b n
   => IconInfo
   -> [Colour Double]
@@ -327,13 +309,13 @@ nestedPatternAppDia
     borderColor = borderColors !! nestingLevel
     resultDia = makeResultDiagram name
 
+    subscribedValueDia = alignT $ makeAppInnerIcon iconInfo tp True PatternValuePortConst (Labeled Nothing patternSubscribedValueStr)
 
-    constructorDiagram = makeInputDiagram iconInfo tp maybeConstructorName name
+    constructorDiagram = alignB $ makeInputDiagram iconInfo tp maybeConstructorName name
 
     patternCases::[SpecialQDiagram b n]
-    patternCases = zipWith (makePassthroughIcon iconInfo tp False) casePortPairs subIcons
-    patternCasesCentred = fmap centerY patternCases
-    patternDiagram = hsep portSeparationSize (constructorDiagram : patternCasesCentred)
+    patternCases = alignB $ zipWith (makeAppInnerIcon iconInfo tp False) resultPortsConst subIcons
+    patternDiagram = hsep portSeparationSize $  constructorDiagram : subscribedValueDia : patternCases
 
     patternDiagramInBox = boxForDiagram patternDiagram borderColor (width patternDiagram) (height patternDiagram)
 
@@ -456,7 +438,8 @@ generalNestedMultiIf iconInfo symbolColor inConstBox inputAndArgs flavor
     resultPort = makeResultDiagram name
 
     inputDiagram
-      | flavor == MultiIfTag = transformableGeneralTextBox ifConditionConst symbolColor symbolColor
+      | flavor == MultiIfTag = alignBR 
+        $ transformableGeneralTextBox ifConditionConst symbolColor symbolColor
       | otherwise = makeInputDiagram iconInfo tp (pure input) name
 
     (iFConstIcons, iFVarIcons)

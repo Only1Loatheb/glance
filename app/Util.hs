@@ -1,17 +1,17 @@
 {-# LANGUAGE NoMonomorphismRestriction, FlexibleContexts, TypeFamilies #-}
 
 module Util (
-  printSelf,
-  iconToPort,
-  makeSimpleEdge,
-  nameAndPort,
-  justName,
-  fromMaybeError,
-  maybeBoolToBool,
-  nodeNameToInt,
-  customRenderSVG,
-  namedToTuple,
-  tupleToNamed
+  printSelf
+  , iconToPort
+  , makeSimpleEdge
+  , nameAndPort
+  , justName
+  , fromMaybeError
+  , maybeBoolToBool
+  , nodeNameToInt
+  , customRenderSVG
+  , namedToTuple
+  , tupleToNamed
   ) where
 
 import Diagrams.Backend.SVG(renderSVG', Options(..), SVG)

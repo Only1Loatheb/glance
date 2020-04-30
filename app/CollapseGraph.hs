@@ -17,15 +17,26 @@ import Data.Tuple(swap)
 import GHC.Stack(HasCallStack)
 
 import PortConstants(pattern ResultPortConst, pattern InputPortConst)
-import Types(SyntaxNode(..), IngSyntaxGraph, Edge(..),
-             CaseOrMultiIfTag(..), Port(..), NameAndPort(..), SgNamedNode
-            , AnnotatedGraph, EmbedInfo(..), EmbedDirection(..), NodeInfo(..)
-            , Embedder(..), Named(..), EmbedderSyntaxNode, NodeName)
-import Util(fromMaybeError)
+import Types(
+  SyntaxNode(..)
+  , IngSyntaxGraph
+  , Edge(..)
+  , CaseOrMultiIfTag(..)
+  , Port(..)
+  , NameAndPort(..)
+  , SgNamedNode
+  , AnnotatedGraph
+  , EmbedInfo(..)
+  , EmbedDirection(..)
+  , NodeInfo(..)
+  , Embedder(..)
+  , Named(..)
+  , EmbedderSyntaxNode
+  , NodeName
+  )
 import SyntaxGraph(SyntaxGraph(..))
 import SimpSyntaxToSyntaxGraph(
-  translateStringToSyntaxGraph
-  , translateDeclToSyntaxGraph
+  translateDeclToSyntaxGraph
   , customParseDecl
   )
 import SyntaxNodeToIcon(
@@ -33,7 +44,10 @@ import SyntaxNodeToIcon(
   , makeLNode
   )
 import HsSyntaxToSimpSyntax(hsDeclToSimpDecl)
-import Util(nodeNameToInt)
+import Util(
+  nodeNameToInt
+  , fromMaybeError
+  )
 
 {-# ANN module "HLint: ignore Use record patterns" #-}
 

@@ -37,7 +37,6 @@ import StringSymbols(
   , enumFromThenToStr
   , thenOperatorStr
   , bindOperatorStr
-  , listCompositionPlaceholderStr
   , actionOverParameterizedType
   , nTupleString
   , nTupleSectionString

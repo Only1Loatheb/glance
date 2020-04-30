@@ -4,23 +4,14 @@ module SyntaxNodeToIcon(
   , nodeToIcon
 ) where
 
-import qualified Language.Haskell.Exts as Exts
-import Control.Monad.State(State, state)
-import Data.Either(partitionEithers)
 import qualified Data.Graph.Inductive.Graph as ING
-import qualified Data.Graph.Inductive.PatriciaTree as FGR
 import Data.List(find)
-import qualified Data.StringMap as SMap
 import qualified Data.IntMap as IMap
-import Data.Semigroup(Semigroup, (<>))
 import qualified Data.Set as Set
 
 import           PortConstants(
   inputPort
-  , resultPort
   , argumentPorts
-  , multiIfValuePorts
-  , multiIfBoolPorts
   )
 import           Types(
   Labeled(..)
@@ -49,7 +40,6 @@ import Util(
   , maybeBoolToBool
   , nodeNameToInt
   )
-import SyntaxGraph(SyntaxGraph(..))
 import SimpSyntaxToSyntaxGraph(
   translateStringToSyntaxGraph,
   customParseDecl

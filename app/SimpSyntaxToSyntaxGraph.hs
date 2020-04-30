@@ -9,31 +9,44 @@ module SimpSyntaxToSyntaxGraph(
 
 import Control.Monad(replicateM)
 import Control.Monad.State(State, evalState)
-import           Data.Either( partitionEithers
-                            , fromRight
-                            )
-import qualified Data.Graph.Inductive.PatriciaTree as FGR
 import Data.List(unzip5, partition, intercalate)
-import Data.Maybe(fromMaybe, mapMaybe)
 import qualified Data.Set as Set
 import qualified Data.StringMap as SMap
-import qualified Data.IntMap as IMap
+import           Data.Either                    ( partitionEithers )
 import qualified Language.Haskell.Exts as Exts
 import qualified Language.Haskell.Exts.Pretty as PExts
 
-import PortConstants(inputPort, resultPort, argumentPorts, caseValuePorts,
-             casePatternPorts, argPortsConst)
+import           PortConstants (
+  inputPort
+  , resultPort
+  , argumentPorts
+  , caseValuePorts
+  , casePatternPorts
+  )
 import HsSyntaxToSimpSyntax(
-  SimpAlt(..), stringToSimpDecl, SimpExp(..), SimpPat(..)
-                    , qNameToString, nameToString, customParseDecl
-                    , SimpDecl(..), hsDeclToSimpDecl, SelectorAndVal(..)
-                    , pattern FunctionCompositionStr
+  SimpAlt(..)
+  , stringToSimpDecl
+  , SimpExp(..)
+  , SimpPat(..)
+  , qNameToString
+  , nameToString
+  , customParseDecl
+  , SimpDecl(..)
+  , SelectorAndVal(..)
+  , pattern FunctionCompositionStr
   , SimpQStmt(..)
   )
-import Types(AnnotatedGraph, Labeled(..), NameAndPort(..), IDState,
-             Edge, SyntaxNode(..), NodeName(..), SgNamedNode,
-             LikeApplyFlavor(..), CaseOrMultiIfTag(..), Named(..)
-            , mkEmbedder)
+import           Types(
+  NameAndPort(..)
+  , IDState
+  , Edge
+  , SyntaxNode(..)
+  , NodeName(..)
+  , LikeApplyFlavor(..)
+  , CaseOrMultiIfTag(..)
+  , Named(..)
+  , mkEmbedder
+  )
 import Util(makeSimpleEdge, nameAndPort, justName)
 import SyntaxGraph( 
     SyntaxGraph(..)
@@ -55,8 +68,7 @@ import SyntaxGraph(
   , makeEdges
   , makeBox
   , makeOutputEdgesAndSinks
-  , makeLambdaEdge
-  , EvalContext(..)
+  , makePatternEdgeInLambda
   , GraphAndRef(..)
   , Reference(..)
   , SgSink(..)
@@ -68,6 +80,8 @@ import SyntaxGraph(
   , makePatternResult
   , initialIdState
   , makeListCompGraph
+  , evalPatBindHelper
+  , EvalContext
   )
 import StringSymbols(
   listCompositionPlaceholderStr
@@ -187,6 +201,7 @@ evalPAsPat n p = do
   pure (GraphAndRef (asBindGraph <> evaledPatGraph) evaledPatRef
        , Just outerName)
 
+-- TODO add PatternValuePortConst to all
 evalPattern :: Show l => SimpPat l -> State IDState (GraphAndRef, Maybe String)
 evalPattern p = case p of
   SpVar _ n -> pure (GraphAndRef mempty (Left $ nameToString n), Nothing)
@@ -480,7 +495,7 @@ evalLambda _ context patterns expr functionName = do
     patternGraph = mconcat $ fmap graphAndRefToGraph patternVals
 
     (patternEdges', newBinds') =
-      partitionEithers $ zipWith makeLambdaEdge patternVals lambdaPorts
+      partitionEithers $ zipWith makePatternEdgeInLambda patternVals lambdaPorts
 
 
     lambdaIconAndOutputGraph
@@ -497,7 +512,7 @@ evalLambda _ context patterns expr functionName = do
   
     -- TODO Like evalPatBind, this edge should have an indicator that it is the
     -- input to a pattern.
-    -- makeLambdaEdge creates the edges between the patterns and the parameter
+    -- makePatternEdgeInLambda creates the edges between the patterns and the parameter
     -- ports.
 
 makeLambdaNode :: SyntaxGraph -> [(GraphAndRef, Maybe String)] -> String -> SyntaxNode
@@ -567,6 +582,7 @@ evalSqGen context (SqGen _l values itemPat) = do
 
 evalSqGen _ _ = error "SimpQStmt must be SqGen" 
 
+-- TODO refactor with similar pattern functions
 evalPatBind :: Show l =>
   l -> EvalContext -> SimpPat l -> SimpExp l -> State IDState SyntaxGraph
 evalPatBind _ c pat e = do
@@ -577,13 +593,6 @@ evalPatBind _ c pat e = do
     asBindGraph = makeAsBindGraph rhsRef [mPatAsName]
     gr = asBindGraph <> SyntaxGraph mempty newEdges newSinks bindings mempty
   pure . makeEdges $ (gr <> rhsGraph <> patGraph)
-
-evalPatBindHelper :: Reference -> Reference -> (Set.Set Edge, Set.Set SgSink, SMap.StringMap Reference)
-evalPatBindHelper patRef rhsRef = case patRef of
-  (Left s) -> (mempty, mempty, SMap.singleton s rhsRef)
-  (Right patPort) -> case rhsRef of
-    (Left rhsStr) -> (mempty, Set.singleton (SgSink rhsStr patPort), SMap.empty)
-    (Right rhsPort) -> (Set.singleton (makeSimpleEdge (rhsPort, patPort)), mempty, SMap.empty)
 
 -- Pretty printing the entire type sig results in extra whitespace in the middle
 evalTypeSig :: Show l =>
