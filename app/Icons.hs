@@ -59,6 +59,6 @@ findNestedIcon iconInfo name icon = case icon of
         iconInfo
         name
         ((fmap . fmap) (findIconFromName iconInfo) (headIcon : args))
-  NestedPatternApp constructor args ->
+  NestedPatternApp constructor args _rhsName->
     snd <$> findIcon iconInfo name (fmap laValue (constructor:args))
   _ -> Nothing

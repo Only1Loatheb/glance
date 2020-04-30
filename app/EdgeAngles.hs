@@ -115,7 +115,7 @@ getPortAngleHelper _embedded iconInfo icon port maybeNodeName = case icon of
       (findMaybeIconsFromNames iconInfo args)
       port
       maybeNodeName
-  NestedPatternApp headIcon args
+  NestedPatternApp headIcon args rhsNodeName
     -> generalNestedPortAngle
       iconInfo
       patternAppPortAngle

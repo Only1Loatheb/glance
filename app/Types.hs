@@ -83,6 +83,7 @@ data Icon = TextBoxIcon String
   | NestedPatternApp
     (Labeled (Maybe NamedIcon))  -- Data constructor
     [Labeled (Maybe NamedIcon)]  -- Arguments
+    (Maybe NodeName)  -- asigned value
   | NestedCaseIcon [Maybe NodeName]
   | NestedMultiIfIcon [Maybe NodeName]
   | ListCompIcon

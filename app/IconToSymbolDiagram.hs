@@ -244,8 +244,8 @@ iconToDiagram iconInfo icon = case icon of
        flavor
        (findMaybeIconFromName iconInfo headIcon)
        (findMaybeIconsFromNames iconInfo args)
-  NestedPatternApp constructor args
-    -> nestedPatternAppDia iconInfo (repeat $ patternC colorScheme) constructor args
+  NestedPatternApp constructor args rhsNodeName
+    -> nestedPatternAppDia iconInfo (repeat $ patternC colorScheme) constructor args (findMaybeIconFromName iconInfo rhsNodeName)
   NestedCaseIcon args -> nestedCaseDia
                          iconInfo
                          (findMaybeIconsFromNames iconInfo args)
@@ -297,19 +297,21 @@ nestedPatternAppDia :: forall b n. SpecialBackend b n
   -> [Colour Double]
   -> Labeled (Maybe NamedIcon)
   -> [Labeled (Maybe NamedIcon)]
+  -> Maybe NamedIcon
   -> TransformableDia b n
 nestedPatternAppDia
   iconInfo
   borderColors
   maybeConstructorName
   subIcons
+  rhsNodeName
   tp@(TransformParams name nestingLevel)
   = named name $ centerY finalDia
   where
     borderColor = borderColors !! nestingLevel
     resultDia = makeResultDiagram name
 
-    subscribedValueDia = alignT $ makeAppInnerIcon iconInfo tp True PatternValuePortConst (Labeled Nothing patternSubscribedValueStr)
+    subscribedValueDia = alignT $ makeAppInnerIcon iconInfo tp True PatternValuePortConst (Labeled rhsNodeName patternSubscribedValueStr)
 
     constructorDiagram = alignB $ makeInputDiagram iconInfo tp maybeConstructorName name
 

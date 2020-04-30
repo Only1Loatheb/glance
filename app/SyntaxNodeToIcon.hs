@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternSynonyms #-}
+
 module SyntaxNodeToIcon(
   lookupInEmbeddingMap
   , makeLNode
@@ -12,6 +14,7 @@ import qualified Data.Set as Set
 import           PortConstants(
   inputPort
   , argumentPorts
+  , pattern PatternValuePortConst
   )
 import           Types(
   Labeled(..)
@@ -51,7 +54,7 @@ nodeToIcon (Embedder embeddedNodes node) = case node of
   (ApplyNode flavor x)
     -> nestedApplySyntaxNodeToIcon flavor x embeddedNodes
   (PatternApplyNode s children)
-    -> nestedPatternNodeToIcon s children
+    -> nestedPatternNodeToIcon s children embeddedNodes
   (NameNode s) -> TextBoxIcon s
   (BindNameNode s) -> BindTextBoxIcon s
   (LiteralNode s) -> TextBoxIcon s
@@ -118,11 +121,14 @@ nestedCaseOrMultiIfNodeToIcon tag numArgs args = case tag of
     argPorts = take (2 * numArgs) $ argumentPorts dummyNode
     argList = fmap (makeArg args) (inputPort dummyNode : argPorts)
 
-nestedPatternNodeToIcon :: String -> [Labeled (Maybe SgNamedNode)] -> Icon
-nestedPatternNodeToIcon str children = NestedPatternApp
+nestedPatternNodeToIcon :: String -> [Labeled (Maybe SgNamedNode)] -> Set.Set (NodeName, Edge) -> Icon
+nestedPatternNodeToIcon str children args = NestedPatternApp
   (pure (Just (Named (NodeName (-1)) (TextBoxIcon str))))
   -- Why so many fmaps?
   ( (fmap . fmap . fmap . fmap) nodeToIcon children)
+  asigendValueName
+  where
+    asigendValueName = makeArg args PatternValuePortConst
 
 
 -- Exported functions

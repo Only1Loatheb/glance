@@ -16,7 +16,7 @@ import qualified Data.Set as Set
 import Data.Tuple(swap)
 import GHC.Stack(HasCallStack)
 
-import PortConstants(pattern ResultPortConst, pattern InputPortConst)
+import PortConstants(pattern ResultPortConst, pattern InputPortConst, pattern PatternValuePortConst)
 import Types(
   SyntaxNode(..)
   , IngSyntaxGraph
@@ -55,6 +55,7 @@ data ParentType = ApplyParent
                 | CaseParent
                 | MultiIfParent
                 | LambdaParent
+                | PatternApplyParent
                 | NotAParent
   deriving (Eq, Show)
 
@@ -101,11 +102,17 @@ syntaxNodeIsEmbeddable parentType syntaxNode mParentPort mChildPort
       (MultiIfParent, LiteralNode {}) -> parentPortNotResult
       (MultiIfParent, ApplyNode {})
         -> parentPortNotResult && parentPortNotInput
+      (PatternApplyParent, _) 
+        -> isPatternValueInputPort && isResult mChildPort
 
       _ -> False
   where
     isInput mPort = case mPort of
       Just InputPortConst -> True
+      _ -> False
+
+    isPatternValueInputPort = case mParentPort of
+      Just PatternValuePortConst -> True
       _ -> False
 
     isResult mPort = case mPort of
@@ -124,6 +131,7 @@ parentTypeForNode n = case n of
   CaseOrMultiIfNode CaseTag _ -> CaseParent
   CaseOrMultiIfNode MultiIfTag _ -> MultiIfParent
   FunctionDefNode {} -> LambdaParent
+  PatternApplyNode {} -> PatternApplyParent
   _ -> NotAParent
 
 lookupSyntaxNode :: ING.Graph gr =>
