@@ -8,8 +8,8 @@ module TextBox
   ( bindTextBox
   , defaultLineWidth
   , coloredTextBox
-  , transformCorrectedTextBox --} remove one
-  , transformableBindTextBox -- }
+  , transformableGeneralTextBox
+  , transformablePortTextBox
   , multilineComment
   , letterHeight
   )
@@ -100,25 +100,27 @@ coloredTextBox textColor boxColor t
         $ fcA (withOpacity (backgroundC colorScheme) 0) -- last param is radius of circular rounded corners 
         $ rectForText (length t))
 
-transformCorrectedTextBox :: SpecialBackend b n =>
+transformableGeneralTextBox :: SpecialBackend b n =>
   String
   -> Colour Double
   -> Colour Double
   -> SpecialQDiagram b n
-transformCorrectedTextBox str textColor borderColor
+transformableGeneralTextBox str textColor borderColor
   = coloredTextBox textColor (opaque borderColor) str
 
 
-transformableBindTextBox :: SpecialBackend b n =>
+transformablePortTextBox :: SpecialBackend b n =>
   String  -> SpecialQDiagram b n
-transformableBindTextBox str
-  = transformCorrectedTextBox
+transformablePortTextBox str
+  = transformableGeneralTextBox
     str
-    (bindTextBoxTextC colorScheme)
-    (bindTextBoxC colorScheme)
+    (textBoxTextC colorScheme)
+    (textBoxC colorScheme)
 
 bindTextBox :: SpecialBackend b n =>
   String -> SpecialQDiagram b n
-bindTextBox
-  = coloredTextBox (bindTextBoxTextC colorScheme)
-    $ opaque (bindTextBoxC colorScheme)
+bindTextBox str = alignT box where 
+    box = coloredTextBox 
+            (bindTextBoxTextC colorScheme)
+            (opaque (bindTextBoxC colorScheme))
+            str

@@ -30,8 +30,8 @@ import Icons(
 import TextBox (
   bindTextBox
   , defaultLineWidth
-  , transformCorrectedTextBox
-  , transformableBindTextBox
+  , transformableGeneralTextBox
+  , transformablePortTextBox
   , multilineComment
   , letterHeight
   )
@@ -114,7 +114,7 @@ lambdaBodySymbol :: SpecialBackend b n
   -> SpecialQDiagram b n
 lambdaBodySymbol name
   = makePassthroughPorts name (InputPortConst,ResultPortConst)
-    -- ===  transformCorrectedTextBox functionName (regionPerimC colorScheme) (bindTextBoxC colorScheme)
+    -- ===  transformableGeneralTextBox functionName (regionPerimC colorScheme) (bindTextBoxC colorScheme)
 
 inMultiIfConstBox :: SpecialBackend b n
   => SpecialQDiagram b n -> SpecialQDiagram b n
@@ -165,7 +165,7 @@ identDiaFunc dia transformParams = nameDiagram (tpName transformParams) dia
 textBox :: SpecialBackend b n =>
   String -> TransformableDia b n
 textBox t (TransformParams name _)
-  = nameDiagram name $ transformCorrectedTextBox
+  = nameDiagram name $ transformableGeneralTextBox
     t (textBoxTextC colorScheme) (textBoxC colorScheme)
 
 -- | Names the diagram and puts all sub-names in the namespace of the top level
@@ -198,7 +198,7 @@ makeLabelledPort :: SpecialBackend b n =>
 makeLabelledPort name port str
   = choosePortDiagram str portAndSymbol portSymbolAndLabel where
     portAndSymbol = makeQualifiedPort port name
-    label = transformableBindTextBox str
+    label = transformablePortTextBox str
     portSymbolAndLabel = if isInputPort port
       then portAndSymbol === label
       else label === portAndSymbol
@@ -218,7 +218,7 @@ makePassthroughPorts name (port1,port2) str
   = choosePortDiagram str portsDiagram portSymbolsAndLabel where
     portAndSymbol1 = makeQualifiedPort port1 name
     portAndSymbol2 = makeQualifiedPort port2 name
-    label = transformableBindTextBox str
+    label = transformablePortTextBox str
     portsDiagram =  portAndSymbol1 === portAndSymbol2
     portSymbolsAndLabel = portAndSymbol1 === label === portAndSymbol2
 
@@ -456,7 +456,7 @@ generalNestedMultiIf iconInfo symbolColor inConstBox inputAndArgs flavor
     resultPort = makeResultDiagram name
 
     inputDiagram
-      | flavor == MultiIfTag = transformCorrectedTextBox ifConditionConst symbolColor symbolColor
+      | flavor == MultiIfTag = transformableGeneralTextBox ifConditionConst symbolColor symbolColor
       | otherwise = makeInputDiagram iconInfo tp (pure input) name
 
     (iFConstIcons, iFVarIcons)

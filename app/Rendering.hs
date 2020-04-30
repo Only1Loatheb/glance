@@ -252,7 +252,7 @@ customLayoutParams = GV.defaultParams{
       --GVA.Overlap GVA.KeepOverlaps,
       --GVA.Overlap GVA.ScaleOverlaps,
       GVA.Overlap $ GVA.PrismOverlap (Just 5000),
-      GVA.Splines GVA.LineEdges,
+      GVA.Splines GVA.NoEdges,
       GVA.OverlapScaling 8,
       --GVA.OverlapScaling 4,
       GVA.OverlapShrink True
@@ -268,7 +268,7 @@ renderIconGraph :: forall b.
   -> IO (SpecialQDiagram b Double)
 renderIconGraph debugInfo fullGraphWithInfo = do
     -- graph = ING.nmap niVal fullGraphWithInfo
-  layoutResult <- layoutGraph' layoutParams GVA.Neato parentGraph
+  layoutResult <- layoutGraph' layoutParams GVA.Dot parentGraph
   --  layoutResult <- layoutGraph' layoutParams GVA.Fdp graph
   let
     positionMap = fst $ getGraph layoutResult
@@ -295,9 +295,8 @@ renderIconGraph debugInfo fullGraphWithInfo = do
       }
     nodeAttribute :: (Int, NamedIcon) -> [GV.Attribute]
     nodeAttribute (_, Named _ nodeIcon) =
-      --[GVA.Width diaWidth, GVA.Height diaHeight]
-      [GVA.Width circleDiameter, GVA.Height circleDiameter]
-      where
+      -- [GVA.Width circleDiameter, GVA.Height circleDiameter]
+      [GVA.Width diaWidth, GVA.Height diaHeight] where
         -- This type annotation (:: SpecialQDiagram b n) requires Scoped Typed
         -- Variables, which only works if the function's
         -- type signiture has "forall b e."
@@ -307,10 +306,13 @@ renderIconGraph debugInfo fullGraphWithInfo = do
               nodeIcon
               (TransformParams (NodeName (-1)) 0)
         
-        diaWidth = drawingToGraphvizScaleFactor * width dia
-        diaHeight = drawingToGraphvizScaleFactor * height dia
-        circleDiameter = maximum [diaWidth, diaHeight, 0.01]
-        -- GVA.Width and GVA.Height have a minimum of 0.01
+        diaWidth = max (drawingToGraphvizScaleFactor * width dia) minialDiaDimention
+        diaHeight = max (drawingToGraphvizScaleFactor * height dia) minialDiaDimention
+        -- circleDiameter = maximum [diaWidth, diaHeight, minialDiaDimention]
+
+-- GVA.Width and GVA.Height have a minimum of 0.01
+minialDiaDimention :: Double
+minialDiaDimention = 0.01
 
 -- | Given a Drawing, produce a Diagram complete with rotated/flipped icons and
 -- lines connecting ports and icons. IO is needed for the GraphViz layout.

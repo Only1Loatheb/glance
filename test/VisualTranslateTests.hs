@@ -232,7 +232,7 @@ lambdaTests = [
   "y = (\\x -> (\\x -> (\\x -> x)))",
   "y = (\\y -> y)",
   "y = (\\x1 -> (\\x2 -> (\\x3 -> x1 x2 x3)))",
-  "y = f1 a where f1 b = f2 c where f2 d = f3 e"
+  "y = f1 a where f1 b = f2 c where f2 d = f3 e",
   "y x = (\\z -> x)",
   "y x = x",
   "y x = y x",

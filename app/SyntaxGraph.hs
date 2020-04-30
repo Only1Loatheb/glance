@@ -421,14 +421,15 @@ edgesForRefPortListIsSource edgeOpts (ref, port) = case ref of
       Left str -> bindsToSyntaxGraph $ SMap.singleton str (Right port)
       Right resPort -> edgesToSyntaxGraph $ Set.singleton  (Edge edgeOpts connection)
         where
-          connection = (resPort, port)
+          connection = (port, resPort)
 
 edgesForRefPortListNotIsSource :: [EdgeOption] -> (Reference, NameAndPort) -> SyntaxGraph
 edgesForRefPortListNotIsSource edgeOpts (ref, port) = case ref of
       Left str -> sinksToSyntaxGraph $ Set.singleton (SgSink str port)
       Right resPort -> edgesToSyntaxGraph $ Set.singleton  (Edge edgeOpts connection)
         where
-          connection = (port, resPort)
+          connection = (resPort, port)
+
 
 
 
