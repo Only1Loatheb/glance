@@ -242,7 +242,7 @@ placeNode namedIcons (key@(Named name icon), targetPosition)
       transformedDia = centerXY origDia
       diaPosition = graphvizScaleFactor *^ targetPosition
 
-customLayoutParams :: GV.GraphvizParams n v e () v
+customLayoutParams :: GV.GraphvizParams ING.Node v e Int v
 customLayoutParams = GV.defaultParams{
   GV.globalAttributes = [
     GV.NodeAttrs [GVA.Shape GVA.BoxShape]
@@ -252,14 +252,23 @@ customLayoutParams = GV.defaultParams{
       --GVA.Overlap GVA.KeepOverlaps,
       --GVA.Overlap GVA.ScaleOverlaps,
       GVA.Overlap $ GVA.PrismOverlap (Just 5000),
-      GVA.Splines GVA.NoEdges,
+      GVA.Splines GVA.Curved,
       GVA.OverlapScaling 8,
       --GVA.OverlapScaling 4,
       GVA.OverlapShrink True
       ]
-    ],
-  GV.fmtEdge = const [GV.arrowTo GV.noArrow]
+    ]
+  , GV.clusterBy = clustBy
+  , GV.clusterID = GV.Num . GV.Int
+  -- , GV.fmtCluster = clusterAtributeList
+  , GV.fmtEdge = const [GV.arrowTo GV.noArrow]
   }
+
+clustBy :: (ING.Node , b) -> GV.NodeCluster Int  (ING.Node , b)
+clustBy (n, l) =  GV.C (fromIntegral (n `mod` 2)) $ GV.N (n,l)
+
+-- clusterAtributeList :: Int -> [GV.GlobalAttributes]
+-- clusterAtributeList m = [GV.GraphAttrs [GV.toLabel ( "Lambda cluster" ++ show m)]]
 
 renderIconGraph :: forall b.
   SpecialBackend b Double =>
@@ -276,9 +285,9 @@ renderIconGraph debugInfo fullGraphWithInfo = do
     placedNodeList :: [(NamedIcon,SpecialQDiagram b Double)]
     placedNodeList = fmap (placeNode iconInfo) (Map.toList positionMap)
     placedNodes = mconcat $ fmap snd placedNodeList
+    placedRegions = drawLambdaRegions iconInfo placedNodeList
     placedNodesAndRegions = placedNodes <> placedRegions
     edges = addEdges debugInfo iconInfo parentGraph placedNodesAndRegions
-    placedRegions = drawLambdaRegions iconInfo placedNodeList
   pure (edges <> placedNodesAndRegions)
   where
     parentGraph
@@ -288,15 +297,15 @@ renderIconGraph debugInfo fullGraphWithInfo = do
                  $ first nodeNameToInt . namedToTuple . snd
                  <$> ING.labNodes fullGraph
 
-    layoutParams :: GV.GraphvizParams Int NamedIcon e () NamedIcon
+    layoutParams :: GV.GraphvizParams ING.Node NamedIcon e Int NamedIcon
     --layoutParams :: GV.GraphvizParams Int l el Int l
     layoutParams = customLayoutParams{
       GV.fmtNode = nodeAttribute
       }
-    nodeAttribute :: (Int, NamedIcon) -> [GV.Attribute]
+
+    nodeAttribute :: (_, NamedIcon) -> [GV.Attribute]
     nodeAttribute (_, Named _ nodeIcon) =
-      -- [GVA.Width circleDiameter, GVA.Height circleDiameter]
-      [GVA.Width diaWidth, GVA.Height diaHeight] where
+      [ GVA.Width diaWidth, GVA.Height diaHeight] where
         -- This type annotation (:: SpecialQDiagram b n) requires Scoped Typed
         -- Variables, which only works if the function's
         -- type signiture has "forall b e."
@@ -306,9 +315,12 @@ renderIconGraph debugInfo fullGraphWithInfo = do
               nodeIcon
               (TransformParams (NodeName (-1)) 0)
         
+        -- rank = case nodeIcon of 
+        --   LambdaIcon {} -> GVA.MinRank
+        --   _ -> GVA.SameRank
+
         diaWidth = max (drawingToGraphvizScaleFactor * width dia) minialDiaDimention
         diaHeight = max (drawingToGraphvizScaleFactor * height dia) minialDiaDimention
-        -- circleDiameter = maximum [diaWidth, diaHeight, minialDiaDimention]
 
 -- GVA.Width and GVA.Height have a minimum of 0.01
 minialDiaDimention :: Double

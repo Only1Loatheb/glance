@@ -58,7 +58,7 @@ renderFglGraph fglGraph = do
                 (show name ++ prettyPrintSyntaxNode syntaxNode)
                 {- :: Diagram B -})
       (scaleFactor *^ point)
-    layoutParams :: GV.GraphvizParams Int v e () v
+    layoutParams :: GV.GraphvizParams Int v e Int v
     layoutParams = customLayoutParams{
       GV.fmtNode = nodeAttribute
     }
