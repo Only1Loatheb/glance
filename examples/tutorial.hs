@@ -1,22 +1,19 @@
-{-# LANGUAGE TemplateHaskell #-} -- guard
+{-# LANGUAGE TemplateHaskell #-}
 {-
 This file explains of grapical symbols used in the project.
 Symbols corespondes to parts of the haskell syntax.
 It is assumed that the reader is familiar with the basics of Haskell.
-{--}
--}
-{- integer = 1 -}
+
+integer = 1 -}
 integer = 1
 {- fractional = 1.1 -}
 fractional = 1.1
-{--}
--- TODO float = (1.1 :: float)
 {- character = 'a' -}
 character = 'a'
 {- string = "a" -}
 string = "a"
 {- list = [1,2,3,4] where
-  [,,,] is list constructor -}
+  [,,,] is describes list -}
 list = [1,2,3,4]
 {- listWithOneElement = [1] -}
 listWithOneElement = [1]
@@ -57,13 +54,11 @@ whereDefinitions = f where
 functionComposition = f . g
 {- appliedFunctionComposition = (f . g) x-}
 appliedFunctionComposition = (f . g) x
-{- lambda = \argument -> functionBody argument -}
+{- lambdaExpression = \argument1 argument2 -> functionBodyWith argument1 argument2 -}
 lambdaExpression = \argument1 argument2 -> functionBodyWith argument1 argument2
-{- unpacking.
-(unpackedValue1, unpackedValue2, unpackedValue3) = (18.5, 25.0, 30.0) -}
+{- (unpackedValue1, unpackedValue2, unpackedValue3) = (18.5, 25.0, 30.0) -}
 (unpackedValue1, unpackedValue2, unpackedValue3) = (18.5, 25.0, 30.0)
-{- unpacking.
-(Just unpackedValue) = Just 3 -}
+{- (Just unpackedValue) = Just 3 -}
 (Just unpackedValue) = Just 3
 {- ignoreValueInPattern _ = result -}
 ignoreValueInPattern _ = result
@@ -76,9 +71,7 @@ patternFunctionDefinition = functionName where
   functionName argument1Pattern1 argument2Pattern1 = functionValue1 argument1Pattern1 argument2Pattern1
   functionName argument1Pattern2 argument2Pattern2 = functionValue2 argument1Pattern2 argument2Pattern2
 {-
-Since data constructors are functions, the match icon has a topology similar to
-the apply icon.
-Now that you are familiar with matches, here's a simple case expression.
+Here's a simple case expression.
 caseExpression = case expression of 
   Right expressionPattern1 -> result1  
   Left expressionPattern2 -> result2 
@@ -109,49 +102,21 @@ factorial x =
     then 1
     else factorial (x - 1) * x
 
-{-
-Compose (bonus section):
-
-The depth of an icon's application tree is called the nesting depth.
-For example, The icon representing "factorial (x - 1) * x" above has a nesting
-depth of 3, since it is an apply icon (depth=1), inside an apply icon (depth=2),
-inside an apply icon (depth=3).
-
-To reduce nesting depth, Glance has an icon that represents an argument applied
-to a composition of functions.
-
-For example:
+{- Composition:
 y = f (g x)
-which is the same as
-y = (f . g) x
 -}
 y = f (g x)
+{- which is the same as
 y = (f . g) x
-{-
-With a composition of three functions:
+-}
+y = (f . g) x
+{- Composition of three functions:
+y = f (g (h x)) -}
 y = f (g (h x))
-which is the same as
+{- which is the same as
 y = (f . g . h) x
 -}
-y = f (g (h x))
 y = (f . g . h) x
-{-
-Glance figures out automatically when to use the compose icon in order to
-reduce the nesting depth.
-
-For example, if we slightly rewrite the factorial function above, Glance
-uses a compose icon for the else expression.
-
-To enable the compose icon, we change the expression
-factorial (x - 1) * x
-to
-x * factorial (x - 1)
-
-Glance essentially rewrites the second expression as:
-(x *) . factorial . (x -) $ 1
-
-Notice that the nesting depth has been reduced from 3 to 2.
--}
 {- doNotation = do 
     item <- generator
     let localDefinition = item + 1

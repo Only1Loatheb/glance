@@ -258,8 +258,8 @@ customLayoutParams = GV.defaultParams{
       GVA.OverlapShrink True
       ]
     ]
-  , GV.clusterBy = clustBy
-  , GV.clusterID = GV.Num . GV.Int
+  -- , GV.clusterBy = clustBy
+  -- , GV.clusterID = GV.Num . GV.Int
   -- , GV.fmtCluster = clusterAtributeList
   , GV.fmtEdge = const [GV.arrowTo GV.noArrow]
   }

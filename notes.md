@@ -31,7 +31,7 @@ examples to work with:
 
 ```bash
 stack build --test  --ghc-options -Wall
-stack build  --exec "glance-exe ./examples/tutorial.hs ./images/tutorial.svg 500"
+stack build  --exec "glance-exe -c ./examples/tutorial.hs ./images/tutorial.svg 500"
 stack build  --exec "glance-exe ./examples/lab1.hs ./images/lab1.svg 500"
 stack build  --exec "glance-exe ./examples/lab2.hs ./images/lab2.svg 500"
 ```
