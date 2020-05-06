@@ -110,12 +110,10 @@ multiIfVarSymbol color = alignB coloredSymbol  where
       = lwG defaultLineWidth $ lc color (strokeLine symbol)
 
 lambdaBodySymbol :: SpecialBackend b n
-  => NodeName
-  -> String
+  => String
   -> SpecialQDiagram b n
-lambdaBodySymbol name
-  = makePassthroughPorts name (InputPortConst,ResultPortConst)
-    -- ===  transformableGeneralTextBox functionName (regionPerimC colorScheme) (bindTextBoxC colorScheme)
+lambdaBodySymbol functionName
+  = transformableGeneralTextBox functionName (regionPerimC colorScheme) (bindTextBoxC colorScheme)
 
 inMultiIfConstBox :: SpecialBackend b n
   => SpecialQDiagram b n -> SpecialQDiagram b n
@@ -213,16 +211,6 @@ choosePortDiagram str portAndSymbol portSymbolAndLabel
       | not (null str) = portSymbolAndLabel
       | otherwise = portAndSymbol
 
-makePassthroughPorts :: SpecialBackend b n =>
-  NodeName -> (Port,Port) -> String ->  SpecialQDiagram b n
-makePassthroughPorts name (port1,port2) str
-  = choosePortDiagram str portsDiagram portSymbolsAndLabel where
-    portAndSymbol1 = makeQualifiedPort port1 name
-    portAndSymbol2 = makeQualifiedPort port2 name
-    label = transformablePortTextBox str
-    portsDiagram =  portAndSymbol1 === portAndSymbol2
-    portSymbolsAndLabel = portAndSymbol1 === label === portAndSymbol2
-
 -- >>>>>>>>>>>>>>>>>>>>>> SUB Diagrams <<<<<<<<<<<<<<<<<<<<<<<<
 -- TODO Detect if we are in a loop (have called iconToDiagram on the same node
 -- before)
@@ -236,8 +224,8 @@ iconToDiagram iconInfo icon = case icon of
   MultiIfIcon n -> nestedMultiIfDia iconInfo (replicate (1 + (2 * n)) Nothing) MultiIfTag
   CaseIcon n -> nestedCaseDia iconInfo (replicate (1 + (2 * n)) Nothing) CaseTag
   CaseResultIcon -> identDiaFunc resultPortSymbol
-  LambdaIcon _ (Labeled _ str) _
-    -> nestedLambda str
+  LambdaIcon argumentNames (Labeled _ str) _
+    -> nestedLambda argumentNames str 
   NestedApply flavor headIcon args
     -> nestedApplyDia
        iconInfo
@@ -472,22 +460,30 @@ generalNestedMultiIf iconInfo symbolColor inConstBox inputAndArgs flavor
 
 
 nestedLambda ::  SpecialBackend b n
-  => String 
+  => [String]
+  -> String 
   -> TransformableDia b n
-nestedLambda functionName (TransformParams name _level)
-  = named name lambdaSymbol where
-  lambdaSymbol = lambdaBodySymbol name functionName-- TODO remove this
+nestedLambda argumentNames functionName (TransformParams name _level)
+  = named name finalDiagram where
+  lambdaSymbol = lambdaBodySymbol functionName
+
+  argumetPort = zipWith (makeLabelledPort name) resultPortsConst argumentNames
+  combinedArgumetPort = hsep portSeparationSize argumetPort
+  argumetsInBox = boxForDiagram combinedArgumetPort (lamArgResC colorScheme) (width combinedArgumetPort) (height combinedArgumetPort)
+
+  -- resultPort = makeResultDiagram name
+
+  finalDiagram = lambdaSymbol === argumetsInBox 
 -- Done to prevent this:
 -- glance-test: circleDiameter too small: 0.0
 -- CallStack (from HasCallStack):
 -- error, called at app/Rendering.hs:315:18 in main:Rendering
 
-lambdaRegionToDiagram :: SpecialBackend b Double =>
-                           [SpecialQDiagram b Double]
-                           -> Icon -> NodeName -> SpecialQDiagram b Double
-lambdaRegionToDiagram enclosedDiagarms (LambdaIcon argumentNames _ _) name
-    = lambdaRegionSymbol enclosedDiagarms argumentNames name
-lambdaRegionToDiagram _ _ name = named name mempty
+lambdaRegionToDiagram :: SpecialBackend b Double 
+  => [SpecialQDiagram b Double]
+  -> SpecialQDiagram b Double
+lambdaRegionToDiagram
+    = lambdaRegionSymbol
 
 -- | The ports of flatLambdaIcon are:
 -- 0: Result icon
@@ -495,10 +491,8 @@ lambdaRegionToDiagram _ _ name = named name mempty
 -- 2,3.. : The parameters
 lambdaRegionSymbol :: SpecialBackend b Double
   => [SpecialQDiagram b Double]
-  -> [String]
-  -> NodeName
   -> SpecialQDiagram b Double
-lambdaRegionSymbol enclosedDiagarms argumentNames name
+lambdaRegionSymbol enclosedDiagarms
   = moveTo (centerPoint enclosedBoundingBox) finalDiagram
   where
     enclosedBoundingBox = boundingBox $ mconcat enclosedDiagarms
@@ -509,11 +503,7 @@ lambdaRegionSymbol enclosedDiagarms argumentNames name
                    (lambdaRectPadding + height enclosedBoundingBox)
     coloredContentsRect = lc lightgreen (lwG defaultLineWidth contentsRect)
 
-    argumetPort = zipWith (makeLabelledPort name) resultPortsConst argumentNames
-    combinedArgumetPort = hsep portSeparationSize argumetPort
-    argumetsInBox = alignB $ boxForDiagram combinedArgumetPort (lamArgResC colorScheme) (width combinedArgumetPort) (height combinedArgumetPort)
-
-    finalDiagram = beside unitY coloredContentsRect argumetsInBox
+    finalDiagram = coloredContentsRect
 
 getArrowShadowOpts :: (RealFloat n, Typeable n)
   => (Maybe (Point V2 n),Maybe (Point V2 n))

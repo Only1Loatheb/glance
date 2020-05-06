@@ -35,6 +35,8 @@ module SyntaxGraph(
   , makeListCompGraph
   , GraphInPatternRef(..)
   , evalPatBindHelper
+  , lookupInEmbeddingMap
+
 ) where
 
 import Control.Monad.State ( State, state )
@@ -136,6 +138,16 @@ graphInPatternRefToGraphAndRef (GraphInPatternRef g r _) = (GraphAndRef g r)
 
 graphInPatternRefToGraphAndPat :: GraphInPatternRef -> GraphAndRef
 graphInPatternRefToGraphAndPat (GraphInPatternRef g _ p) = (GraphAndRef g p)
+
+lookupInEmbeddingMap :: NodeName -> IMap.IntMap NodeName -> NodeName
+lookupInEmbeddingMap origName eMap = lookupHelper origName where
+  lookupHelper :: NodeName -> NodeName
+  lookupHelper name@(NodeName nameInt) = case IMap.lookup nameInt eMap of
+    Nothing -> name
+    Just parent -> if parent == origName
+      then error $ "lookupInEmbeddingMap: Found cycle. Node = "
+           ++ show origName ++ "\nEmbedding Map = " ++ show eMap
+      else lookupHelper parent
 
 -- BEGIN Constructors and Destructors
 
@@ -360,7 +372,7 @@ makeInnerInputEdge (GraphAndRef _ ref) listCompPort = case ref of
 
 
 -- lambda
-makePatternEdgeInLambda :: GraphAndRef -> NameAndPort -> Either Edge SgBind
+makePatternEdgeInLambda ::GraphAndRef -> NameAndPort -> Either Edge SgBind
 makePatternEdgeInLambda (GraphAndRef _ ref) lamPort = case ref of
   Right (NameAndPort name _) 
     -> Left $ makeSimpleEdge (lamPort, patternValueInputPort name )

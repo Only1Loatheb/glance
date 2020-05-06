@@ -1,14 +1,10 @@
 {-# LANGUAGE PatternSynonyms #-}
 
 module SyntaxNodeToIcon(
-  lookupInEmbeddingMap
-  , makeLNode
-  , nodeToIcon
+  nodeToIcon
 ) where
 
-import qualified Data.Graph.Inductive.Graph as ING
 import Data.List(find)
-import qualified Data.IntMap as IMap
 import qualified Data.Set as Set
 
 import           PortConstants(
@@ -21,33 +17,17 @@ import           Types(
   , Icon(..)
   , SyntaxNode(..)
   , Edge(..)
-  , EdgeOption(..)
   , NameAndPort(..)
-  , IDState
   , SgNamedNode
   , NodeName(..)
   , Port
   , LikeApplyFlavor(..)
   , CaseOrMultiIfTag(..)
-  , IDState(..)
   , Embedder(..)
-  , mkEmbedder
   , Named(..)
   , EmbedderSyntaxNode
-  , AnnotatedGraph
   )
-import Util(
-  nameAndPort
-  , makeSimpleEdge
-  , justName
-  , maybeBoolToBool
-  , nodeNameToInt
-  )
-import SimpSyntaxToSyntaxGraph(
-  translateStringToSyntaxGraph,
-  customParseDecl
-  )
-
+import Util(maybeBoolToBool)
 
 nodeToIcon :: EmbedderSyntaxNode -> Icon
 nodeToIcon (Embedder embeddedNodes node) = case node of
@@ -131,17 +111,3 @@ nestedPatternNodeToIcon str children args = NestedPatternApp
     asigendValueName = makeArg args PatternValuePortConst
 
 
--- Exported functions
-
-makeLNode :: SgNamedNode -> ING.LNode SgNamedNode
-makeLNode namedNode@(Named (NodeName name) _) = (name, namedNode)
-
-lookupInEmbeddingMap :: NodeName -> IMap.IntMap NodeName -> NodeName
-lookupInEmbeddingMap origName eMap = lookupHelper origName where
-  lookupHelper :: NodeName -> NodeName
-  lookupHelper name@(NodeName nameInt) = case IMap.lookup nameInt eMap of
-    Nothing -> name
-    Just parent -> if parent == origName
-      then error $ "lookupInEmbeddingMap: Found cycle. Node = "
-           ++ show origName ++ "\nEmbedding Map = " ++ show eMap
-      else lookupHelper parent

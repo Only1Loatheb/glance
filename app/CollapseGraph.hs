@@ -32,17 +32,14 @@ import Types(
   , Embedder(..)
   , Named(..)
   , EmbedderSyntaxNode
-  , NodeName
+  , NodeName(..)
   )
-import SyntaxGraph(SyntaxGraph(..))
+import SyntaxGraph(SyntaxGraph(..), lookupInEmbeddingMap)
 import SimpSyntaxToSyntaxGraph(
   translateDeclToSyntaxGraph
   , customParseDecl
   )
-import SyntaxNodeToIcon(
-  lookupInEmbeddingMap
-  , makeLNode
-  )
+
 import HsSyntaxToSimpSyntax(hsDeclToSimpDecl)
 import Util(
   nodeNameToInt
@@ -305,13 +302,17 @@ collapseAnnotatedGraph origGraph = moveEdges newGraph
 -- Exported functions
 syntaxGraphToFglGraph :: SyntaxGraph -> FGR.Gr SgNamedNode Edge
 syntaxGraphToFglGraph (SyntaxGraph nodes edges _ _ eMap) =
-  ING.mkGraph (fmap makeLNode (Set.toList nodes)) labeledEdges where
+  ING.mkGraph labeledNodes labeledEdges where
+    labeledNodes = fmap makeLabeledNode (Set.toList nodes)
     labeledEdges = fmap makeLabeledEdge (Set.toList edges)
 
     makeLabeledEdge e@(Edge _ (NameAndPort name1 _, NameAndPort name2 _)) =
       (nodeNameToInt $ lookupInEmbeddingMap name1 eMap
       , nodeNameToInt $ lookupInEmbeddingMap name2 eMap
       , e)
+    
+    makeLabeledNode :: SgNamedNode -> ING.LNode SgNamedNode
+    makeLabeledNode namedNode@(Named (NodeName name) _) = (name, namedNode)
 
 syntaxGraphToCollapsedGraph :: SyntaxGraph -> AnnotatedGraph FGR.Gr
 syntaxGraphToCollapsedGraph
