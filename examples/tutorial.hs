@@ -3,8 +3,8 @@
 This file explains of grapical symbols used in the project.
 Symbols corespondes to parts of the haskell syntax.
 It is assumed that the reader is familiar with the basics of Haskell.
-
-integer = 1 -}
+-}
+{- integer = 1 -}
 integer = 1
 {- fractional = 1.1 -}
 fractional = 1.1

@@ -10,18 +10,16 @@ import Prelude hiding (return)
 -- code.
 import qualified Diagrams.Prelude as Dia hiding ((#), (&))
 
-import qualified Language.Haskell.Exts as Exts
-
 -- Options.Applicative does not seem to work qualified
 import Options.Applicative(header, progDesc, fullDesc, helper, info
                           , defaultPrefs, customExecParser, help, short, switch
                           , metavar, auto, argument, str, prefShowHelpOnError
                           , Parser)
 
-import IconToSymbolDiagram(ColorStyle(..), colorScheme, multilineComment)
-import Rendering(renderIngSyntaxGraph)
-import CollapseGraph(translateModuleToCollapsedGraphs)
 import Util(customRenderSVG)
+
+import ModuleToDiagram(diagramFromModule)
+
 
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
@@ -48,39 +46,8 @@ renderFile (CmdLineOptions
              includeComments)
   = do
   putStrLn $ "Translating file " ++ inputFilename ++ " into a Glance image."
-  parseResult <- Exts.parseFileWithComments
-    (Exts.defaultParseMode {
-        Exts.extensions = [Exts.EnableExtension Exts.MultiParamTypeClasses
-                          , Exts.EnableExtension Exts.FlexibleContexts]
-        , Exts.parseFilename = inputFilename
-        })
-    inputFilename
-  let
-    (parsedModule, comments) = Exts.fromParseResult parseResult
-    drawings = translateModuleToCollapsedGraphs parsedModule
-  --print parsedModule
-  --print "\n\n"
-  --print drawings
-
-  diagrams <- traverse (renderIngSyntaxGraph "") drawings
-  let
-    commentsInBoxes
-      = fmap
-        (\(Exts.Comment _ _ c) ->
-            Dia.alignL $ multilineComment Dia.white (Dia.opaque Dia.white) c)
-        comments
-    diagramsAndComments
-      = Dia.vsep 2 $ zipWith
-        (\x y -> x Dia.=== Dia.strutY 0.4 Dia.=== y)
-        commentsInBoxes
-        (fmap Dia.alignL diagrams)
-    justDiagrams = Dia.vsep 1 $ fmap Dia.alignL diagrams
-    diagramsAndMaybeComments
-      = if includeComments then diagramsAndComments else justDiagrams
-  --print comments
-
-    finalDia = Dia.bgFrame 1 (backgroundC colorScheme) diagramsAndMaybeComments
-  customRenderSVG outputFilename (Dia.mkWidth imageWidth) finalDia
+  moduleDiagram <- diagramFromModule inputFilename includeComments
+  customRenderSVG outputFilename (Dia.mkWidth imageWidth) moduleDiagram
   putStrLn $ "Successfully wrote " ++ outputFilename
 
 translateFileMain :: IO ()

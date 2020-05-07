@@ -422,7 +422,7 @@ hsExpToSimpExp x = simplifyExp $ case x of
   Exts.EnumFromThen l e1 e2 -> desugarEnums l enumFromThenStr [e1, e2]
   Exts.EnumFromThenTo l e1 e2 e3 -> desugarEnums l enumFromThenToStr [e1, e2, e3]
   Exts.MultiIf l rhss -> SeMultiIf l (fmap guardedRhsToSelectorAndVal rhss)
-  Exts.ListComp l e1 qStmts -> SeListComp l (hsExpToSimpExp e1) ( fmap desugarListComp $ filterQStmts qStmts)
+  Exts.ListComp l e1 qStmts -> SeListComp l (hsExpToSimpExp e1) ( desugarListComp <$> filterQStmts qStmts)
   _ -> error $ "Unsupported syntax in hsExpToSimpExp: " ++ show x
   -- BDecls l [Decl l]	
   -- IPBinds l [IPBind l]

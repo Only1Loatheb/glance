@@ -1,12 +1,12 @@
 {-# LANGUAGE NoMonomorphismRestriction, FlexibleContexts, TypeFamilies, PartialTypeSignatures, ScopedTypeVariables #-}
 
 module Rendering (
-  renderDrawing,
-  customLayoutParams,
-  renderIngSyntaxGraph
+  renderDrawing
+  , customLayoutParams
+  , renderIngSyntaxGraph
 ) where
 
-import qualified Diagrams.Prelude as DIA
+import qualified Diagrams.Prelude as Dia
 import           Diagrams.Prelude               ( toName
                                                 , Angle
                                                 , P2
@@ -152,10 +152,10 @@ getConnectFuncAndPorts  (NameAndPort name0 mPort1) (NameAndPort name1 mPort2) = 
       helper (Just port0, Nothing) = (connectOutside', name0 .> port0, toName name1)
       helper (_, _) = (connectOutside', toName name0, toName name1)
 
-getPositionOfNamed origDia n = case DIA.lookupName n origDia of
-  --Nothing -> DIA.r2 (0, 0)--error "Name does not exist!"
+getPositionOfNamed origDia n = case Dia.lookupName n origDia of
+  --Nothing -> Dia.r2 (0, 0)--error "Name does not exist!"
   Nothing -> Nothing-- error $ "Name does not exist! name=" <> show n <> "\neInfo=" <> show eInfo
-  Just subDia -> Just $ DIA.location subDia
+  Just subDia -> Just $ Dia.location subDia
 
 -- In order to give arrows a "shadow" effect, draw a thicker semi-transparent
 -- line shaft the same color as the background underneath the normal line
@@ -309,8 +309,8 @@ renderIconGraph debugInfo fullGraphWithInfo = do
         -- This type annotation (:: SpecialQDiagram b n) requires Scoped Typed
         -- Variables, which only works if the function's
         -- type signiture has "forall b e."
-        dia :: SpecialQDiagram b Double
-        dia = iconToDiagram
+        diagarm :: SpecialQDiagram b Double
+        diagarm = iconToDiagram
               iconInfo
               nodeIcon
               (TransformParams (NodeName (-1)) 0)
@@ -319,8 +319,8 @@ renderIconGraph debugInfo fullGraphWithInfo = do
         --   LambdaIcon {} -> GVA.MinRank
         --   _ -> GVA.SameRank
 
-        diaWidth = max (drawingToGraphvizScaleFactor * width dia) minialDiaDimention
-        diaHeight = max (drawingToGraphvizScaleFactor * height dia) minialDiaDimention
+        diaWidth = max (drawingToGraphvizScaleFactor * width diagarm) minialDiaDimention
+        diaHeight = max (drawingToGraphvizScaleFactor * height diagarm) minialDiaDimention
 
 -- GVA.Width and GVA.Height have a minimum of 0.01
 minialDiaDimention :: Double

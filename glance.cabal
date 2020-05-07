@@ -63,6 +63,7 @@ executable glance-exe
                , HsSyntaxToSimpSyntax
                , PortConstants
                , SyntaxGraph
+               , ModuleToDiagram
 
 test-suite glance-test
   type:                exitcode-stdio-1.0
@@ -112,6 +113,7 @@ test-suite glance-test
                , HsSyntaxToSimpSyntax
                , PortConstants
                , SyntaxGraph
+               , ModuleToDiagram
 
 source-repository head
   type:     git

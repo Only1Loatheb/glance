@@ -74,10 +74,14 @@ commentTextArea textColor t =
   (font textFont $ fc textColor $ topLeftText t)
   <>  alignTL (lw none $ rectForText (length t))
 
-multilineComment :: SpecialBackend b n =>
+multilineComment :: SpecialBackend b n 
+  => String -> SpecialQDiagram b n
+multilineComment = multilineComment' white (opaque white)
+
+multilineComment' :: SpecialBackend b n =>
   Colour Double
   -> AlphaColour Double -> String -> SpecialQDiagram b n
-multilineComment textColor _boxColor t = lwG (0.6 * defaultLineWidth) textDia
+multilineComment' textColor _boxColor t = lwG (0.6 * defaultLineWidth) textDia
   where
     textLines = lines t
     textAreas = map (commentTextArea textColor) textLines
