@@ -19,7 +19,8 @@ module SyntaxGraph(
   , makeEdgesAndDeleteBindings
   , makeEdges
   , makeBox
-  , makeOutputEdgesAndSinks
+  -- , makeOutputEdgesAndSinks
+  , asBindGraphZipper
   , makePatternEdgeInLambda
   , EvalContext
   , GraphAndRef(..)
@@ -456,21 +457,18 @@ namesInPattern (graphAndRef, mName) = case mName of
 -- TODO: Might want to present some indication if there is a reference cycle.
 lookupReference :: (SMap.StringMap Reference) -> Reference -> Reference
 lookupReference _ ref@(Right _) = ref
-lookupReference bindings ref@(Left originalS) = lookupReference' (Just ref) where
-
-  lookupReference' :: Maybe Reference -> Reference
-  lookupReference'  (Just newRef@(Right _)) = newRef
-  lookupReference'  (Just (Left s))
-    = failIfCycle originalS foundRef $ lookupReference' foundRef where
-      foundRef =SMap.lookup s  bindings
-  lookupReference'  _Nothing  = error "lookupReference filed"
-
-  failIfCycle ::  String -> Maybe Reference -> Reference -> Reference
-  failIfCycle originalS (Just r@(Left newStr)) res  = if newStr == originalS then r else res
-  failIfCycle _ _ res = res
+lookupReference bindings originalRef = lookupReference' originalRef where
+  
+  lookupReference' ref@(Right _) = ref
+  lookupReference' (Left s) = ref where 
+    foundRef = SMap.lookup s  bindings
+    refMayBeCausingCycle = fromMaybe originalRef foundRef
+    ref = if refMayBeCausingCycle == originalRef 
+      then originalRef
+      else lookupReference' refMayBeCausingCycle
 
 makeEdgesAndDeleteBindings :: SyntaxGraph -> SyntaxGraph
-makeEdgesAndDeleteBindings = deleteBindings . makeEdges where
+makeEdgesAndDeleteBindings = deleteBindings . makeEdges
 
 deleteBindings :: SyntaxGraph -> SyntaxGraph
 deleteBindings (SyntaxGraph a b c _ e) = SyntaxGraph a b c SMap.empty e
@@ -507,8 +505,11 @@ patternName (GraphAndRef _ ref, mStr) = fromMaybe
   )
   mStr
 
-makeOutputEdgesAndSinks :: Reference
-  -> Set.Set Edge -> NameAndPort -> (Set.Set Edge, Set.Set SgSink)
-makeOutputEdgesAndSinks rhsRef patternEdges returnPort = case rhsRef of
-  Left s -> (patternEdges, Set.singleton (SgSink s returnPort))
-  Right rhsPort -> (Set.insert (makeSimpleEdge (rhsPort, returnPort)) patternEdges, mempty)
+-- makeOutputEdgesAndSinks :: Reference
+--   -> Set.Set Edge -> NameAndPort -> (Set.Set Edge, Set.Set SgSink)
+-- makeOutputEdgesAndSinks rhsRef patternEdges returnPort = case rhsRef of
+--   Left s -> (patternEdges, Set.singleton (SgSink s returnPort))
+--   Right rhsPort -> (Set.insert (makeSimpleEdge (rhsPort, returnPort)) patternEdges, mempty)
+
+asBindGraphZipper :: Maybe String -> NameAndPort -> SyntaxGraph
+asBindGraphZipper asName nameNPort = makeAsBindGraph (Right nameNPort) [asName]

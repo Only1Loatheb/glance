@@ -17,7 +17,6 @@ import SyntaxGraph( SyntaxGraph(..))
 import Rendering(renderIngSyntaxGraph)
 import IconToSymbolDiagram(textBox)
 import qualified Data.Set as Set
-import qualified Data.Map as Map
 import qualified Data.StringMap as SMap
 
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
@@ -53,7 +52,13 @@ simpleTests = [
   , "y = f (g x)"
   , "y = f $ g x"
   ]
-
+enumTest :: [String]
+enumTest = [ 
+  "enumFrom = [1..]"
+  ,"enumFromTo = [1..5]"
+  ,"enumFromThen = [1,2..]"
+  ,"enumFromThenTo = [1,2..10]"
+  ]
 typeSigTests :: [String]
 typeSigTests = [
   "f :: a"
@@ -162,9 +167,9 @@ caseTests = [
   "y = case x of {Foo a -> f a; Bar a -> f a}",
   "y = case x of {F x -> x; G x -> x}",
   "y = case x of {F -> 0; G -> 1}"
-  -- ,
-  -- "z = case x of {0 -> 1; y -> y}", -- lookupReference filed
-  -- "y x = case f x of {0 -> x; Foo x -> x}" -- lookupReference filed
+  ,
+  "z = case x of {0 -> 1; y -> y}",
+  "y x = case f x of {0 -> x; Foo x -> x}"
   ]
 
 guardTests :: [String]
@@ -318,18 +323,58 @@ listCompTests = [
   "nested = take 5 [ [ (i,j) | i <- [1,2] ] | j <- [1..] ]"
   ,
   "booleanGuards = take 10 [ (i,j) | i <- [1..], \n\
-  \                                   j <- [1..i-1], \n\
-  \                                   gcd i j == 1 ]"
+  \                                  j <- [1..i-1], \n\
+  \                                  gcd i j == 1 ]"
   ,
   "localLet = take 10 [ (i,j) | i <- [1..], \n\
-  \                               let k = i*i, \n\
-  \                               j <- [1..k] ]"
+  \                             let k = i*i, \n\
+  \                             j <- [1..k] ]"
   ]
 
-
+otherInLambdaTest :: [String]
+otherInLambdaTest = [
+  "lambdaWIfUnused = \\a1 a2 -> if cond then v1 else v2"
+  ,"lambdaWIfValues = \\a1 a2 a3-> if a1 then a2 else a3"
+  ,"lambdaWEnumUnused = \\a1 a2 -> [1..]"
+  ,"lambdaWEnumValues = \\a1 a2 -> [a1..a2]"
+  ,"lambdaWLetUnused = \\a1 a2 -> let x = 1 in  x "
+  ,"lambdaWLetValue = \\a1 a2 -> let x = 1 in  a1 + x"
+  ,"lambdaWLetDescription = \\a1 a2 -> let x = a1 in  v1 + x"
+  ,"lambdaWLetBoth = \\a1 a2 -> let x = a1 in  a2 + x"
+  ,"lambdaWListComp = \\xs -> [x | x <- xs] "
+  ,"lambdaWCaceCondAndValue = \\a1 a2 a3-> case a1 of a2 -> a3"
+  ,"lambdaWCaceUnused = \\a1 a2 -> case v1 of v2 -> v3"
+  ,"lambdaWCaceMixed = \\a1 a2 -> case a1 of \n\
+  \  c1 -> v1\n\
+  \  a2 -> v2"
+  ,"lambdaWGuardsValue = \\aa1 aa2 ->\n\
+  \  let  \n\
+  \    guards a1 a2\n\
+  \      | cond       = a1\n\
+  \      | otherwise = a2\n\
+  \  in  guards"
+  ,"lambdaWGuardsCondition = \\aa1 aa2 ->\n\
+  \  let\n\
+  \    guards a1 a2\n\
+  \      | a1     = v1\n\
+  \      | a2     = v2\n\
+  \      | otherwise = v3\n\
+  \  in  guards"
+  ,"lambdaWFunctionDefValues = \\a1 a2 ->\n\
+  \  let\n\
+  \    functionDef a1p1 a2p1 = a1\n\
+  \    functionDef a1p2 a2p2 = a2\n\
+  \  in  functionDef"
+  ,"lambdaWFunctionDefPatterns = \\a1 a2 ->\n\
+  \    let\n\
+  \      functionDef a1 a2 = v1\n\
+  \      functionDef a1p2 a2p2 = v2\n\
+  \    in  functionDef"
+  ]
 testDecls :: [String]
 testDecls = mconcat [
   simpleTests
+  , enumTest
   , composeTests
   , nestedTests
   , doTests
@@ -347,6 +392,7 @@ testDecls = mconcat [
   , dataDeclTests
   , multiWayIfTests
   , listCompTests
+  , otherInLambdaTest
   ]
 
 

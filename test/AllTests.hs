@@ -19,7 +19,7 @@ import VisualTranslateTests(visualTranslateTests)
 
 drawingsAndNames :: [(String, IO (Diagram B))]
 drawingsAndNames =
-  [ ("SimpSyntaxToSyntaxGraph-tests", visualTranslateTests)
+  [ ("visual-tests", visualTranslateTests)
   , ("render-tests", renderTests)
   , ("collapse-tests", visualCollapseTests)
   ]

@@ -210,6 +210,16 @@ choosePortDiagram str portAndSymbol portSymbolAndLabel
       | tempVarPrefix `isPrefixOf` str  = portAndSymbol
       | not (null str) = portSymbolAndLabel
       | otherwise = portAndSymbol
+      
+-- makePassthroughPorts :: SpecialBackend b n =>
+--   NodeName -> (Port,Port) -> String ->  SpecialQDiagram b n
+-- makePassthroughPorts name (port1,port2) str
+--   = choosePortDiagram str portsDiagram portSymbolsAndLabel where
+--     portAndSymbol1 = makeQualifiedPort port1 name
+--     portAndSymbol2 = makeQualifiedPort port2 name
+--     label = transformablePortTextBox str
+--     portsDiagram =  portAndSymbol1 === portAndSymbol2
+--     portSymbolsAndLabel = portAndSymbol1 === label === portAndSymbol2
 
 -- >>>>>>>>>>>>>>>>>>>>>> SUB Diagrams <<<<<<<<<<<<<<<<<<<<<<<<
 -- TODO Detect if we are in a loop (have called iconToDiagram on the same node
@@ -466,14 +476,13 @@ nestedLambda ::  SpecialBackend b n
 nestedLambda argumentNames functionName (TransformParams name _level)
   = named name finalDiagram where
   lambdaSymbol = lambdaBodySymbol functionName
-
+  
+  -- argumetPort = zipWith (makePassthroughPorts name) (zip argPortsConst resultPortsConst) argumentNames
   argumetPort = zipWith (makeLabelledPort name) resultPortsConst argumentNames
   combinedArgumetPort = hsep portSeparationSize argumetPort
   argumetsInBox = boxForDiagram combinedArgumetPort (lamArgResC colorScheme) (width combinedArgumetPort) (height combinedArgumetPort)
 
-  -- resultPort = makeResultDiagram name
-
-  finalDiagram = lambdaSymbol === argumetsInBox 
+  finalDiagram = vcat [lambdaSymbol, argumetsInBox]
 -- Done to prevent this:
 -- glance-test: circleDiameter too small: 0.0
 -- CallStack (from HasCallStack):
@@ -481,6 +490,7 @@ nestedLambda argumentNames functionName (TransformParams name _level)
 
 lambdaRegionToDiagram :: SpecialBackend b Double 
   => [SpecialQDiagram b Double]
+  -> NodeName
   -> SpecialQDiagram b Double
 lambdaRegionToDiagram
     = lambdaRegionSymbol
@@ -491,8 +501,9 @@ lambdaRegionToDiagram
 -- 2,3.. : The parameters
 lambdaRegionSymbol :: SpecialBackend b Double
   => [SpecialQDiagram b Double]
+  -> NodeName
   -> SpecialQDiagram b Double
-lambdaRegionSymbol enclosedDiagarms
+lambdaRegionSymbol enclosedDiagarms name
   = moveTo (centerPoint enclosedBoundingBox) finalDiagram
   where
     enclosedBoundingBox = boundingBox $ mconcat enclosedDiagarms
@@ -503,7 +514,11 @@ lambdaRegionSymbol enclosedDiagarms
                    (lambdaRectPadding + height enclosedBoundingBox)
     coloredContentsRect = lc lightgreen (lwG defaultLineWidth contentsRect)
 
-    finalDiagram = coloredContentsRect
+    inputDiagram = makeQualifiedPort InputPortConst name
+
+    outputDiagram = makeResultDiagram name
+
+    finalDiagram = vcat [coloredContentsRect, inputDiagram, outputDiagram]
 
 getArrowShadowOpts :: (RealFloat n, Typeable n)
   => (Maybe (Point V2 n),Maybe (Point V2 n))

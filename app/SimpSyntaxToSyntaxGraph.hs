@@ -72,7 +72,7 @@ import SyntaxGraph(
   , makeEdgesAndDeleteBindings
   , makeEdges
   , makeBox
-  , makeOutputEdgesAndSinks
+  , asBindGraphZipper
   , makePatternEdgeInLambda
   , GraphAndRef(..)
   , Reference(..)
@@ -473,13 +473,7 @@ evalCase c e alts =
 
 -- END evalCase
 
--- BEGIN generalEvalLambda
-
--- TODO Returning a SyntaxGraph is probably not very efficient
-asBindGraphZipper :: Maybe String -> NameAndPort -> SyntaxGraph
-asBindGraphZipper asName nameNPort = makeAsBindGraph (Right nameNPort) [asName]
-
--- TODO Refactor evalLambda
+-- BEGIN evalLambda 
 evalLambda :: Show l
   => l
   -> EvalContext
@@ -500,19 +494,14 @@ evalLambda _ context patterns expr functionName = do
     lambdaPorts = map (nameAndPort lambdaName) $ argumentPorts lambdaNode
     patternGraph = mconcat $ fmap graphAndRefToGraph patternVals
 
-    outputNameAndPort = case rhsRef of
-      strRef@(Left s) -> nap where 
-        maybeRefList = catMaybes $ zipWith (makeReferenceToArgument strRef) patternVals lambdaPorts
-        nap = fromMaybe returnPort $ listToMaybe maybeRefList
-        returnPort = nameAndPort lambdaName $ resultPort lambdaNode
-      (Right np) -> np
+    outputNameAndPort = getOutputNameAndPort rhsRef lambdaName patternVals lambdaPorts
+    edge = makeSimpleEdge (outputNameAndPort, nameAndPort lambdaName (inputPort lambdaNode))
 
     (patternEdges', newBinds') =
       partitionEithers $ zipWith makePatternEdgeInLambda patternVals lambdaPorts
 
-
     lambdaIconAndOutputGraph
-      = makeLambdaOutputGraph rhsRef patternEdges' newBinds' lambdaName lambdaNode
+      = makeLambdaOutputGraph rhsRef (edge : patternEdges') newBinds' lambdaName lambdaNode
 
     asBindGraph = mconcat $ zipWith
                   asBindGraphZipper
@@ -520,14 +509,22 @@ evalLambda _ context patterns expr functionName = do
                   lambdaPorts
     combinedGraph = makeEdgesAndDeleteBindings
                     $ (asBindGraph <> rhsRawGraph <> patternGraph <> lambdaIconAndOutputGraph)
-    
-  pure (combinedGraph,outputNameAndPort)
+
+    resultNameAndPort = nameAndPort lambdaName (resultPort lambdaNode)
+  pure (combinedGraph, resultNameAndPort)
   
     -- TODO Like evalPatBind, this edge should have an indicator that it is the
     -- input to a pattern.
     -- makePatternEdgeInLambda creates the edges between the patterns and the parameter
     -- ports.
 -- add test \x y = (y, f x)
+getOutputNameAndPort rhsRef lambdaName patternVals lambdaPorts = case rhsRef of
+  strRef@(Left _) -> inputStraightToAutput where 
+    maybeRefList = catMaybes $ zipWith (makeReferenceToArgument strRef) patternVals lambdaPorts
+    returnPort = NameAndPort lambdaName Nothing
+    inputStraightToAutput = fromMaybe returnPort $ listToMaybe maybeRefList
+  (Right np) -> np
+
 makeReferenceToArgument :: Reference -> GraphAndRef -> NameAndPort  -> Maybe NameAndPort
 makeReferenceToArgument rhsRef (GraphAndRef _ ref) lamPort = if rhsRef == ref
       then Just lamPort
@@ -549,12 +546,8 @@ makeLambdaOutputGraph rhsRef patternEdgesList binds lambdaName lambdaNode = grap
   lambdaIconSet = Set.singleton (Named lambdaName (mkEmbedder lambdaNode))
   bindsSet = SMap.fromList binds
   graph = SyntaxGraph lambdaIconSet patternEdges mempty bindsSet mempty
+-- END evalLambda 
 
-
-    -- ( returnPort, Just (s, Right returnPort))
-    
-    -- else Set.singleton (SgSink s returnPort)
--- END generalEvalLambda
 
 -- valus form ListCompNode are connected to item constructor
 -- TODO reconsider PORT architecture choise to identfy arguments
