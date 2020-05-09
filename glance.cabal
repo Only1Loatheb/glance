@@ -64,6 +64,7 @@ executable glance-exe
                , PortConstants
                , SyntaxGraph
                , ModuleToDiagram
+               , ClusterNodesBy
 
 test-suite glance-test
   type:                exitcode-stdio-1.0
@@ -114,6 +115,7 @@ test-suite glance-test
                , PortConstants
                , SyntaxGraph
                , ModuleToDiagram
+               , ClusterNodesBy
 
 source-repository head
   type:     git

@@ -55,7 +55,10 @@ import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
             , TransformParams(..))
 
 import Util(nodeNameToInt, fromMaybeError, namedToTuple)
-
+import ClusterNodesBy (
+  clusterNodesBy
+  , ClusterT
+  ) 
 -- If the inferred types for these functions becomes unweildy,
 -- try using PartialTypeSignitures.
 
@@ -241,8 +244,6 @@ placeNode namedIcons (key@(Named name icon), targetPosition)
       transformedDia = centerXY origDia
       diaPosition = graphvizScaleFactor *^ targetPosition
 
-type ClusterT = Int
-
 customLayoutParams :: GV.GraphvizParams ING.Node v e ClusterT v
 customLayoutParams = GV.defaultParams{
   GV.globalAttributes = [
@@ -257,15 +258,14 @@ customLayoutParams = GV.defaultParams{
       GVA.OverlapScaling 8,
       --GVA.OverlapScaling 4,
       GVA.OverlapShrink True
+      , GVA.ClusterRank GVA.Local
       ]
     ]
   , GV.clusterID =  GV.Num . GV.Int --   ClusterT
-  -- , GV.fmtCluster = clusterAtributeList
-  , GV.fmtEdge = const [GV.arrowTo GV.noArrow]
+  -- , GV.fmtEdge = edgeAttrs
   }
 
--- clusterAtributeList :: Int -> [GV.GlobalAttributes]
--- clusterAtributeList m = [GV.GraphAttrs [GV.toLabel ( "Lambda cluster" ++ show m)]]
+-- edgeAttrs (nFrom, nTo, e) = edgeOptions e 
 
 renderIconGraph :: forall b.
   SpecialBackend b Double =>
@@ -291,14 +291,15 @@ renderIconGraph debugInfo fullGraphWithInfo = do
       = ING.nmap niVal $ ING.labfilter (isNothing . niParent) fullGraphWithInfo
     fullGraph = ING.nmap niVal fullGraphWithInfo
     iconInfo = IMap.fromList
-                 $ first nodeNameToInt . namedToTuple . snd
-                 <$> ING.labNodes fullGraph
+                $ first nodeNameToInt . namedToTuple . snd
+                <$> ING.labNodes fullGraph
 
     layoutParams :: GV.GraphvizParams ING.Node NamedIcon e ClusterT NamedIcon
     --layoutParams :: GV.GraphvizParams Int l el Int l
     layoutParams = customLayoutParams{
       GV.fmtNode = nodeAttribute
-      , GV.clusterBy = (clusterByLambda iconInfo)
+      , GV.clusterBy = (clusterNodesBy iconInfo)
+      -- , GV.fmtCluster = (clusterAtributeList iconInfo)
       }
 
     nodeAttribute :: (_, NamedIcon) -> [GV.Attribute]
@@ -315,37 +316,12 @@ renderIconGraph debugInfo fullGraphWithInfo = do
 minialDiaDimention :: Double
 minialDiaDimention = 0.01
         
--- clustBy :: (ING.Node , NamedIcon) -> GV.NodeCluster ClusterT  (ING.Node , NamedIcon)
--- clustBy (n, l) =  GV.C ((n `mod` 2) :: ClusterT) $ GV.N (n,l)
-
-clusterByLambda ::
-  IconInfo
-  -> ((ING.Node , NamedIcon) -> GV.NodeCluster ClusterT  (ING.Node , NamedIcon))
-clusterByLambda iconInfo  = clusterBy where
-  clusterBy :: (ING.Node , NamedIcon) -> GV.NodeCluster ClusterT  (ING.Node , NamedIcon)
-  clusterBy (nodeName, namedIcon) = 
-    GV.C (IMap.findWithDefault nodeName nodeName clusterMap) 
-    $ GV.N (nodeName,namedIcon)
-    -- Also draw the region around the icon the lambda is in.
-  clusterMap :: IMap.IntMap ClusterT
-  clusterMap = IMap.unions $ map (iconClusterMap iconInfo) (IMap.toList iconInfo)
-
-iconClusterMap :: IconInfo -> (IMap.Key, Icon) -> IMap.IntMap ClusterT
-iconClusterMap iconInfo (name, icon@(LambdaIcon _ _ nodesInside)) = nodeNameToClusterMap where
-  lambdaClusterMap = IMap.fromAscList $ map (\x -> (nodeNameToInt x,name)) (Set.toList nodesInside)
-  nameAndIconInside = makeNameAndIconInside iconInfo nodesInside
-  innerClusterMap = IMap.unions $ map (iconClusterMap iconInfo) nameAndIconInside
-  --  union prefers the values in the first argument to those in the second. -- http://hackage.haskell.org/package/containers-0.6.2.1/docs/Data-IntMap-Lazy.html#v:union
-  nodeNameToClusterMap = IMap.union innerClusterMap lambdaClusterMap
-
-iconClusterMap _ _ = IMap.empty -- TODO other nested nodes
- 
-makeNameAndIconInside :: IconInfo -> Set.Set NodeName -> [(IMap.Key, Icon)]
-makeNameAndIconInside iconInfo nodesInside = 
-  map (\x -> (nodeNameToInt x, iconInfo IMap.! ( nodeNameToInt x))) (Set.toList nodesInside)
-        -- rank = case nodeIcon of 
-        --   LambdaIcon {} -> GVA.MinRank
-        --   _ -> GVA.SameRank
+-- clusterAtributeList :: IconInfo -> ClusterT -> [GV.GlobalAttributes]
+-- clusterAtributeList iconInfo m = [GV.GraphAttrs [ GVA.Rank rank]] where 
+--   rank = case iconInfo IMap.! m of  
+--     BindTextBoxIcon {} -> GVA.SinkRank
+--     _ -> GVA.SameRank
+--TODO add edge parameter constraint = false -- https://www.graphviz.org/doc/info/attrs.html#a:constraint 
 
 -- | Given a Drawing, produce a Diagram complete with rotated/flipped icons and
 -- lines connecting ports and icons. IO is needed for the GraphViz layout.

@@ -403,13 +403,13 @@ strToGraphRef c str = fmap mapper (makeBox str) where
 edgesForRefPortList :: Bool -> [(Reference, NameAndPort)] -> SyntaxGraph
 edgesForRefPortList isSource portExpPairs
   = if isSource
-    then mconcat $ fmap (edgesForRefPortListIsSource [EdgeInPattern]) portExpPairs 
+    then mconcat $ fmap (edgesForRefPortListIsSource [{-EdgeInPattern-}]) portExpPairs 
     else mconcat $ fmap (edgesForRefPortListNotIsSource []) portExpPairs 
 
 combineExpressions :: Bool -> [(GraphAndRef, NameAndPort)] -> SyntaxGraph
 combineExpressions isSource portExpPairs
   = if isSource
-    then mconcat $ fmap (combineExpresionsIsSource [EdgeInPattern]) portExpPairs 
+    then mconcat $ fmap (combineExpresionsIsSource [{-EdgeInPattern-}]) portExpPairs 
     else mconcat $ fmap (combineExpresionsNotIsSource []) portExpPairs 
 
 combineExpresionsIsSource :: [EdgeOption] -> (GraphAndRef, NameAndPort) -> SyntaxGraph

@@ -36,7 +36,8 @@ module Types (
 
 import Diagrams.Prelude(QDiagram, V2, Any, Renderable, Path, IsName)
 import Diagrams.TwoD.Text(Text)
-
+import qualified Data.GraphViz as GV
+import qualified Data.GraphViz.Attributes.Complete as GVA
 import Control.Applicative(Applicative(..))
 import qualified Data.Graph.Inductive as ING
 import qualified Data.IntMap as IMap
@@ -134,7 +135,7 @@ data NameAndPort = NameAndPort NodeName (Maybe Port) deriving (Show, Eq, Ord)
 type Connection = (NameAndPort, NameAndPort)
 
 -- TODO Consider removing EdgeOption since it's unused.
-data EdgeOption = EdgeInPattern deriving (Show, Eq, Ord)
+type EdgeOption = GVA.Attribute
 
 -- | An Edge has an name of the source icon, and its optional port number,
 -- and the name of the destination icon, and its optional port number.
