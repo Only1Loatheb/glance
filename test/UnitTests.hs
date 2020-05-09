@@ -199,7 +199,7 @@ letTests = TestList [
       "fibs = cons 0 (cons 1 (zipWith (+) fibs (tail fibs)))"
       ]
   ,
-  -- TODO fix "lambda" should become "y" in FunctionDefNode
+  -- TODO fix "lambda" should become "y" in FunctionValueNode
   -- assertEqualSyntaxGraphs [
   --     "y x = y x",
   --     "y = let {z = (\\x -> y x)} in z",
@@ -282,7 +282,7 @@ enumTests = TestList [
 
 patternTests :: Test
 patternTests = TestList [
-  -- TODO fix "lambda" should become "y" in FunctionDefNode
+  -- TODO fix "lambda" should become "y" in FunctionValueNode
   -- assertEqualSyntaxGraphs [
   --     "y (F x) = x",
   --     "y = (\\(F x) -> x)"
@@ -296,7 +296,7 @@ patternTests = TestList [
 
 lambdaTests :: Test
 lambdaTests = TestList [
-  -- TODO fix "lambda" should become "y" in FunctionDefNode
+  -- TODO fix "lambda" should become "y" in FunctionValueNode
   -- assertEqualSyntaxGraphs [
   --     "y x = (\\z -> x)",
   --     "y = (\\x -> (\\z -> x))"

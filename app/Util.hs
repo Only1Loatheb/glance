@@ -4,6 +4,7 @@ module Util (
   printSelf
   , iconToPort
   , makeSimpleEdge
+  , makeNotConstraintEdge
   , nameAndPort
   , justName
   , fromMaybeError
@@ -17,7 +18,7 @@ module Util (
 import Diagrams.Backend.SVG(renderSVG', Options(..), SVG)
 import qualified Diagrams.Prelude as Dia
 import Graphics.Svg.Attributes(bindAttr, AttrTag(..))
-
+import qualified Data.GraphViz.Attributes.Complete as GVA
 import Data.Maybe(fromMaybe)
 import Data.Text as T(pack, filter, Text) 
 import Data.Char(isAlpha)
@@ -31,6 +32,9 @@ import Types(Edge(..), NameAndPort(..), Connection, NodeName(..), Port
 
 makeSimpleEdge :: Connection -> Edge
 makeSimpleEdge = Edge []
+
+makeNotConstraintEdge :: Connection -> Edge
+makeNotConstraintEdge = Edge [GVA.Constraint False]
 
 nameAndPort :: NodeName -> Port -> NameAndPort
 nameAndPort n p = NameAndPort n (Just p)

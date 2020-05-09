@@ -63,7 +63,7 @@ argumentPorts :: SyntaxNode -> [Port]
 argumentPorts n = case n of
   ApplyNode {} -> argPortsConst
   PatternApplyNode {} -> resultPortsConst
-  FunctionDefNode {} -> resultPortsConst
+  FunctionValueNode {} -> resultPortsConst
   CaseOrMultiIfNode {} -> mixedPorts
   NameNode {} -> []
   BindNameNode {} -> []

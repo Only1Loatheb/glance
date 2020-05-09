@@ -88,6 +88,7 @@ import SyntaxGraph(
   , makeListCompGraph
   , evalPatBindHelper
   , EvalContext
+  -- , makeNotConstraintEdgesAndDeleteBindings
   )
 import StringSymbols(
   listCompositionPlaceholderStr
@@ -473,7 +474,7 @@ evalCase c e alts =
 
 -- END evalCase
 
--- BEGIN evalLambda 
+-- BEGIN BEGIN BEGIN BEGIN BEGIN evalLambda 
 evalLambda :: Show l
   => l
   -> EvalContext
@@ -483,6 +484,7 @@ evalLambda :: Show l
   -> State IDState (SyntaxGraph, NameAndPort)
 evalLambda _ context patterns expr functionName = do
   lambdaName <- getUniqueName
+  argNodeName <- getUniqueName
   patternValsWithAsNames <- mapM evalPattern patterns
   let
     patternStrings = Set.unions $ fmap namesInPattern patternValsWithAsNames
@@ -490,18 +492,19 @@ evalLambda _ context patterns expr functionName = do
   GraphAndRef rhsRawGraph rhsRef <- evalExp rhsContext expr
   let
     patternVals = fmap fst patternValsWithAsNames
-    lambdaNode = makeLambdaNode combinedGraph patternValsWithAsNames functionName lambdaName
-    lambdaPorts = map (nameAndPort lambdaName) $ argumentPorts lambdaNode
+    argNode = makeLambdaArgumentNode patternValsWithAsNames
+    lambdaNode = makeLambdaNode combinedGraph functionName lambdaName
+    lambdaPorts = map (nameAndPort argNodeName) $ argumentPorts lambdaNode
     patternGraph = mconcat $ fmap graphAndRefToGraph patternVals
 
-    outputNameAndPort = getOutputNameAndPort rhsRef lambdaName patternVals lambdaPorts
-    edge = makeSimpleEdge (outputNameAndPort, nameAndPort lambdaName (inputPort lambdaNode))
+    outputNameAndPort = getOutputNameAndPort rhsRef argNodeName patternVals lambdaPorts
+    lambdaValueEdge = makeSimpleEdge (outputNameAndPort, nameAndPort lambdaName (inputPort lambdaNode))
 
     (patternEdges', newBinds') =
       partitionEithers $ zipWith makePatternEdgeInLambda patternVals lambdaPorts
 
     lambdaIconAndOutputGraph
-      = makeLambdaOutputGraph rhsRef (edge : patternEdges') newBinds' lambdaName lambdaNode
+      = makeLambdaOutputGraph (lambdaValueEdge : patternEdges') newBinds' (lambdaName ,lambdaNode) (argNodeName,argNode)
 
     asBindGraph = mconcat $ zipWith
                   asBindGraphZipper
@@ -518,10 +521,10 @@ evalLambda _ context patterns expr functionName = do
     -- makePatternEdgeInLambda creates the edges between the patterns and the parameter
     -- ports.
 -- add test \x y = (y, f x)
-getOutputNameAndPort rhsRef lambdaName patternVals lambdaPorts = case rhsRef of
+getOutputNameAndPort rhsRef argNodeName patternVals lambdaPorts = case rhsRef of
   strRef@(Left _) -> inputStraightToAutput where 
     maybeRefList = catMaybes $ zipWith (makeReferenceToArgument strRef) patternVals lambdaPorts
-    returnPort = NameAndPort lambdaName Nothing
+    returnPort = NameAndPort argNodeName Nothing
     inputStraightToAutput = fromMaybe returnPort $ listToMaybe maybeRefList
   (Right np) -> np
 
@@ -530,24 +533,33 @@ makeReferenceToArgument rhsRef (GraphAndRef _ ref) lamPort = if rhsRef == ref
       then Just lamPort
       else Nothing
 
-makeLambdaNode :: SyntaxGraph -> [(GraphAndRef, Maybe String)] -> String -> NodeName-> SyntaxNode
-makeLambdaNode combinedGraph patternValsWithAsNames functionName lambdaName = node where
+makeLambdaNode :: SyntaxGraph -> String -> NodeName-> SyntaxNode
+makeLambdaNode combinedGraph  functionName lambdaName = node where
   enclosedNodeNames =  Set.delete lambdaName
     $ Set.map naName (sgNodes combinedGraph)
-  paramNames = fmap patternName patternValsWithAsNames
-  node = FunctionDefNode paramNames functionName enclosedNodeNames
+  node = FunctionValueNode functionName enclosedNodeNames
 
-makeLambdaOutputGraph :: Either String NameAndPort 
-  -> [Edge] 
+makeLambdaArgumentNode :: [(GraphAndRef, Maybe String)] -> SyntaxNode
+makeLambdaArgumentNode patternValsWithAsNames = node where 
+  paramNames = fmap patternName patternValsWithAsNames
+  node = FunctionArgNode paramNames
+
+
+makeLambdaOutputGraph ::
+  [Edge] 
   -> [(SMap.Key, Reference)] 
-  -> NodeName -> SyntaxNode 
+  -> (NodeName, SyntaxNode)
+  -> (NodeName, SyntaxNode)
   -> SyntaxGraph
-makeLambdaOutputGraph rhsRef patternEdgesList binds lambdaName lambdaNode = graph where
+makeLambdaOutputGraph patternEdgesList binds (lambdaName ,lambdaNode) (argNodeName,argNode) = graph where
   patternEdges = Set.fromList patternEdgesList
-  lambdaIconSet = Set.singleton (Named lambdaName (mkEmbedder lambdaNode))
   bindsSet = SMap.fromList binds
+  lambdaIconSet = Set.fromList [
+    (Named lambdaName (mkEmbedder lambdaNode))
+    , (Named argNodeName (mkEmbedder argNode))
+    ]
   graph = SyntaxGraph lambdaIconSet patternEdges mempty bindsSet mempty
--- END evalLambda 
+-- END END END END END evalLambda 
 
 
 -- valus form ListCompNode are connected to item constructor

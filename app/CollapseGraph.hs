@@ -80,14 +80,14 @@ syntaxNodeIsEmbeddable parentType syntaxNode mParentPort mChildPort
   = case (parentType, syntaxNode) of
       (ApplyParent, ApplyNode {}) -> parentPortNotResult
       (ApplyParent, LiteralNode {}) -> parentPortNotResult
-      -- (ApplyParent, FunctionDefNode {})
+      -- (ApplyParent, FunctionValueNode {})
       --   -> parentPortNotResult && isResult mChildPort
 
       -- -- -- The match below works, but can make messy drawings with the current
       -- -- -- icon for lambdas.
       -- -- (LambdaParent, ApplyNode _ _) -> parentPortIsInput
       -- (LambdaParent, LiteralNode {}) -> parentPortIsInput
-      -- (LambdaParent, FunctionDefNode {})
+      -- (LambdaParent, FunctionValueNode {})
       --   -> parentPortIsInput && isResult mChildPort
 
       (CaseParent, LiteralNode {}) -> parentPortNotResult
@@ -127,7 +127,7 @@ parentTypeForNode n = case n of
   ApplyNode {} -> ApplyParent
   CaseOrMultiIfNode CaseTag _ -> CaseParent
   CaseOrMultiIfNode MultiIfTag _ -> MultiIfParent
-  FunctionDefNode {} -> LambdaParent
+  FunctionValueNode {} -> LambdaParent
   PatternApplyNode {} -> PatternApplyParent
   _ -> NotAParent
 

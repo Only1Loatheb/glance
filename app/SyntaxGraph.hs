@@ -17,7 +17,9 @@ module SyntaxGraph(
   , lookupReference
   , deleteBindings
   , makeEdgesAndDeleteBindings
+  , makeNotConstraintEdgesAndDeleteBindings
   , makeEdges
+  , makeEdges'
   , makeBox
   -- , makeOutputEdgesAndSinks
   , asBindGraphZipper
@@ -77,8 +79,9 @@ import           Types(
   , Named(..)
   , EdgeOption(..)
   , mkEmbedder
+  , Connection(..)
   )
-import Util(makeSimpleEdge, nameAndPort, justName)
+import Util(makeSimpleEdge,makeNotConstraintEdge, nameAndPort, justName)
 import StringSymbols(defaultPatternNameStr)
 
 {-# ANN module "HLint: ignore Use list comprehension" #-}
@@ -467,28 +470,34 @@ lookupReference bindings originalRef = lookupReference' originalRef where
       then originalRef
       else lookupReference' refMayBeCausingCycle
 
-makeEdgesAndDeleteBindings :: SyntaxGraph -> SyntaxGraph
-makeEdgesAndDeleteBindings = deleteBindings . makeEdges
-
 deleteBindings :: SyntaxGraph -> SyntaxGraph
 deleteBindings (SyntaxGraph a b c _ e) = SyntaxGraph a b c SMap.empty e
 
-makeEdgesCore :: (Set.Set SgSink) -> (SMap.StringMap Reference) -> ((Set.Set SgSink), (Set.Set Edge))
-makeEdgesCore sinks bindings = (Set.fromList newSinks,Set.fromList newEdge) where
+makeEdgesAndDeleteBindings :: SyntaxGraph -> SyntaxGraph
+makeEdgesAndDeleteBindings = deleteBindings . (makeEdges' makeSimpleEdge)
+
+makeNotConstraintEdgesAndDeleteBindings :: SyntaxGraph -> SyntaxGraph
+makeNotConstraintEdgesAndDeleteBindings = deleteBindings . (makeEdges' makeNotConstraintEdge)
+
+makeEdges :: SyntaxGraph -> SyntaxGraph
+makeEdges = makeEdges' makeSimpleEdge
+
+makeEdges' :: (Connection -> Edge) -> SyntaxGraph -> SyntaxGraph
+makeEdges' egdeConstructor (SyntaxGraph icons edges sinks bindings eMap) = newGraph where
+  (newSinks, newEdges) = makeEdgesCore egdeConstructor sinks bindings
+  newGraph = SyntaxGraph icons (newEdges <> edges) newSinks bindings eMap
+
+makeEdgesCore :: (Connection -> Edge)-> (Set.Set SgSink) -> (SMap.StringMap Reference) -> ((Set.Set SgSink), (Set.Set Edge))
+makeEdgesCore egdeConstructor sinks bindings = (Set.fromList newSinks,Set.fromList newEdge) where
   -- TODO check if set->list->set gives optimal performance
   (newSinks, newEdge) = partitionEithers $ fmap renameOrMakeEdge (Set.toList sinks)
   renameOrMakeEdge :: SgSink -> Either SgSink Edge
   renameOrMakeEdge orig@(SgSink s destPort)
     = case SMap.lookup s bindings of
         Just ref -> case lookupReference bindings ref of
-          Right sourcePort -> Right $ makeSimpleEdge (sourcePort, destPort)
+          Right sourcePort -> Right $ egdeConstructor (sourcePort, destPort)
           Left newStr -> Left $ SgSink newStr destPort
         Nothing -> Left orig
-
-makeEdges :: SyntaxGraph -> SyntaxGraph
-makeEdges (SyntaxGraph icons edges sinks bindings eMap) = newGraph where
-  (newSinks, newEdges) = makeEdgesCore sinks bindings
-  newGraph = SyntaxGraph icons (newEdges <> edges) newSinks bindings eMap
 
 makeBox :: String -> State IDState (SyntaxGraph, NameAndPort)
 makeBox str = do

@@ -215,9 +215,9 @@ drawLambdaRegions iconInfo placedNodes
     -- Also draw the region around the icon the lambda is in.
     drawRegion :: Set.Set NodeName -> NamedIcon -> SpecialQDiagram b Double
     drawRegion parentNames icon = case icon of
-      Named lambdaName lambdaIcon@(LambdaIcon _ _ enclosedNames)
+      Named lambdaName lambdaIcon@(FunctionDefIcon _ enclosedNames)
         -> lambdaRegionToDiagram enclosed lambdaName where
-            enclosed = findDia <$> Set.toList (parentNames <> enclosedNames)
+            enclosed = findDia <$> (lambdaName : Set.toList (parentNames <> enclosedNames))
       Named parentName (NestedApply _ headIcon icons)
         -> mconcat
            $ drawRegion (Set.insert parentName parentNames)
@@ -262,10 +262,9 @@ customLayoutParams = GV.defaultParams{
       ]
     ]
   , GV.clusterID =  GV.Num . GV.Int --   ClusterT
-  -- , GV.fmtEdge = edgeAttrs
   }
 
--- edgeAttrs (nFrom, nTo, e) = edgeOptions e 
+edgeAttrs (_nFrom, _nTo, (EmbedInfo _ (Edge opts _))) = opts
 
 renderIconGraph :: forall b.
   SpecialBackend b Double =>
@@ -294,11 +293,12 @@ renderIconGraph debugInfo fullGraphWithInfo = do
                 $ first nodeNameToInt . namedToTuple . snd
                 <$> ING.labNodes fullGraph
 
-    layoutParams :: GV.GraphvizParams ING.Node NamedIcon e ClusterT NamedIcon
+    layoutParams :: GV.GraphvizParams ING.Node NamedIcon (EmbedInfo Edge) ClusterT NamedIcon
     --layoutParams :: GV.GraphvizParams Int l el Int l
     layoutParams = customLayoutParams{
       GV.fmtNode = nodeAttribute
       , GV.clusterBy = (clusterNodesBy iconInfo)
+      , GV.fmtEdge = edgeAttrs
       -- , GV.fmtCluster = (clusterAtributeList iconInfo)
       }
 

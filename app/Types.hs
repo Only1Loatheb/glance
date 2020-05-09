@@ -69,9 +69,9 @@ type IconInfo = IMap.IntMap Icon
 data Icon = TextBoxIcon String
   | MultiIfIcon
     Int  -- Number of alternatives
-  | LambdaIcon
+  | FunctionArgIcon
     [String]  -- Parameter labels
-    -- (Maybe String) -- function name
+  | FunctionDefIcon
     (Labeled (Maybe NodeName))  -- Function body expression
     (Set NodeName)  -- Nodes inside the lambda
   | CaseIcon Int
@@ -118,8 +118,9 @@ data SyntaxNode =
   | NameNode String -- Identifiers or symbols
   | BindNameNode String -- for top level bindings
   | LiteralNode String -- Literal values like the string "Hello World"
-  | FunctionDefNode  -- Function definition (ie. lambda expression)
+  | FunctionArgNode
     [String]  -- Parameter labels
+  | FunctionValueNode  -- Function definition (ie. lambda expression)
     String -- function name
     (Set NodeName)  -- Nodes inside the lambda
   | CaseResultNode -- TODO remove caseResultNode

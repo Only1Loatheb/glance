@@ -131,7 +131,7 @@ lambdaDia :: Drawing
 lambdaDia = Drawing icons []
   where
     icons = [
-      ni0 $ LambdaIcon ["foo", "bar"] (Labeled Nothing "") (Set.fromList [n0, n1])
+      ni0 $ FunctionDefIcon ["foo", "bar"] (Labeled Nothing "") (Set.fromList [n0, n1])
       , ni1 CaseResultIcon
       , ni2 $ MultiIfIcon 3
       ]
@@ -141,7 +141,7 @@ lambdaDia = Drawing icons []
 -- nestedLambdaDia = Drawing icons []
 --   where
 --     icons = [
---       ni0 $ LambdaIcon
+--       ni0 $ FunctionDefIcon
 --         ["baz", "cat"]
 --         (Just $ Named n2 (TextBoxIcon "foobar"))
 --         [n0, n1]

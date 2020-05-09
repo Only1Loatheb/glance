@@ -100,12 +100,13 @@ getPortAngle = getPortAngleHelper False
 getPortAngleHelper :: SpecialNum n
   => Bool -> IconInfo -> Icon -> Port -> Maybe NodeName -> Angle n
 getPortAngleHelper _embedded iconInfo icon port maybeNodeName = case icon of
-  TextBoxIcon _ -> 1/4 @@ turn
-  BindTextBoxIcon _ -> 1/4 @@ turn
-  MultiIfIcon _ -> multiIfPortAngle port
-  CaseIcon _ -> multiIfPortAngle port
+  TextBoxIcon {} -> 1/4 @@ turn
+  BindTextBoxIcon {} -> 1/4 @@ turn
+  MultiIfIcon {} -> multiIfPortAngle port
+  CaseIcon {} -> multiIfPortAngle port
   CaseResultIcon -> 1/4 @@ turn
-  LambdaIcon _ _ _ -> lambdaPortAngle port
+  FunctionArgIcon {} -> lambdaPortAngle port
+  FunctionDefIcon {} -> lambdaPortAngle port
   NestedApply _ headIcon args
     -> generalNestedPortAngle
       iconInfo

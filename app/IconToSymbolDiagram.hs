@@ -234,8 +234,8 @@ iconToDiagram iconInfo icon = case icon of
   MultiIfIcon n -> nestedMultiIfDia iconInfo (replicate (1 + (2 * n)) Nothing) MultiIfTag
   CaseIcon n -> nestedCaseDia iconInfo (replicate (1 + (2 * n)) Nothing) CaseTag
   CaseResultIcon -> identDiaFunc resultPortSymbol
-  LambdaIcon argumentNames (Labeled _ str) _
-    -> nestedLambda argumentNames str 
+  FunctionArgIcon argumentNames -> functionArgDia argumentNames
+  FunctionDefIcon (Labeled _ str) _ -> functionDefDia str 
   NestedApply flavor headIcon args
     -> nestedApplyDia
        iconInfo
@@ -467,22 +467,27 @@ generalNestedMultiIf iconInfo symbolColor inConstBox inputAndArgs flavor
     inputLambdaLine = lwG defaultLineWidth $ lc symbolColor $ vrule (height allCases)
     allCasesAtRight = alignT inputLambdaLine <> alignTL allCases
 
-
-
-nestedLambda ::  SpecialBackend b n
-  => [String]
-  -> String 
+functionArgDia :: SpecialBackend b n
+  =>  [String]
   -> TransformableDia b n
-nestedLambda argumentNames functionName (TransformParams name _level)
+functionArgDia argumentNames (TransformParams name _level) 
   = named name finalDiagram where
-  lambdaSymbol = lambdaBodySymbol functionName
-  
-  -- argumetPort = zipWith (makePassthroughPorts name) (zip argPortsConst resultPortsConst) argumentNames
+    
+    -- argumetPort = zipWith (makePassthroughPorts name) (zip argPortsConst resultPortsConst) argumentNames
   argumetPort = zipWith (makeLabelledPort name) resultPortsConst argumentNames
   combinedArgumetPort = hsep portSeparationSize argumetPort
   argumetsInBox = boxForDiagram combinedArgumetPort (lamArgResC colorScheme) (width combinedArgumetPort) (height combinedArgumetPort)
+  finalDiagram = argumetsInBox
 
-  finalDiagram = vcat [lambdaSymbol, argumetsInBox]
+functionDefDia ::  SpecialBackend b n
+  => String 
+  -> TransformableDia b n
+functionDefDia functionName (TransformParams name _level)
+  = named name finalDiagram where
+  lambdaSymbol = lambdaBodySymbol functionName
+  inputDiagram = makeQualifiedPort InputPortConst name
+  outputDiagram = makeResultDiagram name
+  finalDiagram = vcat [inputDiagram, lambdaSymbol, outputDiagram]
 -- Done to prevent this:
 -- glance-test: circleDiameter too small: 0.0
 -- CallStack (from HasCallStack):
@@ -514,11 +519,7 @@ lambdaRegionSymbol enclosedDiagarms name
                    (lambdaRectPadding + height enclosedBoundingBox)
     coloredContentsRect = lc lightgreen (lwG defaultLineWidth contentsRect)
 
-    inputDiagram = makeQualifiedPort InputPortConst name
-
-    outputDiagram = makeResultDiagram name
-
-    finalDiagram = vcat [coloredContentsRect, inputDiagram, outputDiagram]
+    finalDiagram = vcat [coloredContentsRect]
 
 getArrowShadowOpts :: (RealFloat n, Typeable n)
   => (Maybe (Point V2 n),Maybe (Point V2 n))
