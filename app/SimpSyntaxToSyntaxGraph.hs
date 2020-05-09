@@ -490,7 +490,7 @@ evalLambda _ context patterns expr functionName = do
   GraphAndRef rhsRawGraph rhsRef <- evalExp rhsContext expr
   let
     patternVals = fmap fst patternValsWithAsNames
-    lambdaNode = makeLambdaNode combinedGraph patternValsWithAsNames functionName
+    lambdaNode = makeLambdaNode combinedGraph patternValsWithAsNames functionName lambdaName
     lambdaPorts = map (nameAndPort lambdaName) $ argumentPorts lambdaNode
     patternGraph = mconcat $ fmap graphAndRefToGraph patternVals
 
@@ -530,9 +530,10 @@ makeReferenceToArgument rhsRef (GraphAndRef _ ref) lamPort = if rhsRef == ref
       then Just lamPort
       else Nothing
 
-makeLambdaNode :: SyntaxGraph -> [(GraphAndRef, Maybe String)] -> String -> SyntaxNode
-makeLambdaNode combinedGraph patternValsWithAsNames functionName = node where
-  enclosedNodeNames =  Set.map naName (sgNodes combinedGraph)
+makeLambdaNode :: SyntaxGraph -> [(GraphAndRef, Maybe String)] -> String -> NodeName-> SyntaxNode
+makeLambdaNode combinedGraph patternValsWithAsNames functionName lambdaName = node where
+  enclosedNodeNames =  Set.delete lambdaName
+    $ Set.map naName (sgNodes combinedGraph)
   paramNames = fmap patternName patternValsWithAsNames
   node = FunctionDefNode paramNames functionName enclosedNodeNames
 

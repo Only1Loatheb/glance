@@ -223,7 +223,6 @@ drawLambdaRegions iconInfo placedNodes
            (headIcon:icons)
       _ -> mempty
 
-
 -- TODO place nodes from top to bottom 
 -- placeNode :: SpecialBackend b Double 
 --   => IconInfo
@@ -242,7 +241,9 @@ placeNode namedIcons (key@(Named name icon), targetPosition)
       transformedDia = centerXY origDia
       diaPosition = graphvizScaleFactor *^ targetPosition
 
-customLayoutParams :: GV.GraphvizParams ING.Node v e Int v
+type ClusterT = Int
+
+customLayoutParams :: GV.GraphvizParams ING.Node v e ClusterT v
 customLayoutParams = GV.defaultParams{
   GV.globalAttributes = [
     GV.NodeAttrs [GVA.Shape GVA.BoxShape]
@@ -258,14 +259,10 @@ customLayoutParams = GV.defaultParams{
       GVA.OverlapShrink True
       ]
     ]
-  -- , GV.clusterBy = clustBy
-  -- , GV.clusterID = GV.Num . GV.Int
+  , GV.clusterID =  GV.Num . GV.Int --   ClusterT
   -- , GV.fmtCluster = clusterAtributeList
   , GV.fmtEdge = const [GV.arrowTo GV.noArrow]
   }
-
-clustBy :: (ING.Node , b) -> GV.NodeCluster Int  (ING.Node , b)
-clustBy (n, l) =  GV.C (fromIntegral (n `mod` 2)) $ GV.N (n,l)
 
 -- clusterAtributeList :: Int -> [GV.GlobalAttributes]
 -- clusterAtributeList m = [GV.GraphAttrs [GV.toLabel ( "Lambda cluster" ++ show m)]]
@@ -297,10 +294,11 @@ renderIconGraph debugInfo fullGraphWithInfo = do
                  $ first nodeNameToInt . namedToTuple . snd
                  <$> ING.labNodes fullGraph
 
-    layoutParams :: GV.GraphvizParams ING.Node NamedIcon e Int NamedIcon
+    layoutParams :: GV.GraphvizParams ING.Node NamedIcon e ClusterT NamedIcon
     --layoutParams :: GV.GraphvizParams Int l el Int l
     layoutParams = customLayoutParams{
       GV.fmtNode = nodeAttribute
+      , GV.clusterBy = (clusterByLambda iconInfo)
       }
 
     nodeAttribute :: (_, NamedIcon) -> [GV.Attribute]
@@ -309,22 +307,45 @@ renderIconGraph debugInfo fullGraphWithInfo = do
         -- This type annotation (:: SpecialQDiagram b n) requires Scoped Typed
         -- Variables, which only works if the function's
         -- type signiture has "forall b e."
-        diagarm :: SpecialQDiagram b Double
-        diagarm = iconToDiagram
-              iconInfo
-              nodeIcon
-              (TransformParams (NodeName (-1)) 0)
-        
-        -- rank = case nodeIcon of 
-        --   LambdaIcon {} -> GVA.MinRank
-        --   _ -> GVA.SameRank
-
-        diaWidth = max (drawingToGraphvizScaleFactor * width diagarm) minialDiaDimention
-        diaHeight = max (drawingToGraphvizScaleFactor * height diagarm) minialDiaDimention
-
+        dummyDiagram :: SpecialQDiagram b Double
+        dummyDiagram = iconToDiagram iconInfo nodeIcon (TransformParams (NodeName (-1)) 0)
+        diaWidth = max (drawingToGraphvizScaleFactor * width dummyDiagram) minialDiaDimention
+        diaHeight = max (drawingToGraphvizScaleFactor * height dummyDiagram) minialDiaDimention
 -- GVA.Width and GVA.Height have a minimum of 0.01
 minialDiaDimention :: Double
 minialDiaDimention = 0.01
+        
+-- clustBy :: (ING.Node , NamedIcon) -> GV.NodeCluster ClusterT  (ING.Node , NamedIcon)
+-- clustBy (n, l) =  GV.C ((n `mod` 2) :: ClusterT) $ GV.N (n,l)
+
+clusterByLambda ::
+  IconInfo
+  -> ((ING.Node , NamedIcon) -> GV.NodeCluster ClusterT  (ING.Node , NamedIcon))
+clusterByLambda iconInfo  = clusterBy where
+  clusterBy :: (ING.Node , NamedIcon) -> GV.NodeCluster ClusterT  (ING.Node , NamedIcon)
+  clusterBy (nodeName, namedIcon) = 
+    GV.C (IMap.findWithDefault nodeName nodeName clusterMap) 
+    $ GV.N (nodeName,namedIcon)
+    -- Also draw the region around the icon the lambda is in.
+  clusterMap :: IMap.IntMap ClusterT
+  clusterMap = IMap.unions $ map (iconClusterMap iconInfo) (IMap.toList iconInfo)
+
+iconClusterMap :: IconInfo -> (IMap.Key, Icon) -> IMap.IntMap ClusterT
+iconClusterMap iconInfo (name, icon@(LambdaIcon _ _ nodesInside)) = nodeNameToClusterMap where
+  lambdaClusterMap = IMap.fromAscList $ map (\x -> (nodeNameToInt x,name)) (Set.toList nodesInside)
+  nameAndIconInside = makeNameAndIconInside iconInfo nodesInside
+  innerClusterMap = IMap.unions $ map (iconClusterMap iconInfo) nameAndIconInside
+  --  union prefers the values in the first argument to those in the second. -- http://hackage.haskell.org/package/containers-0.6.2.1/docs/Data-IntMap-Lazy.html#v:union
+  nodeNameToClusterMap = IMap.union innerClusterMap lambdaClusterMap
+
+iconClusterMap _ _ = IMap.empty -- TODO other nested nodes
+ 
+makeNameAndIconInside :: IconInfo -> Set.Set NodeName -> [(IMap.Key, Icon)]
+makeNameAndIconInside iconInfo nodesInside = 
+  map (\x -> (nodeNameToInt x, iconInfo IMap.! ( nodeNameToInt x))) (Set.toList nodesInside)
+        -- rank = case nodeIcon of 
+        --   LambdaIcon {} -> GVA.MinRank
+        --   _ -> GVA.SameRank
 
 -- | Given a Drawing, produce a Diagram complete with rotated/flipped icons and
 -- lines connecting ports and icons. IO is needed for the GraphViz layout.
