@@ -136,11 +136,14 @@ data NameAndPort = NameAndPort NodeName (Maybe Port) deriving (Show, Eq, Ord)
 type Connection = (NameAndPort, NameAndPort)
 
 -- TODO Consider removing EdgeOption since it's unused.
-type EdgeOption = GVA.Attribute
+data EdgeOption =
+  DrawAndConstraint
+  | DrawAndNotConstraint
+  | DoNotDrawButConstraint deriving (Show, Eq, Ord)
 
 -- | An Edge has an name of the source icon, and its optional port number,
 -- and the name of the destination icon, and its optional port number.
-data Edge = Edge { edgeOptions :: [EdgeOption]
+data Edge = Edge { edgeOption :: EdgeOption
                  , edgeConnection :: Connection}
   deriving (Show, Eq, Ord)
 

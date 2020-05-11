@@ -52,7 +52,7 @@ import           Types(
   , Named(..)
   , mkEmbedder
   )
-import Util(makeSimpleEdge, nameAndPort, justName)
+import Util(makeSimpleEdge,makeInvisibleEdge, nameAndPort, justName)
 import SyntaxGraph( 
     SyntaxGraph(..)
   , patternName
@@ -499,12 +499,14 @@ evalLambda _ context patterns expr functionName = do
 
     outputNameAndPort = getOutputNameAndPort rhsRef argNodeName patternVals lambdaPorts
     lambdaValueEdge = makeSimpleEdge (outputNameAndPort, nameAndPort lambdaName (inputPort lambdaNode))
+    lambdaArgAboveValue = makeInvisibleEdge (justName argNodeName, justName lambdaName)
+    lambdaEdges = (lambdaValueEdge : lambdaArgAboveValue : patternEdges')
 
     (patternEdges', newBinds') =
       partitionEithers $ zipWith makePatternEdgeInLambda patternVals lambdaPorts
 
     lambdaIconAndOutputGraph
-      = makeLambdaOutputGraph (lambdaValueEdge : patternEdges') newBinds' (lambdaName ,lambdaNode) (argNodeName,argNode)
+      = makeLambdaOutputGraph lambdaEdges newBinds' (lambdaName ,lambdaNode) (argNodeName,argNode)
 
     asBindGraph = mconcat $ zipWith
                   asBindGraphZipper

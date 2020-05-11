@@ -81,7 +81,13 @@ import           Types(
   , mkEmbedder
   , Connection(..)
   )
-import Util(makeSimpleEdge,makeNotConstraintEdge, nameAndPort, justName)
+import Util(
+  makeSimpleEdge
+  , makeNotConstraintEdge
+  , makeInvisibleEdge
+  , nameAndPort
+  , justName
+  )
 import StringSymbols(defaultPatternNameStr)
 
 {-# ANN module "HLint: ignore Use list comprehension" #-}
@@ -335,7 +341,7 @@ makeListCompGraph listCompNode listCompNodeRef listCompItemGraphAndRef qualGraph
 
   qStmtGraphs = qualGraphs <> genGraphs
 
-  listCompItemGraph = makeEdgesAndDeleteBindings $ combineExpresionsIsSource [] 
+  listCompItemGraph = makeEdgesAndDeleteBindings $ combineExpresionsIsSource makeSimpleEdge
     (listCompItemGraphAndRef, NameAndPort listCompName (Just (inputPort listCompNode)))
 
   listCompNodeGraph = syntaxGraphFromNodes
@@ -406,35 +412,35 @@ strToGraphRef c str = fmap mapper (makeBox str) where
 edgesForRefPortList :: Bool -> [(Reference, NameAndPort)] -> SyntaxGraph
 edgesForRefPortList isSource portExpPairs
   = if isSource
-    then mconcat $ fmap (edgesForRefPortListIsSource [{-EdgeInPattern-}]) portExpPairs 
-    else mconcat $ fmap (edgesForRefPortListNotIsSource []) portExpPairs 
+    then mconcat $ fmap (edgesForRefPortListIsSource makeSimpleEdge) portExpPairs 
+    else mconcat $ fmap (edgesForRefPortListNotIsSource makeSimpleEdge) portExpPairs 
 
 combineExpressions :: Bool -> [(GraphAndRef, NameAndPort)] -> SyntaxGraph
 combineExpressions isSource portExpPairs
   = if isSource
-    then mconcat $ fmap (combineExpresionsIsSource [{-EdgeInPattern-}]) portExpPairs 
-    else mconcat $ fmap (combineExpresionsNotIsSource []) portExpPairs 
+    then mconcat $ fmap (combineExpresionsIsSource makeSimpleEdge) portExpPairs 
+    else mconcat $ fmap (combineExpresionsNotIsSource makeSimpleEdge) portExpPairs 
 
-combineExpresionsIsSource :: [EdgeOption] -> (GraphAndRef, NameAndPort) -> SyntaxGraph
-combineExpresionsIsSource edgeOpts (GraphAndRef graph ref, port) 
-  = graph <> edgesForRefPortListIsSource edgeOpts (ref, port)
+combineExpresionsIsSource :: (Connection-> Edge) -> (GraphAndRef, NameAndPort) -> SyntaxGraph
+combineExpresionsIsSource edgeConstructor (GraphAndRef graph ref, port) 
+  = graph <> edgesForRefPortListIsSource edgeConstructor (ref, port)
 
-combineExpresionsNotIsSource :: [EdgeOption] -> (GraphAndRef, NameAndPort) -> SyntaxGraph
-combineExpresionsNotIsSource edgeOpts (GraphAndRef graph ref, port) 
-  = graph <> edgesForRefPortListNotIsSource edgeOpts (ref, port)
+combineExpresionsNotIsSource :: (Connection-> Edge) -> (GraphAndRef, NameAndPort) -> SyntaxGraph
+combineExpresionsNotIsSource edgeConstructor (GraphAndRef graph ref, port) 
+  = graph <> edgesForRefPortListNotIsSource edgeConstructor (ref, port)
     
 
-edgesForRefPortListIsSource :: [EdgeOption] -> (Reference, NameAndPort) -> SyntaxGraph
-edgesForRefPortListIsSource edgeOpts (ref, port) = case ref of
+edgesForRefPortListIsSource :: (Connection-> Edge) -> (Reference, NameAndPort) -> SyntaxGraph
+edgesForRefPortListIsSource edgeConstructor (ref, port) = case ref of
       Left str -> bindsToSyntaxGraph $ SMap.singleton str (Right port)
-      Right resPort -> edgesToSyntaxGraph $ Set.singleton  (Edge edgeOpts connection)
+      Right resPort -> edgesToSyntaxGraph $ Set.singleton  (edgeConstructor connection)
         where
           connection = (port, resPort)
 
-edgesForRefPortListNotIsSource :: [EdgeOption] -> (Reference, NameAndPort) -> SyntaxGraph
-edgesForRefPortListNotIsSource edgeOpts (ref, port) = case ref of
+edgesForRefPortListNotIsSource :: (Connection-> Edge) -> (Reference, NameAndPort) -> SyntaxGraph
+edgesForRefPortListNotIsSource edgeConstructor (ref, port) = case ref of
       Left str -> sinksToSyntaxGraph $ Set.singleton (SgSink str port)
-      Right resPort -> edgesToSyntaxGraph $ Set.singleton  (Edge edgeOpts connection)
+      Right resPort -> edgesToSyntaxGraph $ Set.singleton  (edgeConstructor connection)
         where
           connection = (resPort, port)
 
