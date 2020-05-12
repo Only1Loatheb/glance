@@ -1,4 +1,6 @@
 {-# LANGUAGE NoMonomorphismRestriction, FlexibleContexts, TypeFamilies #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main
   (main
   , CmdLineOptions(..)) where
@@ -15,13 +17,21 @@ import Options.Applicative(header, progDesc, fullDesc, helper, info
                           , defaultPrefs, customExecParser, help, short, switch
                           , metavar, auto, argument, str, prefShowHelpOnError
                           , Parser)
-
-import Util(customRenderSVG)
+--------------------------------------
+-- import Util(customRenderSVG)
+import           Data.Text (Text)
+import Diagrams.Backend.Canvas as CV
+-- import           Control.Concurrent
+import qualified Graphics.Blank as BC hiding (rotate, scale, ( # ))
+import           Types  ( SpecialQDiagram
+                        , SpecialBackend
+                        )
+---------------------------------------
 
 import ModuleToDiagram(diagramFromModule)
 
 
-{-# ANN module "HLint: ignore Unnecessary hiding" #-}
+-- {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
 data CmdLineOptions = CmdLineOptions {
   cmdInputFilename :: String,
@@ -47,8 +57,26 @@ renderFile (CmdLineOptions
   = do
   putStrLn $ "Translating file " ++ inputFilename ++ " into a Glance image."
   moduleDiagram <- diagramFromModule inputFilename includeComments
-  customRenderSVG outputFilename (Dia.mkWidth imageWidth) moduleDiagram
+  BC.blankCanvas 3000 { BC.events = ["mousedown"] } $ \ context -> loop context moduleDiagram
+  -- renderCanvas 3000 (Dia.mkWidth imageWidth) moduleDiagram
+  -- customRenderSVG outputFilename (Dia.mkWidth imageWidth) moduleDiagram
   putStrLn $ "Successfully wrote " ++ outputFilename
+
+-- loop :: SpecialBackend b Double => BC.DeviceContext ->  IO (SpecialQDiagram b Double) -> IO ()
+loop context moduleDiagram = do
+  let w = (BC.width context)
+
+  BC.send context $ Dia.renderDia CV.Canvas (CanvasOptions (Dia.mkWidth w)) moduleDiagram
+
+  event <- BC.wait context
+  --        print event
+  case BC.ePageXY event of
+      -- if no mouse location, ignore, and redraw
+      Nothing -> loop context moduleDiagram
+      Just (x',y') -> do
+        print x'
+        print y'
+        loop context moduleDiagram
 
 translateFileMain :: IO ()
 translateFileMain = customExecParser parserPrefs  opts >>= renderFile where

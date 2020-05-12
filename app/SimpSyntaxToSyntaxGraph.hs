@@ -499,6 +499,7 @@ evalLambda _ context patterns expr functionName = do
 
     outputNameAndPort = getOutputNameAndPort rhsRef argNodeName patternVals lambdaPorts
     lambdaValueEdge = makeSimpleEdge (outputNameAndPort, nameAndPort lambdaName (inputPort lambdaNode))
+    -- TODO move adding drawing rank edge after graph simplification and collapsing
     lambdaArgAboveValue = makeInvisibleEdge (justName argNodeName, justName lambdaName)
     lambdaEdges = (lambdaValueEdge : lambdaArgAboveValue : patternEdges')
 
