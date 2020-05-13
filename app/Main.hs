@@ -18,7 +18,8 @@ import Options.Applicative(header, progDesc, fullDesc, helper, info
                           , metavar, auto, argument, str, prefShowHelpOnError
                           , Parser)
 --------------------------------------
--- import Util(customRenderSVG)
+import Util(customRenderSVG)
+--------------------------------------
 import           Data.Text (Text)
 import Diagrams.Backend.Canvas as CV
 -- import           Control.Concurrent
@@ -47,7 +48,8 @@ optionParser = CmdLineOptions
   <*> argument auto (metavar "IMAGE_WIDTH" Dia.<> help "Output image width")
   <*> switch
   (short 'c' Dia.<> help "Include comments between top level declarations.")
-
+  -- TODO add port option
+  -- TODO add which function are detiled option
 renderFile :: CmdLineOptions -> IO ()
 renderFile (CmdLineOptions
              inputFilename
@@ -57,9 +59,8 @@ renderFile (CmdLineOptions
   = do
   putStrLn $ "Translating file " ++ inputFilename ++ " into a Glance image."
   moduleDiagram <- diagramFromModule inputFilename includeComments
-  BC.blankCanvas 3000 { BC.events = ["mousedown"] } $ \ context -> loop context moduleDiagram
-  -- renderCanvas 3000 (Dia.mkWidth imageWidth) moduleDiagram
-  -- customRenderSVG outputFilename (Dia.mkWidth imageWidth) moduleDiagram
+  -- BC.blankCanvas 3000 { BC.events = ["mousedown"] } $ \ context -> loop context moduleDiagram
+  customRenderSVG outputFilename (Dia.mkWidth imageWidth) moduleDiagram
   putStrLn $ "Successfully wrote " ++ outputFilename
 
 -- loop :: SpecialBackend b Double => BC.DeviceContext ->  IO (SpecialQDiagram b Double) -> IO ()

@@ -187,7 +187,7 @@ renderIconGraph debugInfo fullGraphWithInfo = do
     placedRegions = drawLambdaRegions iconInfo placedNodeList
     placedNodesAndRegions = placedNodes <> placedRegions
     edges = addEdges debugInfo iconInfo parentGraph placedNodesAndRegions
-  pure (edges <> placedNodesAndRegions)
+  pure (placedNodesAndRegions <> edges)
   where
     parentGraph
       = ING.nmap niVal $ ING.labfilter (isNothing . niParent) fullGraphWithInfo
