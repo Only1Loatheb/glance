@@ -12,8 +12,8 @@ import Util(customRenderSVG)
 
 import UnitTests(allUnitTests)
 import VisualGraphAlgorithmTests(visualCollapseTests)
-import VisualRenderingTests(renderTests)
-import VisualTranslateTests(visualTranslateTests)
+import RenderingTests(renderTests)
+import VisualTests(visualTranslateTests)
 
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 

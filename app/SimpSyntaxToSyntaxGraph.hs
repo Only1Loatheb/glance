@@ -518,7 +518,10 @@ evalLambda _ context patterns expr functionName = do
 
     resultNameAndPort = nameAndPort lambdaName (resultPort lambdaNode)
   pure (combinedGraph, resultNameAndPort)
-  
+  -- if functionName == "lambda"
+  -- then return (error $ show $ makeEdges (asBindGraph <> rhsRawGraph <> patternGraph <> lambdaIconAndOutputGraph))
+  -- else pure (combinedGraph, resultNameAndPort)
+
     -- TODO Like evalPatBind, this edge should have an indicator that it is the
     -- input to a pattern.
     -- makePatternEdgeInLambda creates the edges between the patterns and the parameter

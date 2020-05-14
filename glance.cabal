@@ -103,8 +103,8 @@ test-suite glance-test
   Other-modules: EdgeAngles 
                , Icons
                , UnitTests
-               , VisualRenderingTests
-               , VisualTranslateTests
+               , RenderingTests
+               , VisualTests
                , VisualGraphAlgorithmTests
                , Rendering
                , IconToSymbolDiagram

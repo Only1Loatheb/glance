@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MonoLocalBinds #-}
-module VisualRenderingTests (
+module RenderingTests (
   renderTests
   ) where
 import qualified Diagrams.Prelude as Dia

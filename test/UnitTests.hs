@@ -220,7 +220,7 @@ letTests = TestList [
   --     ]
   -- ,
   -- TODO Fix this test. The second line has two apply icons instead of one.
-  -- See VisualTranslateTests/letTests
+  -- See VisualTests/letTests
   -- assertEqualSyntaxGraphs [
   --     "y x1 = (f x1) x1",
   --     "y x1 = let x2 = f x1 in x2 x1"
@@ -232,7 +232,7 @@ letTests = TestList [
       ]
 
   -- TODO Fix test. Second line should use compose apply.
-  -- See VisualTranslateTests/letTests
+  -- See VisualTests/letTests
   -- assertEqualSyntaxGraphs [
   --     "y = g $ f y",
   --     "y = let {a = f b; b = g a} in b"

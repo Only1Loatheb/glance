@@ -243,23 +243,28 @@ matchToAlt (Exts.Match l _ mtaPats rhs binds)
 matchToAlt match = error $ "Unsupported syntax in matchToAlt: " <> show match
 
 matchesToFunBind :: Show a => a -> [Exts.Match a] -> SimpDecl a
-matchesToFunBind l matches = matchToSimpDecl $ case matches of
-  [] -> error $ "Empty matches in matchesToFunBind. Label is :" <> show l
-  [match] -> match
-  (Exts.Match srcLoc funName pats _ _ : _)
-    -> Exts.Match srcLoc funName tempPats rhs Nothing
-    where
-      -- There is a special case in Icons.hs/makeLabelledPort to exclude " tempvar"
-      tempStrings = fmap (\x -> tempVarPrefix ++ show x) [0..(length pats - 1)]
-      tempPats = fmap (makePatVar srcLoc) tempStrings
-      tempVars = fmap (makeVarExp srcLoc) tempStrings
-      tuple = Exts.Tuple srcLoc Exts.Boxed tempVars
-      caseExp = case tempVars of
-        [oneTempVar] -> Exts.Case srcLoc oneTempVar alts
-        _ -> Exts.Case srcLoc tuple alts
-      rhs = Exts.UnGuardedRhs srcLoc caseExp
-      alts = fmap matchToAlt matches
-  _ -> error $ "Unsupported syntax in matchesToFunBind: " <> show matches
+matchesToFunBind l matches = matchToSimpDecl $ matchesToFunBind' l matches
+  
+matchesToFunBind' :: Show a => a -> [Exts.Match a] -> Exts.Match a
+matchesToFunBind' l [] = error $ "Empty matches in matchesToFunBind."
+matchesToFunBind' l [match] = match 
+matchesToFunBind' l allMatches@(firstMatch : _) = multipleMatchesToCase l firstMatch allMatches
+
+-- TODO combine srcLoc
+multipleMatchesToCase :: Show a => a -> Exts.Match a -> [Exts.Match a] -> Exts.Match a
+multipleMatchesToCase srcLoc (Exts.Match _ funName pats _ _ ) allMatches
+  = Exts.Match srcLoc funName casePats rhs Nothing where
+    -- There is a special case in Icons.hs/makeLabelledPort to exclude " casevar"
+    caseStrings = fmap (\x -> tempVarPrefix ++ show x) [0..(length pats - 1)]
+    casePats = fmap (makePatVar srcLoc) caseStrings
+    alts = fmap matchToAlt allMatches
+    rhs = Exts.UnGuardedRhs srcLoc caseExp where 
+      caseVars = fmap (makeVarExp srcLoc) caseStrings
+      caseExp = case caseVars of
+        [onecaseVar] -> Exts.Case srcLoc onecaseVar alts
+        _ -> Exts.Case srcLoc tuple alts where
+          tuple = Exts.Tuple srcLoc Exts.Boxed caseVars
+multipleMatchesToCase l _ _ = error $ "Unsupported syntax in matchesToFunBind:" ++ show l
 
 hsDeclToSimpDecl :: Show a => Exts.Decl a -> SimpDecl a
 hsDeclToSimpDecl decl = case decl of
