@@ -349,18 +349,18 @@ fmapTests = TestList [
 -- Yes, the commas get their own line
 translateUnitTests :: Test
 translateUnitTests = TestList [
-  TestLabel "fmapTest" fmapTests
-  ,
-  TestLabel "applyTests" applyTests
-  ,
-  TestLabel "composeApplyTests" composeApplyTests
-  ,
-  TestLabel "infixTests" infixTests
+  -- TestLabel "fmapTest" fmapTests
+  -- ,
+  -- TestLabel "applyTests" applyTests
+  -- ,
+  -- TestLabel "composeApplyTests" composeApplyTests
+  -- ,
+  -- TestLabel "infixTests" infixTests
   -- , TestLabel "letTests" letTests -- lookupReference filed
-  , TestLabel "negateTests" negateTests
-  , TestLabel "enumTests" enumTests
-  , TestLabel "patternTests" patternTests
-  , TestLabel "lambdaTests" lambdaTests
+  -- , TestLabel "negateTests" negateTests
+  -- , TestLabel "enumTests" enumTests
+  -- , TestLabel "patternTests" patternTests
+  -- , TestLabel "lambdaTests" lambdaTests
   -- ,
   -- TestLabel "listcompTests" listcompTests
   ]

@@ -117,7 +117,7 @@ evalExp c x = case x of
   SeName _ s -> strToGraphRef c s
   SeLit _ lit -> grNamePortToGrRef <$> evalLit lit
   SeApp _ _ _ -> grNamePortToGrRef <$> evalApp c x
-  SeLambda l patterns e functionName-> grNamePortToGrRef <$> evalLambda l c patterns e functionName
+  SeLambda l argPatterns e functionName -> grNamePortToGrRef <$> evalLambda l c argPatterns e functionName
   SeLet _ decls expr -> evalLet c decls expr
   SeCase _ expr alts -> grNamePortToGrRef <$> evalCase c expr alts
   SeMultiIf _ selectorsAndVals
@@ -160,7 +160,7 @@ makePatternGraph c pat e = do
     rhsContext = Set.union (namesInPattern patGraphAndRef) c
   rhsGraphAndRef <- evalExp rhsContext e
   pure (patGraphAndRef, rhsGraphAndRef)
-
+-- TODO use in listComp
 evalPatternApp :: Show l =>
   Exts.QName l
   -> [SimpPat l]
@@ -482,54 +482,54 @@ evalLambda :: Show l
   -> SimpExp l
   -> String
   -> State IDState (SyntaxGraph, NameAndPort)
-evalLambda _ context patterns expr functionName = do
+evalLambda _ context argPatterns expr functionName = do
   lambdaName <- getUniqueName
   argNodeName <- getUniqueName
-  patternValsWithAsNames <- mapM evalPattern patterns
+  argPatternValsWithAsNames <- mapM evalPattern argPatterns
   let
-    patternStrings = Set.unions $ fmap namesInPattern patternValsWithAsNames
-    rhsContext = Set.union patternStrings context
+    argPatternStrings = Set.unions $ fmap namesInPattern argPatternValsWithAsNames
+    rhsContext = Set.union argPatternStrings context
   GraphAndRef rhsRawGraph rhsRef <- evalExp rhsContext expr
   let
-    patternVals = fmap fst patternValsWithAsNames
-    argNode = makeLambdaArgumentNode patternValsWithAsNames
+    argPatternVals = fmap fst argPatternValsWithAsNames
+    argNode = makeLambdaArgumentNode argPatternValsWithAsNames
     lambdaNode = makeLambdaNode combinedGraph functionName lambdaName
     lambdaPorts = map (nameAndPort argNodeName) $ argumentPorts lambdaNode
-    patternGraph = mconcat $ fmap graphAndRefToGraph patternVals
+    argPatternGraph = mconcat $ fmap graphAndRefToGraph argPatternVals
 
-    outputNameAndPort = getOutputNameAndPort rhsRef argNodeName patternVals lambdaPorts
+    outputNameAndPort = getOutputNameAndPort rhsRef argNodeName argPatternVals lambdaPorts
     lambdaValueEdge = makeSimpleEdge (outputNameAndPort, nameAndPort lambdaName (inputPort lambdaNode))
     -- TODO move adding drawing rank edge after graph simplification and collapsing
     lambdaArgAboveValue = makeInvisibleEdge (justName argNodeName, justName lambdaName)
-    lambdaEdges = (lambdaValueEdge : lambdaArgAboveValue : patternEdges')
+    lambdaEdges = (lambdaValueEdge : lambdaArgAboveValue : argPatternEdges')
 
-    (patternEdges', newBinds') =
-      partitionEithers $ zipWith makePatternEdgeInLambda patternVals lambdaPorts
+    (argPatternEdges', newBinds') =
+      partitionEithers $ zipWith makePatternEdgeInLambda argPatternVals lambdaPorts
 
     lambdaIconAndOutputGraph
       = makeLambdaOutputGraph lambdaEdges newBinds' (lambdaName ,lambdaNode) (argNodeName,argNode)
 
     asBindGraph = mconcat $ zipWith
                   asBindGraphZipper
-                  (fmap snd patternValsWithAsNames)
+                  (fmap snd argPatternValsWithAsNames)
                   lambdaPorts
     combinedGraph = makeEdgesAndDeleteBindings
-                    $ (asBindGraph <> rhsRawGraph <> patternGraph <> lambdaIconAndOutputGraph)
+                    $ (asBindGraph <> rhsRawGraph <> argPatternGraph <> lambdaIconAndOutputGraph)
 
     resultNameAndPort = nameAndPort lambdaName (resultPort lambdaNode)
   pure (combinedGraph, resultNameAndPort)
   -- if functionName == "lambda"
-  -- then return (error $ show $ makeEdges (asBindGraph <> rhsRawGraph <> patternGraph <> lambdaIconAndOutputGraph))
+  -- then return (error $ show $ makeEdges (asBindGraph <> rhsRawGraph <> argPatternGraph <> lambdaIconAndOutputGraph))
   -- else pure (combinedGraph, resultNameAndPort)
 
     -- TODO Like evalPatBind, this edge should have an indicator that it is the
-    -- input to a pattern.
-    -- makePatternEdgeInLambda creates the edges between the patterns and the parameter
+    -- input to a argPattern.
+    -- makePatternEdgeInLambda creates the edges between the argPatterns and the parameter
     -- ports.
 -- add test \x y = (y, f x)
-getOutputNameAndPort rhsRef argNodeName patternVals lambdaPorts = case rhsRef of
+getOutputNameAndPort rhsRef argNodeName argPatternVals lambdaPorts = case rhsRef of
   strRef@(Left _) -> inputStraightToAutput where 
-    maybeRefList = catMaybes $ zipWith (makeReferenceToArgument strRef) patternVals lambdaPorts
+    maybeRefList = catMaybes $ zipWith (makeReferenceToArgument strRef) argPatternVals lambdaPorts
     returnPort = NameAndPort argNodeName Nothing
     inputStraightToAutput = fromMaybe returnPort $ listToMaybe maybeRefList
   (Right np) -> np
@@ -546,8 +546,8 @@ makeLambdaNode combinedGraph  functionName lambdaName = node where
   node = FunctionValueNode functionName enclosedNodeNames
 
 makeLambdaArgumentNode :: [(GraphAndRef, Maybe String)] -> SyntaxNode
-makeLambdaArgumentNode patternValsWithAsNames = node where 
-  paramNames = fmap patternName patternValsWithAsNames
+makeLambdaArgumentNode argPatternValsWithAsNames = node where 
+  paramNames = fmap patternName argPatternValsWithAsNames
   node = FunctionArgNode paramNames
 
 
@@ -557,14 +557,14 @@ makeLambdaOutputGraph ::
   -> (NodeName, SyntaxNode)
   -> (NodeName, SyntaxNode)
   -> SyntaxGraph
-makeLambdaOutputGraph patternEdgesList binds (lambdaName ,lambdaNode) (argNodeName,argNode) = graph where
-  patternEdges = Set.fromList patternEdgesList
+makeLambdaOutputGraph argPatternEdgesList binds (lambdaName ,lambdaNode) (argNodeName,argNode) = graph where
+  argPatternEdges = Set.fromList argPatternEdgesList
   bindsSet = SMap.fromList binds
   lambdaIconSet = Set.fromList [
     (Named lambdaName (mkEmbedder lambdaNode))
     , (Named argNodeName (mkEmbedder argNode))
     ]
-  graph = SyntaxGraph lambdaIconSet patternEdges mempty bindsSet mempty
+  graph = SyntaxGraph lambdaIconSet argPatternEdges mempty bindsSet mempty
 -- END END END END END evalLambda 
 
 
@@ -671,7 +671,7 @@ showTopLevelBinds gr = do
   pure $ newGraph <> gr
 
 translateDeclToSyntaxGraph :: Show l => SimpDecl l -> SyntaxGraph
-translateDeclToSyntaxGraph d = graph where
+translateDeclToSyntaxGraph d = deleteBindings graph where
   evaluatedDecl = evalDecl mempty d >>= showTopLevelBinds
   graph = evalState evaluatedDecl initialIdState
 

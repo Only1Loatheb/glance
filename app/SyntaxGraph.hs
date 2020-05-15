@@ -213,6 +213,18 @@ getUniqueString :: String -> State IDState String
 getUniqueString base = fmap ((base ++). show) getId
 -- END IDState
 
+-- | Make a syntax graph that has the bindings for a list of "as pattern" (@)
+-- names.
+makeAsBindGraph :: Reference -> [Maybe String] -> SyntaxGraph
+makeAsBindGraph ref asNames
+  = bindsToSyntaxGraph (SMap.fromList (mapMaybe makeBind asNames))
+  where
+    makeBind mName = case mName of
+      Nothing -> Nothing
+      Just asName -> Just $ (asName, ref)
+
+--------- move to SimpSyntaxToSyntaxGraph
+
 makeApplyGraph ::
   Int
   -> LikeApplyFlavor
@@ -250,16 +262,6 @@ makeMultiIfGraph numPairs multiIfName bools exps
     combindedGraph = combineExpressions False $ expsWithPorts <> boolsWithPorts
     icons = [Named multiIfName (mkEmbedder multiIfNode)]
     newGraph = (syntaxGraphFromNodes $ Set.fromList icons) <> combindedGraph
-
--- | Make a syntax graph that has the bindings for a list of "as pattern" (@)
--- names.
-makeAsBindGraph :: Reference -> [Maybe String] -> SyntaxGraph
-makeAsBindGraph ref asNames
-  = bindsToSyntaxGraph (SMap.fromList (mapMaybe makeBind asNames))
-  where
-    makeBind mName = case mName of
-      Nothing -> Nothing
-      Just asName -> Just $ (asName, ref)
 
 makeNestedPatternGraph ::
   NodeName
@@ -400,6 +402,7 @@ evalPatBindHelper patRef rhsRef = case patRef of
       case rhsRef of
       (Left rhsStr) -> (mempty, Set.singleton (SgSink rhsStr patternValuePort), SMap.empty)
       (Right rhsPort) -> (Set.singleton (makeSimpleEdge (rhsPort, patternValuePort)), mempty, SMap.empty)
+--------- move to SimpSyntaxToSyntaxGraph
 
 -- strToGraphRef is not in SyntaxNodeToIcon, since it is only used by evalQName.
 strToGraphRef :: EvalContext -> String -> State IDState GraphAndRef

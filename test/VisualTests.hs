@@ -333,68 +333,80 @@ listCompTests = [
 
 otherInLambdaTest :: [String]
 otherInLambdaTest = [
-  -- "lambdaWIfUnused = \\a1 a2 -> if cond then v1 else v2"
-  -- ,"lambdaWIfValues = \\a1 a2 a3-> if a1 then a2 else a3"
-  -- ,"lambdaWEnumUnused = \\a1 a2 -> [1..]"
-  -- ,"lambdaWEnumValues = \\a1 a2 -> [a1..a2]"
-  -- ,"lambdaWLetUnused = \\a1 a2 -> let x = 1 in  x "
-  -- ,"lambdaWLetValue = \\a1 a2 -> let x = 1 in  a1 + x"
-  -- ,"lambdaWLetDescription = \\a1 a2 -> let x = a1 in  v1 + x"
-  -- ,"lambdaWLetBoth = \\a1 a2 -> let x = a1 in  a2 + x"
-  -- ,"lambdaWListComp = \\xs -> [x | x <- xs] "
-  -- ,"lambdaWCaceCondAndValue = \\a1 a2 a3-> case a1 of a2 -> a3"
-  -- ,"lambdaWCaceUnused = \\a1 a2 -> case v1 of v2 -> v3"
-  -- ,"lambdaWCaceMixed = \\a1 a2 -> case a1 of \n\
-  -- \  c1 -> v1\n\
-  -- \  a2 -> v2"
-  -- ,"lambdaWGuardsValue = \\aa1 aa2 ->\n\
-  -- \  let  \n\
-  -- \    guards a1 a2\n\
-  -- \      | cond       = a1\n\
-  -- \      | otherwise = a2\n\
-  -- \  in  guards"
-  -- ,
-  "lambdaWGuardsCondition = \\aa1 aa2 ->\n\
+  "lambdaWIfUnused = \\a1 a2 -> if cond then v1 else v2"
+  ,"lambdaWIfValues = \\a1 a2 a3-> if a1 then a2 else a3"
+  ,"lambdaWEnumUnused = \\a1 a2 -> [1..]"
+  ,"lambdaWEnumValues = \\a1 a2 -> [a1..a2]"
+  ,"lambdaWLetUnused = \\a1 a2 -> let x = 1 in  x "
+  ,"lambdaWLetValue = \\a1 a2 -> let x = 1 in  a1 + x"
+  ,"lambdaWLetDescription = \\a1 a2 -> let x = a1 in  v1 + x"
+  ,"lambdaWLetBoth = \\a1 a2 -> let x = a1 in  a2 + x"
+  ,"lambdaWListComp = \\xs -> [x | x <- xs] "
+  ,"lambdaWCaceCondAndValue = \\a1 a2 a3-> case a1 of a2 -> a3"
+  ,"lambdaWCaceUnused = \\a1 a2 -> case v1 of v2 -> v3"
+  ,"lambdaWCaceMixed = \\a1 a2 -> case a1 of \n\
+  \  c1 -> v1\n\
+  \  a2 -> v2"
+  ,
+  "y = lambdaWGuardsValue v1 v2 where \n\
+  \  lambdaWGuardsValue = \\ aa1 aa2->\n\
+  \    let  \n\
+  \      guards\n\
+  \        | cond       = aa1\n\
+  \        | otherwise = aa2\n\
+  \    in  guards"
+  ,
+  "lambdaWGuardsCondition = \\ aa1 aa2 ->\n\
   \  let\n\
-  \    guards a1 a2\n\
-  \      | a1     = v1\n\
-  \      | a2     = v2\n\
+  \    guards\n\
+  \      | aa1     = v1\n\
+  \      | aa2     = v2\n\
   \      | otherwise = v3\n\
   \  in  guards"
-  -- ,"lambdaWFunctionDefValues = \\a1 a2 ->\n\
-  -- \  let\n\
-  -- \    functionDef a1p1 a2p1 = a1\n\
-  -- \    functionDef a1p2 a2p2 = a2\n\
-  -- \  in  functionDef"
-  -- ,
-  -- "lambdaWFunctionDefPatterns = \\a1 a2 ->\n\
-  -- \    let\n\
-  -- \      functionDef a1 a2 = v1\n\
-  -- \      functionDef a1p2 a2p2 = v2\n\
-  -- \    in  functionDef" -- needs PatternSynonyms
+  ,
+  "appliedLambdaWGuards = lambdaWGuardsValue v1 v2 where \n\
+  \  lambdaWGuardsValue = \\ aa1 aa2->\n\
+  \    let  \n\
+  \      guards\n\
+  \        | cond       = aa1\n\
+  \        | otherwise = aa2\n\
+  \    in  guards"
+  ,
+  "lambdaWAppliedGuards = \\ aa1 aa2->\n\
+  \    let  \n\
+  \      guards a1 a2\n\
+  \        | cond       = a1\n\
+  \        | otherwise = a2\n\
+  \    in  guards aa1 aa2"
+  ,
+  "lambdaWFunctionDefValues = \\a1 a2 ->\n\
+  \  let\n\
+  \    functionDef a1p1 a2p1 = a1\n\
+  \    functionDef a1p2 a2p2 = a2\n\
+  \  in  functionDef"
   ]
 testDecls :: [String]
 testDecls = mconcat [
-  -- simpleTests
-  -- , enumTest
-  -- , composeTests
-  -- , nestedTests
-  -- , doTests
-  -- , caseTests
-  -- , lambdaTests
-  -- , guardTests
-  -- , patternTests
-  -- , specialTests
-  -- , tupleTests
-  -- , listTests
-  -- , letTests
-  -- , operatorTests
-  -- , otherTests
-  -- , typeSigTests
-  -- , dataDeclTests
-  -- , multiWayIfTests
-  -- , listCompTests
-  -- ,
+  simpleTests
+  , enumTest
+  , composeTests
+  , nestedTests
+  , doTests
+  , caseTests
+  , lambdaTests
+  , guardTests
+  , patternTests
+  , specialTests
+  , tupleTests
+  , listTests
+  , letTests
+  , operatorTests
+  , otherTests
+  , typeSigTests
+  , dataDeclTests
+  , multiWayIfTests
+  , listCompTests
+  ,
   otherInLambdaTest
   ]
 
