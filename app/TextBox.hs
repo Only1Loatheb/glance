@@ -45,6 +45,9 @@ sidePadding = textBoxFontSize * 0.3
 
 textFont :: String
 textFont = "monospace"
+
+textCorrection :: Fractional n => P2 n
+textCorrection = p2 (0,- textBoxFontSize * textBoxHeightFactor /4)
 -- BEGIN Text helper functions --
 
 -- This may be a faster implementation of normalizeAngle
@@ -69,12 +72,11 @@ textSizeDiagram t = strutR2 (V2 textWidth textHeight)
 
 multilineComment :: SpecialBackend b n 
   => String -> SpecialQDiagram b n
-multilineComment = multilineComment' white (opaque white)
+multilineComment = multilineComment' white
 
 multilineComment' :: SpecialBackend b n =>
-  Colour Double
-  -> AlphaColour Double -> String -> SpecialQDiagram b n
-multilineComment' textColor _boxColor t = lwG (0.6 * defaultLineWidth) textDia
+  Colour Double -> String -> SpecialQDiagram b n
+multilineComment' textColor t = lwG (0.6 * defaultLineWidth) textDia
   where
     textLines = lines t
     textAreas = map (coloredTextBox textColor) textLines
@@ -84,9 +86,8 @@ coloredTextBox :: SpecialBackend b n =>
   Colour Double -> String -> SpecialQDiagram b n
 coloredTextBox textColor t
   = objectWithSize <> textLabel  where
-    textLabel = alignT $ padOverText <> 
+    textLabel = moveTo textCorrection $
       fontSize
       (local textBoxFontSize)
       (font textFont $ fillColor textColor $ text t) -- dont have size
-    padOverText = strutY (textBoxFontSize * textBoxHeightFactor /4)
     objectWithSize = textSizeDiagram t

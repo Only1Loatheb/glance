@@ -18,6 +18,8 @@ module IconToSymbolDiagram
 where
 
 import Diagrams.Prelude hiding ((&), (#), Name)
+import Diagrams.TwoD.Combinators(strutR2)
+
 import Data.Maybe(fromMaybe)
 import Data.Either(partitionEithers)
 import Data.Typeable(Typeable)
@@ -95,8 +97,10 @@ inputPortSymbol = lw none $ fc lineColorValue $ circle (symbolSize * 0.5)
 
 resultPortSymbol :: SpecialBackend b n
   => SpecialQDiagram b n
-resultPortSymbol = symbol where
-  symbol = fc color $ lw none $ rotateBy (1/2) $ eqTriangle (5/4 * symbolSize) -- cant be to big to fit in diagrams
+resultPortSymbol = memptyWithPosition -- valueSymbol
+  
+valueSymbol ::SpecialBackend b n => SpecialQDiagram b n
+valueSymbol = fc color $ lw none $ rotateBy (1/2) $ eqTriangle (5/4 * symbolSize) where -- cant be to big to fit in diagrams
   color = caseRhsC colorScheme
 
 multiIfVarSymbol :: SpecialBackend b n
@@ -154,7 +158,8 @@ boxForDiagram diagram borderColor diagramWidth diagramHeight
     coloredArgBox = lwG defaultLineWidth $ lcA (withOpacity borderColor defaultOpacity) argBox
 
 -- BEGIN Diagram helper functions --
-
+memptyWithPosition :: SpecialBackend b n => SpecialQDiagram b n
+memptyWithPosition = strutR2 (V2 0 0)
 -- | Names the diagram and puts all sub-names in the namespace of the top level
 -- name.
 nameDiagram :: SpecialNum n =>
@@ -195,7 +200,7 @@ choosePortDiagram :: SpecialBackend b n =>
 choosePortDiagram str portAndSymbol portSymbolAndLabel
   = centerX symbol where
     symbol
-      | tempVarPrefix `isPrefixOf` str  = portAndSymbol
+      | tempVarPrefix `isPrefixOf` str = portAndSymbol
       | not (null str) = portSymbolAndLabel
       | otherwise = portAndSymbol
       
@@ -257,7 +262,8 @@ bindDiagram t transformParams = finalDia where
 literalDiagram :: SpecialBackend b n =>
   String -> TransformableDia b n
 literalDiagram t transformParams = finalDia where
-  finalDia = nameDiagram (tpName transformParams) bindText 
+  finalDia = bindText === outputDia
+  outputDia =  nameDiagram (tpName transformParams) memptyWithPosition
   bindText = coloredTextBox (textBoxTextC colorScheme) t
 
 makeInputDiagram :: SpecialBackend b n
