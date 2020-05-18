@@ -5,19 +5,16 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module TextBox
-  ( bindTextBox
-  , defaultLineWidth
+  ( defaultLineWidth
   , coloredTextBox
-  , transformableGeneralTextBox
-  , transformablePortTextBox
   , multilineComment
   , letterHeight
   )
 where
 
 import Diagrams.Prelude hiding ((&), (#), Name)
+import Diagrams.TwoD.Combinators(strutR2)
 
-import DrawingColors(colorScheme, ColorStyle(..))
 import           Types  ( SpecialQDiagram
                         , SpecialBackend
                         )
@@ -58,21 +55,17 @@ textFont = "monospace"
 -- | Given the number of letters in a textbox string, make a rectangle that will
 -- enclose the text box. Since the normal SVG text has no size, some hackery is
 -- needed to determine the size of the text's bounding box.
-rectForText :: (InSpace V2 n t, TrailLike t) => Int -> t
-rectForText n = rect textWidth textHeight
+-- textSizeDiagram ::  => Int -> t
+
+textSizeDiagram :: SpecialBackend b n 
+  => String -> SpecialQDiagram b n
+textSizeDiagram t = strutR2 (V2 textWidth textHeight)
   where
+    n = length t
     textHeight = letterHeight
     textWidth = (fromIntegral n * letterWidth) + sidePadding
 
 -- END Text helper functions
-
-commentTextArea :: SpecialBackend b n =>
-  Colour Double -> String -> SpecialQDiagram b n
-commentTextArea textColor t =
-  alignL $ fontSize
-  (local textBoxFontSize)
-  (font textFont $ fc textColor $ topLeftText t)
-  <>  alignTL (lw none $ rectForText (length t))
 
 multilineComment :: SpecialBackend b n 
   => String -> SpecialQDiagram b n
@@ -84,47 +77,16 @@ multilineComment' :: SpecialBackend b n =>
 multilineComment' textColor _boxColor t = lwG (0.6 * defaultLineWidth) textDia
   where
     textLines = lines t
-    textAreas = map (commentTextArea textColor) textLines
+    textAreas = map (coloredTextBox textColor) textLines
     textDia = vcat textAreas
 
 coloredTextBox :: SpecialBackend b n =>
-  Colour Double
-  -> AlphaColour Double -> String -> SpecialQDiagram b n
-coloredTextBox textColor boxColor t
-  = boxAroundText <> textLabel  where
+  Colour Double -> String -> SpecialQDiagram b n
+coloredTextBox textColor t
+  = objectWithSize <> textLabel  where
     textLabel = alignT $ padOverText <> 
       fontSize
       (local textBoxFontSize)
       (font textFont $ fillColor textColor $ text t) -- dont have size
     padOverText = strutY (textBoxFontSize * textBoxHeightFactor /4)
-    boxAroundText =
-      lwG -- A convenient synonym for 'lineWidth (global w)'.
-      (0.6 * defaultLineWidth)
-      (lcA boxColor -- A synonym for lineColor, specialized to AlphaColour Double (i.e. colors with transparency)
-        $ fcA (withOpacity (backgroundC colorScheme) 0) -- last param is radius of circular rounded corners 
-        $ rectForText (length t))
-
-transformableGeneralTextBox :: SpecialBackend b n =>
-  String
-  -> Colour Double
-  -> Colour Double
-  -> SpecialQDiagram b n
-transformableGeneralTextBox str textColor borderColor
-  = coloredTextBox textColor (opaque borderColor) str
-
-
-transformablePortTextBox :: SpecialBackend b n =>
-  String  -> SpecialQDiagram b n
-transformablePortTextBox str
-  = transformableGeneralTextBox
-    str
-    (textBoxTextC colorScheme)
-    (textBoxC colorScheme)
-
-bindTextBox :: SpecialBackend b n =>
-  String -> SpecialQDiagram b n
-bindTextBox str = alignT box where 
-    box = coloredTextBox 
-            (bindTextBoxTextC colorScheme)
-            (opaque (bindTextBoxC colorScheme))
-            str
+    objectWithSize = textSizeDiagram t

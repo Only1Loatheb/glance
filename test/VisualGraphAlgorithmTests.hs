@@ -54,7 +54,6 @@ renderFglGraph fglGraph = do
     nodeFunc (Named name syntaxNode) point
       = place (coloredTextBox
                 white
-                (opaque white)
                 (show name ++ prettyPrintSyntaxNode syntaxNode)
                 {- :: Diagram B -})
       (scaleFactor *^ point)
@@ -98,8 +97,8 @@ makeCollapseTest str = do
   where
     fglGraph = syntaxGraphToFglGraph $ translateStringToSyntaxGraph str
     collapsedGraph = collapseAnnotatedGraph $ annotateGraph fglGraph
-    customTextBox = coloredTextBox white (opaque lime)
-    expressionText = alignL $ coloredTextBox white (opaque yellow) str -- :: Diagram B
+    customTextBox = coloredTextBox white
+    expressionText = alignL $ coloredTextBox white str -- :: Diagram B
     beforeText = alignL $ customTextBox "Before:" -- :: Diagram B
     afterText = alignL $ customTextBox "After:" -- :: Diagram B
 

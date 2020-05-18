@@ -29,7 +29,11 @@ module StringSymbols
   , nListString
   , actionOverParameterizedType
   , patternSubscribedValueStr
+  , fractionalSeparatorStr
   ) where
+
+fractionalSeparatorStr :: String
+fractionalSeparatorStr = "%"
 
 ifConditionConst :: String
 ifConditionConst = "True"

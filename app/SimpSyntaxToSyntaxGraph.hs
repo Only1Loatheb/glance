@@ -98,6 +98,7 @@ import StringSymbols(
   , patternWildCardStr
   , unusedArgumentStr
   , defaultPatternNameStr
+  , fractionalSeparatorStr
   )
 
 {-# ANN module "HLint: ignore Use record patterns" #-}
@@ -130,11 +131,14 @@ evalExp c x = case x of
 makeLiteral :: (Show x) => x -> State IDState (SyntaxGraph, NameAndPort)
 makeLiteral = makeBox . show
 
+makeFracLiteral ::  Rational -> State IDState (SyntaxGraph, NameAndPort)
+makeFracLiteral = makeBox .	concat . words . show
+
 evalLit :: Exts.Literal l -> State IDState (SyntaxGraph, NameAndPort)
 evalLit (Exts.Int _ x _) = makeLiteral x
 evalLit (Exts.Char _ x _) = makeLiteral x
 evalLit (Exts.String _ x _) = makeLiteral x
-evalLit (Exts.Frac _ x _) = makeLiteral x
+evalLit (Exts.Frac _ x _) = makeFracLiteral x
 -- TODO: Test the unboxed literals
 evalLit (Exts.PrimInt _ x _) = makeLiteral x
 evalLit (Exts.PrimWord _ x _) = makeLiteral x
@@ -378,7 +382,7 @@ evalMultiIf c selectorsAndVals = let
   <*>
   fmap snd evaledRhss
 
--- BEGIN evalCase
+-- BEGIN BEGIN BEGIN BEGIN BEGIN evalCase
 
 -- TODO patRhsAreConnected is sometimes incorrectly true if the pat is just a
 -- name
@@ -406,6 +410,23 @@ evalAlt c (SimpAlt pat rhs) = do
        , lookedUpRhsRef
        , mPatAsName)
 
+evalCase :: Show l 
+  => EvalContext -> SimpExp l -> [SimpAlt l]
+  -> State IDState (SyntaxGraph, NameAndPort)
+evalCase c e alts =
+  let
+    numAlts = length alts
+  in
+    evalCaseHelper (length alts)
+    <$>
+    getUniqueName
+    <*>
+    replicateM numAlts getUniqueName
+    <*>
+    evalExp c e
+    <*>
+    mapM (evalAlt c) alts
+     
 evalCaseHelper ::
   Int
   -> NodeName
@@ -453,26 +474,7 @@ evalCaseHelper numAlts caseIconName resultIconNames
                                                       , caseGraph
                                                       , combindedAltGraph]
     result = (finalGraph, nameAndPort caseIconName (resultPort caseNode))
-
-
-evalCase :: Show l =>
-  EvalContext -> SimpExp l -> [SimpAlt l]
-  -> State IDState (SyntaxGraph, NameAndPort)
-evalCase c e alts =
-  let
-    numAlts = length alts
-  in
-    evalCaseHelper (length alts)
-    <$>
-    getUniqueName
-    <*>
-    replicateM numAlts getUniqueName
-    <*>
-    evalExp c e
-    <*>
-    mapM (evalAlt c) alts
-
--- END evalCase
+-- END END END END END evalCase
 
 -- BEGIN BEGIN BEGIN BEGIN BEGIN evalLambda 
 evalLambda :: Show l
@@ -493,7 +495,7 @@ evalLambda _ context argPatterns expr functionName = do
   let
     argPatternVals = fmap fst argPatternValsWithAsNames
     argNode = makeLambdaArgumentNode argPatternValsWithAsNames
-    lambdaNode = makeLambdaNode combinedGraph functionName lambdaName
+    lambdaNode = makeLambdaNode combinedGraph functionName [lambdaName, argNodeName]
     lambdaPorts = map (nameAndPort argNodeName) $ argumentPorts lambdaNode
     argPatternGraph = mconcat $ fmap graphAndRefToGraph argPatternVals
 
@@ -539,10 +541,10 @@ makeReferenceToArgument rhsRef (GraphAndRef _ ref) lamPort = if rhsRef == ref
       then Just lamPort
       else Nothing
 
-makeLambdaNode :: SyntaxGraph -> String -> NodeName-> SyntaxNode
-makeLambdaNode combinedGraph  functionName lambdaName = node where
-  enclosedNodeNames =  Set.delete lambdaName
-    $ Set.map naName (sgNodes combinedGraph)
+makeLambdaNode :: SyntaxGraph -> String -> [NodeName] -> SyntaxNode
+makeLambdaNode combinedGraph  functionName lambdaNames = node where
+  allNodeNames = Set.map naName (sgNodes combinedGraph)
+  enclosedNodeNames =  Set.difference allNodeNames (Set.fromList lambdaNames)
   node = FunctionValueNode functionName enclosedNodeNames
 
 makeLambdaArgumentNode :: [(GraphAndRef, Maybe String)] -> SyntaxNode

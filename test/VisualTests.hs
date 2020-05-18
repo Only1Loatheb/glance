@@ -15,10 +15,18 @@ import CollapseGraph(translateStringToCollapsedGraphAndDecl, syntaxGraphToFglGra
 import SimpSyntaxToSyntaxGraph(translateStringToSyntaxGraph)
 import SyntaxGraph( SyntaxGraph(..))
 import Rendering(renderIngSyntaxGraph)
-import IconToSymbolDiagram(textBox)
 import qualified Data.Set as Set
 import qualified Data.StringMap as SMap
 
+import Types(Icon(..), SpecialQDiagram, SpecialBackend, SpecialNum
+            , NodeName(..), Port(..), LikeApplyFlavor(..)
+            , NamedIcon, Labeled(..), IconInfo
+            , Named(..), NameAndPort(..)
+            ,TransformParams(..),TransformableDia
+            ,CaseOrMultiIfTag(..))
+
+import TextBox(coloredTextBox)
+import IconToSymbolDiagram(nameDiagram)
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
 prettyShowList :: Show a => [a] -> String
@@ -445,3 +453,8 @@ visualTranslateTests = do
         testDecls
     vCattedDrawings = vsep 1 $ zipWith (===) (fmap alignL drawings) textDrawings
   pure vCattedDrawings
+
+textBox :: SpecialBackend b n =>
+  String -> TransformableDia b n
+textBox t (TransformParams name _)
+  = nameDiagram name $ coloredTextBox (white) t

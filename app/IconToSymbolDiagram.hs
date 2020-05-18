@@ -12,8 +12,8 @@ module IconToSymbolDiagram
   , multilineComment
   , getArrowShadowOpts
   , getArrowBaseOpts
-  , textBox
   , lambdaRegionToDiagram
+  , nameDiagram
   )
 where
 
@@ -28,10 +28,8 @@ import Icons(
   , findMaybeIconsFromNames
   )
 import TextBox (
-  bindTextBox
+  coloredTextBox
   , defaultLineWidth
-  , transformableGeneralTextBox
-  , transformablePortTextBox
   , multilineComment
   , letterHeight
   )
@@ -112,8 +110,8 @@ multiIfVarSymbol color = alignB coloredSymbol  where
 lambdaBodySymbol :: SpecialBackend b n
   => String
   -> SpecialQDiagram b n
-lambdaBodySymbol functionName
-  = transformableGeneralTextBox functionName (regionPerimC colorScheme) (bindTextBoxC colorScheme)
+lambdaBodySymbol
+  = coloredTextBox (regionPerimC colorScheme)
 
 inMultiIfConstBox :: SpecialBackend b n
   => SpecialQDiagram b n -> SpecialQDiagram b n
@@ -157,16 +155,6 @@ boxForDiagram diagram borderColor diagramWidth diagramHeight
 
 -- BEGIN Diagram helper functions --
 
--- | Make an identity TransformableDia
-identDiaFunc :: SpecialNum n => SpecialQDiagram b n -> TransformableDia b n
-identDiaFunc dia transformParams = nameDiagram (tpName transformParams) dia
-
-textBox :: SpecialBackend b n =>
-  String -> TransformableDia b n
-textBox t (TransformParams name _)
-  = nameDiagram name $ transformableGeneralTextBox
-    t (textBoxTextC colorScheme) (textBoxC colorScheme)
-
 -- | Names the diagram and puts all sub-names in the namespace of the top level
 -- name.
 nameDiagram :: SpecialNum n =>
@@ -197,7 +185,7 @@ makeLabelledPort :: SpecialBackend b n =>
 makeLabelledPort name port str
   = choosePortDiagram str portAndSymbol portSymbolAndLabel where
     portAndSymbol = makeQualifiedPort port name
-    label = transformablePortTextBox str
+    label = coloredTextBox (textBoxTextC colorScheme) str
     portSymbolAndLabel = if isInputPort port
       then portAndSymbol === label
       else label === portAndSymbol
@@ -224,13 +212,18 @@ choosePortDiagram str portAndSymbol portSymbolAndLabel
 -- >>>>>>>>>>>>>>>>>>>>>> SUB Diagrams <<<<<<<<<<<<<<<<<<<<<<<<
 -- TODO Detect if we are in a loop (have called iconToDiagram on the same node
 -- before)
+
+-- | Make an identity TransformableDia
+identDiaFunc :: SpecialNum n => SpecialQDiagram b n -> TransformableDia b n
+identDiaFunc dia transformParams = nameDiagram (tpName transformParams) dia
+
 iconToDiagram :: SpecialBackend b n
   => IconInfo
   -> Icon
   -> TransformableDia b n
 iconToDiagram iconInfo icon = case icon of
-  TextBoxIcon s -> textBox s
-  BindTextBoxIcon s -> identDiaFunc $ bindTextBox s
+  TextBoxIcon s -> literalDiagram s
+  BindTextBoxIcon s -> bindDiagram s
   MultiIfIcon n -> nestedMultiIfDia iconInfo (replicate (1 + (2 * n)) Nothing) MultiIfTag
   CaseIcon n -> nestedCaseDia iconInfo (replicate (1 + (2 * n)) Nothing) CaseTag
   CaseResultIcon -> identDiaFunc resultPortSymbol
@@ -253,6 +246,19 @@ iconToDiagram iconInfo icon = case icon of
                             (findMaybeIconsFromNames iconInfo args)
                             MultiIfTag
   ListCompIcon {} -> listCompDiagram iconInfo (nestingC colorScheme) Nothing (replicate (1 + 7) Nothing) --(findMaybeIconsFromNames iconInfo args) -- listCompDiagram
+
+bindDiagram :: SpecialBackend b n =>
+  String -> TransformableDia b n
+bindDiagram t transformParams = finalDia where
+  bindDia = nameDiagram (tpName transformParams) inputPortSymbol 
+  bindText = coloredTextBox (bindTextBoxTextC colorScheme) t
+  finalDia = bindDia === bindText
+
+literalDiagram :: SpecialBackend b n =>
+  String -> TransformableDia b n
+literalDiagram t transformParams = finalDia where
+  finalDia = nameDiagram (tpName transformParams) bindText 
+  bindText = coloredTextBox (textBoxTextC colorScheme) t
 
 makeInputDiagram :: SpecialBackend b n
   => IconInfo
@@ -439,7 +445,7 @@ generalNestedMultiIf iconInfo symbolColor inConstBox inputAndArgs flavor
 
     inputDiagram
       | flavor == MultiIfTag = alignBR 
-        $ transformableGeneralTextBox ifConditionConst symbolColor symbolColor
+        $ coloredTextBox symbolColor ifConditionConst
       | otherwise = makeInputDiagram iconInfo tp (pure input) name
 
     (iFConstIcons, iFVarIcons)
@@ -476,8 +482,8 @@ functionArgDia argumentNames (TransformParams name _level)
     -- argumetPort = zipWith (makePassthroughPorts name) (zip argPortsConst resultPortsConst) argumentNames
   argumetPort = zipWith (makeLabelledPort name) resultPortsConst argumentNames
   combinedArgumetPort = hsep portSeparationSize argumetPort
-  argumetsInBox = boxForDiagram combinedArgumetPort (lamArgResC colorScheme) (width combinedArgumetPort) (height combinedArgumetPort)
-  finalDiagram = argumetsInBox
+  -- argumetsInBox = boxForDiagram combinedArgumetPort (lamArgResC colorScheme) (width combinedArgumetPort) (height combinedArgumetPort)
+  finalDiagram = combinedArgumetPort
 
 functionDefDia ::  SpecialBackend b n
   => String 
@@ -558,8 +564,8 @@ getArrowOpts
     formPoint = fromMaybe (p2 (0.0,0.0)) formMaybePoint
     toPoint = fromMaybe (p2  (0.0,-1.0)) toMaybePoint
     arrowOptions =
-      -- arrowHead .~ DIA.noHead
-      arrowHead .~ tri
+      arrowHead .~ noHead
+      -- arrowHead .~ tri
       $ arrowTail .~ noTail
       $ arrowShaft .~ edgeSymbol formPoint toPoint anglesFrom anglesTo
       -- TODO Don't use a magic number for lengths (headLength and tailLength)
