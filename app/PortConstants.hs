@@ -8,7 +8,7 @@ module PortConstants
   , resultPort
   , argumentPorts
   , caseValuePorts
-  , casePatternPorts
+  , caseConditionPorts
   , multiIfValuePorts
   , multiIfBoolPorts
   , argPortsConst
@@ -40,8 +40,8 @@ resultPortsConst = fmap Port [3,5..]
 caseValuePorts :: [Port]
 caseValuePorts = resultPortsConst
 
-casePatternPorts :: [Port]
-casePatternPorts = argPortsConst
+caseConditionPorts :: [Port]
+caseConditionPorts = argPortsConst
 
 multiIfValuePorts :: [Port]
 multiIfValuePorts = resultPortsConst

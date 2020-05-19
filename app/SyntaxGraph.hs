@@ -40,6 +40,7 @@ module SyntaxGraph(
   , lookupInEmbeddingMap
   , edgeForRefPortIsSource
   , edgeForRefPortIsNotSource
+  , syntaxGraphFromEdges
 ) where
 
 import Control.Monad.State ( State, state )
@@ -173,8 +174,8 @@ bindsToSyntaxGraph binds = SyntaxGraph Set.empty Set.empty Set.empty binds mempt
 sinksToSyntaxGraph :: Set.Set SgSink -> SyntaxGraph
 sinksToSyntaxGraph sinks = SyntaxGraph Set.empty Set.empty sinks SMap.empty mempty
 
-edgesToSyntaxGraph :: Set.Set Edge -> SyntaxGraph
-edgesToSyntaxGraph edges = SyntaxGraph Set.empty edges mempty SMap.empty mempty
+syntaxGraphFromEdges :: Set.Set Edge -> SyntaxGraph
+syntaxGraphFromEdges edges = SyntaxGraph Set.empty edges mempty SMap.empty mempty
 
 graphAndRefToGraph :: GraphAndRef -> SyntaxGraph
 graphAndRefToGraph (GraphAndRef g _) = g
@@ -374,7 +375,7 @@ makeInnerInputEdges :: NodeName -> [GraphAndRef] -> SyntaxGraph
 makeInnerInputEdges listCompName graphsAndRefs = graph where
   listCompPorts = map (nameAndPort listCompName) argPortsConst
   edges =  catMaybes $ zipWith makeInnerInputEdge graphsAndRefs listCompPorts
-  graph = edgesToSyntaxGraph ( Set.fromList edges)
+  graph = syntaxGraphFromEdges ( Set.fromList edges)
 
 makeInnerInputEdge :: GraphAndRef -> NameAndPort -> Maybe Edge
 makeInnerInputEdge (GraphAndRef _ ref) listCompPort = case ref of
@@ -430,14 +431,14 @@ combineExpresionsNotIsSource edgeConstructor (GraphAndRef graph ref, port)
 edgeForRefPortIsSource :: (Connection-> Edge) -> Reference -> NameAndPort -> SyntaxGraph
 edgeForRefPortIsSource edgeConstructor ref port = case ref of
       Left str -> bindsToSyntaxGraph $ SMap.singleton str (Right port)
-      Right resPort -> edgesToSyntaxGraph $ Set.singleton  (edgeConstructor connection)
+      Right resPort -> syntaxGraphFromEdges $ Set.singleton  (edgeConstructor connection)
         where
           connection = (port, resPort)
 
 edgeForRefPortIsNotSource :: (Connection-> Edge) -> Reference -> NameAndPort -> SyntaxGraph
 edgeForRefPortIsNotSource edgeConstructor ref port = case ref of
       Left str -> sinksToSyntaxGraph $ Set.singleton (SgSink str port)
-      Right resPort -> edgesToSyntaxGraph $ Set.singleton  (edgeConstructor connection)
+      Right resPort -> syntaxGraphFromEdges $ Set.singleton  (edgeConstructor connection)
         where
           connection = (resPort, port)
 

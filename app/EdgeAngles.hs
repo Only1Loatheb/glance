@@ -34,6 +34,11 @@ applyPortAngle InputPortConst = 1/2 @@ turn -- input function
 applyPortAngle ResultPortConst = 3/4 @@ turn
 applyPortAngle _isInput = 1/4 @@ turn
 
+nestedApplyPortAngle :: Floating n => Port -> Angle n
+nestedApplyPortAngle InputPortConst = 1/2 @@ turn -- input function
+nestedApplyPortAngle ResultPortConst = 3/4 @@ turn
+nestedApplyPortAngle _isInput = 1/8 @@ turn
+
 lambdaPortAngle :: Floating n => Port -> Angle n
 lambdaPortAngle InputPortConst = 1/4 @@ turn
 lambdaPortAngle ResultPortConst = 3/4 @@ turn
@@ -64,14 +69,10 @@ nestedMultiIfPortAngle :: SpecialNum n
 nestedMultiIfPortAngle iconInfo args port maybeNodeName = case maybeNodeName of
   Nothing -> multiIfPortAngle port
   Just name -> case findIcon iconInfo name args of
-    Nothing -> 0 @@ turn
+    Nothing -> 3/4 @@ turn
     -- TODO Don't use hardcoded numbers
     -- The arguments correspond to ports [0, 2, 3, 4 ...]
-    Just (argNum, icon) -> if odd argNum && argNum >= 1
-      -- The icon will be reflected
-      then reflectXAngle subAngle
-      else subAngle
-      where
+    Just (_, icon) -> subAngle where
         subAngle = getPortAngleHelper True iconInfo icon port Nothing
 
 
@@ -80,7 +81,9 @@ generalNestedPortAngle :: SpecialNum n
   -> (Port -> Angle n)
   -> Maybe NamedIcon
   -> [Maybe NamedIcon]
-  -> Port -> Maybe NodeName -> Angle n
+  -> Port 
+  -> Maybe NodeName 
+  -> Angle n
 generalNestedPortAngle iconInfo defaultAngle headIcon args port maybeNodeName =
   case maybeNodeName of
     Nothing -> defaultAngle port
@@ -88,29 +91,24 @@ generalNestedPortAngle iconInfo defaultAngle headIcon args port maybeNodeName =
       Nothing -> 0 @@ turn
       Just (_, icon) -> getPortAngleHelper True iconInfo icon port Nothing
 
-reflectXAngle :: SpecialNum n => Angle n -> Angle n
-reflectXAngle x = reflectedAngle where
-  normalizedAngle = normalizeAngle x
-  reflectedAngle = (-) <$> halfTurn <*> normalizedAngle
-
 getPortAngle :: SpecialNum n
   => IconInfo -> Icon -> Port -> Maybe NodeName -> Angle n
 getPortAngle = getPortAngleHelper False
 
 getPortAngleHelper :: SpecialNum n
   => Bool -> IconInfo -> Icon -> Port -> Maybe NodeName -> Angle n
-getPortAngleHelper _embedded iconInfo icon port maybeNodeName = case icon of
+getPortAngleHelper embedded iconInfo icon port maybeNodeName = case icon of
   TextBoxIcon {} -> 1/4 @@ turn
   BindTextBoxIcon {} -> 1/4 @@ turn
   MultiIfIcon {} -> multiIfPortAngle port
   CaseIcon {} -> multiIfPortAngle port
-  CaseResultIcon -> 1/4 @@ turn
+  CaseResultIcon -> 3/4 @@ turn
   FunctionArgIcon {} -> lambdaPortAngle port
   FunctionDefIcon {} -> lambdaPortAngle port
   NestedApply _ headIcon args
     -> generalNestedPortAngle
       iconInfo
-      applyPortAngle
+      (if not embedded then applyPortAngle else nestedApplyPortAngle)
       -- TODO Refactor with iconToDiagram
       (findMaybeIconFromName iconInfo headIcon)
       (findMaybeIconsFromNames iconInfo args)

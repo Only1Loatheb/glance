@@ -5,8 +5,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module TextBox
-  ( defaultLineWidth
-  , coloredTextBox
+  ( coloredTextBox
   , multilineComment
   , letterHeight
   )
@@ -22,9 +21,6 @@ import           Types  ( SpecialQDiagram
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
 -- Text constants --
-defaultLineWidth :: (Fractional a) => a
-defaultLineWidth = 0.15
-
 textBoxFontSize :: (Num a) => a
 textBoxFontSize = 1
 
@@ -76,11 +72,10 @@ multilineComment = multilineComment' white
 
 multilineComment' :: SpecialBackend b n =>
   Colour Double -> String -> SpecialQDiagram b n
-multilineComment' textColor t = lwG (0.6 * defaultLineWidth) textDia
-  where
-    textLines = lines t
-    textAreas = map (coloredTextBox textColor) textLines
-    textDia = vcat textAreas
+multilineComment' textColor t = textDia where
+  textLines = lines t
+  textAreas = map (coloredTextBox textColor) textLines
+  textDia = vcat textAreas
 
 coloredTextBox :: SpecialBackend b n =>
   Colour Double -> String -> SpecialQDiagram b n

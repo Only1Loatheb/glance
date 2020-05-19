@@ -31,7 +31,6 @@ import Icons(
   )
 import TextBox (
   coloredTextBox
-  , defaultLineWidth
   , multilineComment
   , letterHeight
   )
@@ -63,6 +62,9 @@ import Types(Icon(..), SpecialQDiagram, SpecialBackend, SpecialNum
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
 -- CONSTANTS --
+defaultLineWidth :: (Fractional a) => a
+defaultLineWidth = 0.15
+
 symbolSize :: (Fractional a) => a
 symbolSize = 0.5
 
@@ -72,8 +74,8 @@ boxPadding = 2 * defaultLineWidth
 portSeparationSize :: (Fractional a) => a
 portSeparationSize = 0.3
 
-lambdaRectPadding :: (Fractional a) => a
-lambdaRectPadding = 2 * letterHeight + defaultLineWidth
+lambdaRegionPadding :: (Fractional a) => a
+lambdaRegionPadding = 2 * letterHeight + defaultLineWidth
 
 defaultOpacity :: (Fractional a) => a
 defaultOpacity = 0.4
@@ -82,10 +84,10 @@ defaultShadowOpacity :: (Fractional a) => a
 defaultShadowOpacity = 0.6
 
 arrowLineWidth :: Fractional a => a
-arrowLineWidth = 2 * defaultLineWidth
+arrowLineWidth = defaultLineWidth
 
 arrowShadowWidth :: Fractional a => a
-arrowShadowWidth = 3.8 * defaultLineWidth
+arrowShadowWidth = 1.9 * arrowLineWidth
 
 -- COLORS --
 lineColorValue :: Colour Double
@@ -118,8 +120,8 @@ inNoteFrame :: SpecialBackend b n
 inNoteFrame borderColor diagram
   = centerXY diagram <> coloredFrame where
   
-    boxHeight = boxPadding + height diagram
-    boxWidth = boxPadding + width diagram
+    boxHeight = height diagram
+    boxWidth = width diagram
     cornerSize = letterHeight / 2
     notCornerHeight = boxHeight - cornerSize 
     frameWidth = boxWidth + 2 * cornerSize
@@ -144,7 +146,7 @@ lambdaBodySymbol :: SpecialBackend b n
   -> SpecialQDiagram b n
 lambdaBodySymbol t = inNoteFrame borderColor textBox where
   borderColor = regionPerimC colorScheme
-  textBox = coloredTextBox borderColor t 
+  textBox = coloredTextBox (textBoxTextC colorScheme) t 
 
 inMultiIfDecisionFrame :: SpecialBackend b n
   => SpecialQDiagram b n -> SpecialQDiagram b n
@@ -176,13 +178,13 @@ inDecisionFrame borderColor diagram
 
     coloredFrame = lwG defaultLineWidth $  lc borderColor decisionFrame
 
-boxForDiagram :: SpecialBackend b n
+inFrame :: SpecialBackend b n
   => SpecialQDiagram b n
   -> Colour Double
   -> n
   -> n
   -> SpecialQDiagram b n
-boxForDiagram diagram borderColor diagramWidth diagramHeight
+inFrame diagram borderColor diagramWidth diagramHeight
   = centerXY diagram <> coloredArgBox where
     rectWidth = max (diagramWidth + boxPadding) letterHeight
     rectHeight = max (diagramHeight + boxPadding) letterHeight
@@ -366,7 +368,7 @@ nestedPatternAppDia
     patternCases = alignB $ zipWith (makeAppInnerIcon iconInfo tp False) resultPortsConst subIcons
     patternDiagram = hsep portSeparationSize $  constructorDiagram : subscribedValueDia : patternCases
 
-    patternDiagramInBox = boxForDiagram patternDiagram borderColor (width patternDiagram) (height patternDiagram)
+    patternDiagramInBox = inFrame patternDiagram borderColor (width patternDiagram) (height patternDiagram)
 
     finalDia = patternDiagramInBox  === resultDia
 
@@ -397,13 +399,13 @@ generalNestedDia
       argPortsUncentred =  zipWith ( makeAppInnerIcon iconInfo tp False) argPortsConst (fmap pure args)
       argPortsCentred  = fmap alignB argPortsUncentred
       argPorts = centerX $ hsep portSeparationSize argPortsCentred
-      argsDiagram = boxForDiagram argPorts borderColor boxWidth (height argPorts)
+      argsDiagram = inFrame argPorts borderColor boxWidth (height argPorts)
 
       resultDiagram =  makeResultDiagram name
 
       transformedName = makeInputDiagram iconInfo tp (pure maybeFunText) name
 
-      functionDiagramInBox = boxForDiagram transformedName borderColor boxWidth (height transformedName)
+      functionDiagramInBox = inFrame transformedName borderColor boxWidth (height transformedName)
 
       finalDia = vcat [ argsDiagram,functionDiagramInBox, resultDiagram]
 
@@ -427,13 +429,13 @@ listCompDiagram
       argPortsUncentred =  zipWith ( makeAppInnerIcon iconInfo tp False) mixedPorts (fmap pure args)
       argPortsCentred  = fmap alignB argPortsUncentred
       argPorts = centerX $ hsep portSeparationSize argPortsCentred
-      argsDiagram = boxForDiagram argPorts borderColor boxWidth (height argPorts)
+      argsDiagram = inFrame argPorts borderColor boxWidth (height argPorts)
 
       resultDiagram =  makeResultDiagram name
 
       transformedName = makeInputDiagram iconInfo tp (pure maybeFunText) name
 
-      functionDiagramInBox = boxForDiagram transformedName borderColor boxWidth (height transformedName)
+      functionDiagramInBox = inFrame transformedName borderColor boxWidth (height transformedName)
 
       finalDia = vcat [ argsDiagram,functionDiagramInBox, resultDiagram]
 
@@ -525,7 +527,7 @@ functionArgDia argumentNames (TransformParams name _level)
     -- argumetPort = zipWith (makePassthroughPorts name) (zip argPortsConst resultPortsConst) argumentNames
   argumetPort = zipWith (makeLabelledPort name) resultPortsConst argumentNames
   combinedArgumetPort = hsep portSeparationSize argumetPort
-  -- argumetsInBox = boxForDiagram combinedArgumetPort (lamArgResC colorScheme) (width combinedArgumetPort) (height combinedArgumetPort)
+  -- argumetsInBox = inFrame combinedArgumetPort (lamArgResC colorScheme) (width combinedArgumetPort) (height combinedArgumetPort)
   finalDiagram = combinedArgumetPort
 
 functionDefDia ::  SpecialBackend b n
@@ -564,8 +566,8 @@ lambdaRegionSymbol enclosedDiagarms name
 
     contentsRect = dashingG [0.7 * symbolSize, 0.3 * symbolSize] 0
                    $ rect
-                   (lambdaRectPadding + width enclosedBoundingBox)
-                   (lambdaRectPadding + height enclosedBoundingBox)
+                   (lambdaRegionPadding + width enclosedBoundingBox)
+                   (lambdaRegionPadding + height enclosedBoundingBox)
     coloredContentsRect = lc lightgreen (lwG defaultLineWidth contentsRect)
 
     finalDiagram = vcat [coloredContentsRect]

@@ -26,7 +26,7 @@ import           PortConstants (
   , resultPort
   , argumentPorts
   , caseValuePorts
-  , casePatternPorts
+  , caseConditionPorts
   )
 import HsSyntaxToSimpSyntax(
   SimpAlt(..)
@@ -51,8 +51,14 @@ import           Types(
   , CaseOrMultiIfTag(..)
   , Named(..)
   , mkEmbedder
+  , Port(..)
   )
-import Util(makeSimpleEdge,makeInvisibleEdge, nameAndPort, justName)
+import Util(
+  makeSimpleEdge
+  , makeNotConstraintEdge
+  , makeInvisibleEdge
+  , nameAndPort
+  , justName)
 import SyntaxGraph( 
     SyntaxGraph(..)
   , patternName
@@ -89,6 +95,7 @@ import SyntaxGraph(
   , EvalContext
   , edgeForRefPortIsSource
   , edgeForRefPortIsNotSource
+  , syntaxGraphFromEdges
   -- , makeNotConstraintEdgesAndDeleteBindings
   )
 import StringSymbols(
@@ -402,9 +409,10 @@ evalAlt c (SimpAlt pat rhs) = do
     -- the rhsRef refers to a source in the pattern.
     patRhsAreConnected
       = (rhsRef /= lookedUpRhsRef)
-        || ( length (sgEdges grWithEdges)
-             >
-             (length (sgEdges rhsGraph) + length (sgEdges patGraph)))
+        -- || 
+        -- ( length (sgEdges grWithEdges)
+        --   >
+        --   (length (sgEdges rhsGraph) + length (sgEdges patGraph)))
   pure (patRhsAreConnected
        , deleteBindings grWithEdges
        , patRef
@@ -435,8 +443,7 @@ evalCaseHelper ::
   -> GraphAndRef
   -> [(Bool, SyntaxGraph, Reference, Reference, Maybe String)]
   -> (SyntaxGraph, NameAndPort)
-evalCaseHelper numAlts caseIconName resultIconNames
-  (GraphAndRef expGraph expRef) evaledAlts
+evalCaseHelper numAlts caseIconName resultIconNames (GraphAndRef expGraph expRef) evaledAlts
   = result
   where
     (patRhsConnected, altGraphs, patRefs, rhsRefs, asNames) = unzip5 evaledAlts
@@ -445,15 +452,14 @@ evalCaseHelper numAlts caseIconName resultIconNames
     caseNodeGraph = makeCaseNodeGraph caseIconName caseNode expRef
 
     bindGraph = makeAsBindGraph expRef asNames
-    patternEdgesGraph = makeConditionEdges patRefs caseIconName 
-    (caseResultGraphs, caseEdgeGraph) = makeRhsGraph patRhsConnected rhsRefs resultIconNames caseIconName
+    conditionEdgesGraph = makeConditionEdges patRefs caseIconName 
+    caseResultGraphs = makeRhsGraph patRhsConnected rhsRefs caseIconName resultIconNames
 
     finalGraph = makeEdgesAndDeleteBindings $ mconcat [
       bindGraph
-      , patternEdgesGraph
+      , conditionEdgesGraph
       , caseResultGraphs
       , expGraph
-      , caseEdgeGraph
       , caseNodeGraph
       , combindedAltGraph
       ]
@@ -467,32 +473,43 @@ makeCaseNodeGraph caseIconName caseNode expRef = caseGraph where
     caseGraph = inputEdgeGraph <> syntaxGraphFromNodes icons
 
 makeConditionEdges :: [Reference] -> NodeName -> SyntaxGraph
-makeConditionEdges patRefs caseIconName = patternEdgesGraph where
-    casePatternNamedPorts = map (nameAndPort caseIconName) casePatternPorts
-    patEdgesGraphs = zipWith (edgeForRefPortIsSource makeSimpleEdge) patRefs casePatternNamedPorts
-    patternEdgesGraph = mconcat patEdgesGraphs
+makeConditionEdges patRefs caseIconName = conditionEdgesGraph where
+    caseConditionNamedPorts = map (nameAndPort caseIconName) caseConditionPorts
+    patEdgesGraphs = zipWith (edgeForRefPortIsSource makeSimpleEdge) patRefs caseConditionNamedPorts
+    conditionEdgesGraph = mconcat patEdgesGraphs
 
-makeRhsGraph patRhsConnected rhsRefs resultIconNames caseIconName= (caseResultGraphs, caseEdgeGraph)where
-  rhsEdges = zip patRhsConnected $ zip rhsRefs
-    $ map (nameAndPort caseIconName) caseValuePorts
-  (connectedRhss, unConnectedRhss) = partition fst rhsEdges
-  
-  caseResultGraphs =
-    mconcat
-    $ zipWith makeCaseResult resultIconNames (fmap (fst . snd) connectedRhss)
+makeRhsGraph :: [Bool] -> [Reference ] -> NodeName -> [NodeName] ->  SyntaxGraph
+makeRhsGraph patRhsConnected rhsRefs caseIconName resultIconNames = caseResultGraphs where
+  caseValueNamedPorts = map (nameAndPort caseIconName) caseValuePorts
+  isConnectedAndValueRefAndNamedPorts =  zip3 patRhsConnected rhsRefs caseValueNamedPorts
 
-  filteredRhsEdges = fmap snd unConnectedRhss
+  (connected, unConnected) = partition (\(x,_,_) -> x) isConnectedAndValueRefAndNamedPorts
+  unConnectedRhss = map (\(_,x,y) -> (x,y)) unConnected
+  connectedRhss = map (\(_,x,y) -> (x,y)) connected
 
-  caseEdgeGraph = mconcat $ fmap (uncurry (edgeForRefPortIsNotSource makeSimpleEdge)) filteredRhsEdges
+  caseEdgeGraph = mconcat $ fmap (uncurry (edgeForRefPortIsNotSource makeSimpleEdge)) unConnectedRhss
 
+  resultNodeGraph = mconcat $ zipWith  makeCaseResult resultIconNames connectedRhss
 
-makeCaseResult :: NodeName -> Reference -> SyntaxGraph
-makeCaseResult resultIconName rhsRef = case rhsRef of
+  caseResultGraphs = caseEdgeGraph <> resultNodeGraph
+  -- rhsEdges = zip patRhsConnected 
+  -- (connectedRhss, unConnectedRhss) = partition fst rhsEdges
+
+  -- caseResultGraphs = mconcat
+  --   $ fmap (uncurry makeCaseResult) (fmap snd connectedRhss)
+
+  -- filteredRhsEdges = fmap snd unConnectedRhss
+
+makeCaseResult :: NodeName -> (Reference, NameAndPort) -> SyntaxGraph
+makeCaseResult resultIconName (rhsRef, caseValueNamedPort) = case rhsRef of
   Left _ -> mempty
   Right rhsPort -> syntaxGraphFromNodesEdges rhsNewIcons rhsNewEdges
     where
       rhsNewIcons = Set.singleton (Named resultIconName (mkEmbedder CaseResultNode))
-      rhsNewEdges = Set.singleton (makeSimpleEdge (rhsPort, justName resultIconName))
+      rhsNewEdges = Set.fromList [
+        makeSimpleEdge (rhsPort, justName resultIconName)
+        , makeNotConstraintEdge ( nameAndPort resultIconName (Port 1), caseValueNamedPort)
+        ]
 -- END END END END END evalCase
 
 -- BEGIN BEGIN BEGIN BEGIN BEGIN evalLambda 

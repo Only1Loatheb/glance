@@ -123,7 +123,7 @@ data SyntaxNode =
   | FunctionValueNode  -- Function definition (ie. lambda expression)
     String -- function name
     (Set NodeName)  -- Nodes inside the lambda
-  | CaseResultNode -- TODO remove caseResultNode
+  | CaseResultNode
   | CaseOrMultiIfNode CaseOrMultiIfTag Int
   | ListCompNode
   deriving (Show, Eq, Ord)
