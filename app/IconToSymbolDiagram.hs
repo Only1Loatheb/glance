@@ -97,7 +97,7 @@ inputPortSymbol = lw none $ fc lineColorValue $ circle (symbolSize * 0.5)
 
 resultPortSymbol :: SpecialBackend b n
   => SpecialQDiagram b n
-resultPortSymbol = memptyWithPosition -- valueSymbol
+resultPortSymbol = valueSymbol -- memptyWithPosition
   
 valueSymbol ::SpecialBackend b n => SpecialQDiagram b n
 valueSymbol = fc color $ lw none $ rotateBy (1/2) $ eqTriangle (5/4 * symbolSize) where -- cant be to big to fit in diagrams
@@ -111,38 +111,70 @@ multiIfVarSymbol color = alignB coloredSymbol  where
     coloredSymbol
       = lwG defaultLineWidth $ lc color (strokeLine symbol)
 
-lambdaBodySymbol :: SpecialBackend b n
-  => String
-  -> SpecialQDiagram b n
-lambdaBodySymbol
-  = coloredTextBox (regionPerimC colorScheme)
-
-inMultiIfConstBox :: SpecialBackend b n
-  => SpecialQDiagram b n -> SpecialQDiagram b n
-inMultiIfConstBox = generalInConstBox (boolC colorScheme)
-
-inCaseConstBox :: SpecialBackend b n
-  => SpecialQDiagram b n -> SpecialQDiagram b n
-inCaseConstBox = generalInConstBox (caseRhsC colorScheme)
-
-generalInConstBox :: SpecialBackend b n
+inNoteFrame :: SpecialBackend b n
   => Colour Double
   -> SpecialQDiagram b n
   -> SpecialQDiagram b n
-generalInConstBox borderColor diagram
-  = centerXY diagram <> coloredBox where
+inNoteFrame borderColor diagram
+  = centerXY diagram <> coloredFrame where
+  
+    boxHeight = boxPadding + height diagram
+    boxWidth = boxPadding + width diagram
+    cornerSize = letterHeight / 2
+    notCornerHeight = boxHeight - cornerSize 
+    frameWidth = boxWidth + 2 * cornerSize
+  
+    offsets = [
+      frameWidth *^ unitX
+      , notCornerHeight *^ unitY
+      , cornerSize *^ (-unitX + unitY)
+      , cornerSize *^ (-unitY)
+      , cornerSize *^ unitX
+      , cornerSize *^ (-unitX + unitY)
+      , (boxWidth + cornerSize) *^ (-unitX)
+      , boxHeight *^ (-unitY)
+      ]
+  
+    decisionFrame = centerXY $ strokeLoop $  closeLine $ fromOffsets offsets
+  
+    coloredFrame = lwG (defaultLineWidth/2) $  lc borderColor decisionFrame
+
+lambdaBodySymbol :: SpecialBackend b n
+  => String
+  -> SpecialQDiagram b n
+lambdaBodySymbol t = inNoteFrame borderColor textBox where
+  borderColor = regionPerimC colorScheme
+  textBox = coloredTextBox borderColor t 
+
+inMultiIfDecisionFrame :: SpecialBackend b n
+  => SpecialQDiagram b n -> SpecialQDiagram b n
+inMultiIfDecisionFrame = inDecisionFrame (boolC colorScheme)
+
+inCaseDecisionFrame :: SpecialBackend b n
+  => SpecialQDiagram b n -> SpecialQDiagram b n
+inCaseDecisionFrame = inDecisionFrame (caseRhsC colorScheme)
+
+inDecisionFrame :: SpecialBackend b n
+  => Colour Double
+  -> SpecialQDiagram b n
+  -> SpecialQDiagram b n
+inDecisionFrame borderColor diagram
+  = centerXY diagram <> coloredFrame where
     boxHeight = boxPadding + height diagram
     halfBoxHeight = boxHeight / 2
     boxWidth = boxPadding + width diagram
 
-    line = hrule boxWidth
-    triangleOfssets = [halfBoxHeight *^ (unitY+unitX), halfBoxHeight *^ (unitY-unitX)]
-    triangleToRight = centerY $ fromOffsets triangleOfssets
+    topRightOffsets = [
+      halfBoxHeight *^ (unitY+unitX)
+      , halfBoxHeight *^ (unitY-unitX)
+      , boxWidth *^ (-unitX)
+      ]
+    bottomLeftOffsets = map negate topRightOffsets
+    offsets = topRightOffsets ++ bottomLeftOffsets
 
-    topAndBottopLines = centerY $ vsep boxHeight [line, line]
-    sideArrows = centerX $ hsep boxWidth [reflectX triangleToRight, triangleToRight]
+    decisionFrame = centerXY $ strokeLoop $  closeLine $ fromOffsets offsets
 
-    coloredBox = lwG defaultLineWidth $  lc borderColor (topAndBottopLines <> sideArrows)
+    coloredFrame = lwG defaultLineWidth $  lc borderColor decisionFrame
 
 boxForDiagram :: SpecialBackend b n
   => SpecialQDiagram b n
@@ -177,12 +209,17 @@ makePort x = named x mempty
 -- Note, the version of makePort below seems to have a different type.
 --makePort x = textBox (show x) # fc green # named x
 
-makeQualifiedPort :: SpecialBackend b n =>
-  Port -> NodeName -> SpecialQDiagram b n
-makeQualifiedPort port name = portAndSymbol where
+makeQualifiedPort :: SpecialBackend b n 
+  =>  Port -> NodeName -> SpecialQDiagram b n
+makeQualifiedPort = makeQualifiedPort' inputPortSymbol resultPortSymbol
+
+makeQualifiedPort' :: SpecialBackend b n => 
+                        SpecialQDiagram b n
+                        -> SpecialQDiagram b n -> Port -> NodeName -> SpecialQDiagram b n
+makeQualifiedPort' inputSymbol resultSymbol port name = portAndSymbol where
   namedPort = name .>> (makePort port)
   portAndSymbol = namedPort <> symbol
-  symbol = if isInputPort port then inputPortSymbol else resultPortSymbol
+  symbol = if isInputPort port then inputSymbol else resultSymbol
 
 -- Don't display " tempvar" from SimpSyntaxToSyntaxGraph.hs/matchesToCase
 makeLabelledPort :: SpecialBackend b n =>
@@ -418,7 +455,7 @@ nestedMultiIfDia :: SpecialBackend b n =>
   -> CaseOrMultiIfTag
   -> TransformableDia b n
 nestedMultiIfDia iconInfo
-  = generalNestedMultiIf iconInfo lineColorValue inMultiIfConstBox
+  = generalNestedMultiIf iconInfo lineColorValue inMultiIfDecisionFrame
 
 nestedCaseDia :: SpecialBackend b n
   => IconInfo
@@ -426,7 +463,7 @@ nestedCaseDia :: SpecialBackend b n
   -> CaseOrMultiIfTag
   -> TransformableDia b n
 nestedCaseDia iconInfo
-  = generalNestedMultiIf iconInfo (patternC colorScheme) inCaseConstBox
+  = generalNestedMultiIf iconInfo (patternC colorScheme) inCaseDecisionFrame
 
 -- | generalNestedMultiIf port layout:
 -- 0 -> top
@@ -497,8 +534,8 @@ functionDefDia ::  SpecialBackend b n
 functionDefDia functionName (TransformParams name _level)
   = named name finalDiagram where
   lambdaSymbol = lambdaBodySymbol functionName
-  inputDiagram = makeQualifiedPort InputPortConst name
-  outputDiagram = makeResultDiagram name
+  inputDiagram = makeQualifiedPort' memptyWithPosition memptyWithPosition InputPortConst name
+  outputDiagram = makeQualifiedPort' memptyWithPosition memptyWithPosition ResultPortConst name
   finalDiagram = vcat [inputDiagram, lambdaSymbol, outputDiagram]
 -- Done to prevent this:
 -- glance-test: circleDiameter too small: 0.0
