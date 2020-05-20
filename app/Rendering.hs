@@ -119,7 +119,7 @@ drawLambdaRegions iconInfo placedNodes
     -- Also draw the region around the icon the lambda is in.
     drawRegion :: Set.Set NodeName -> NamedIcon -> SpecialQDiagram b Double
     drawRegion parentNames icon = case icon of
-      Named lambdaName lambdaIcon@(FunctionDefIcon _ enclosedNames)
+      Named lambdaName lambdaIcon@(FunctionDefIcon _ enclosedNames _)
         -> lambdaRegionToDiagram enclosed lambdaName where
             enclosed = findDia <$> (lambdaName : Set.toList (parentNames <> enclosedNames))
       Named parentName (NestedApply _ headIcon icons)

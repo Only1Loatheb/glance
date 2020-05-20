@@ -29,7 +29,6 @@ import StringSymbols(
   , unboxedTupleConstructorStr
   , tempVarPrefix
   , otherwiseExpStr
-  , lambdaSymbolStr
   , negateSymbolStr
   , enumFromStr
   , enumFromToStr
@@ -67,7 +66,7 @@ data SimpExp l =
     { lSeLambda  :: l
     , patAplications :: [SimpPat l]
     , bodyExpresion :: SimpExp l
-    , nameStr :: String}
+    , laNameStr :: (Maybe String)}
   | SeLet
     { lSeLet  :: l
     , declarations :: [SimpDecl l]
@@ -229,7 +228,7 @@ matchToSimpDecl (Exts.Match l name patterns rhs maybeWhereBinds)
     (SeLambda l
      (fmap hsPatToSimpPat patterns)
      (whereToLet l rhs maybeWhereBinds)
-     (nameToString name))
+     (Just $ nameToString name))
 matchToSimpDecl m = error $ "Unsupported syntax in matchToSimpDecl: " <> show m
 
 -- Only used by matchesToCase
@@ -395,7 +394,7 @@ desugarListComp _ = error "Unsupported syntax in hsQStmtsToSimpStmts'"
                             
 -- http://hackage.haskell.org/package/haskell-src-exts-1.23.0/docs/Language-Haskell-Exts-Syntax.html#g:8
 hsExpToSimpExp :: Show a => Exts.Exp a -> SimpExp a
-hsExpToSimpExp x = simplifyExp $ case x of
+hsExpToSimpExp x = {- --TODO fix simplifyExp $ -} case x of
   Exts.Var l n -> SeName l (qNameToString n)
   Exts.Con l n -> SeName l (qNameToString n)
   Exts.Lit l n -> SeLit l n
@@ -404,7 +403,7 @@ hsExpToSimpExp x = simplifyExp $ case x of
   Exts.App l f arg -> SeApp l (hsExpToSimpExp f) (hsExpToSimpExp arg)
   Exts.NegApp l e -> hsExpToSimpExp $ Exts.App l (makeVarExp l negateSymbolStr) e
   Exts.Lambda l patterns e
-    -> SeLambda l (fmap hsPatToSimpPat patterns) (hsExpToSimpExp e) lambdaSymbolStr
+    -> SeLambda l (fmap hsPatToSimpPat patterns) (hsExpToSimpExp e) Nothing
   Exts.Let l bs e -> SeLet l (hsBindsToDecls bs) (hsExpToSimpExp e)
   Exts.If l e1 e2 e3
     -> ifToGuard l (hsExpToSimpExp e1) (hsExpToSimpExp e2) (hsExpToSimpExp e3)

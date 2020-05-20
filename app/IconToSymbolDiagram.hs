@@ -46,6 +46,7 @@ import PortConstants(
   )
 import StringSymbols(
   ifConditionConst
+  , lambdaSymbolStr
   , tempVarPrefix
   , patternSubscribedValueStr
   )
@@ -142,11 +143,14 @@ inNoteFrame borderColor diagram
     coloredFrame = lwG (defaultLineWidth/2) $  lc borderColor decisionFrame
 
 lambdaBodySymbol :: SpecialBackend b n
-  => String
+  => Maybe String
   -> SpecialQDiagram b n
 lambdaBodySymbol t = inNoteFrame borderColor textBox where
+  label = case t of 
+    Nothing -> lambdaSymbolStr
+    Just s -> s
   borderColor = regionPerimC colorScheme
-  textBox = coloredTextBox (textBoxTextC colorScheme) t 
+  textBox = coloredTextBox (textBoxTextC colorScheme) label
 
 inMultiIfDecisionFrame :: SpecialBackend b n
   => SpecialQDiagram b n -> SpecialQDiagram b n
@@ -272,7 +276,7 @@ iconToDiagram iconInfo icon = case icon of
   CaseIcon n -> nestedCaseDia iconInfo (replicate (1 + (2 * n)) Nothing) CaseTag
   CaseResultIcon -> identDiaFunc resultPortSymbol
   FunctionArgIcon argumentNames -> functionArgDia argumentNames
-  FunctionDefIcon (Labeled _ str) _ -> functionDefDia str 
+  FunctionDefIcon maybeFname _ _-> functionDefDia maybeFname 
   NestedApply flavor headIcon args
     -> nestedApplyDia
        iconInfo
@@ -531,7 +535,7 @@ functionArgDia argumentNames (TransformParams name _level)
   finalDiagram = combinedArgumetPort
 
 functionDefDia ::  SpecialBackend b n
-  => String 
+  => Maybe String 
   -> TransformableDia b n
 functionDefDia functionName (TransformParams name _level)
   = named name finalDiagram where

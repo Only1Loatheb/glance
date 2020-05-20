@@ -72,8 +72,9 @@ data Icon = TextBoxIcon String
   | FunctionArgIcon
     [String]  -- Parameter labels
   | FunctionDefIcon
-    (Labeled (Maybe NodeName))  -- Function body expression
+    (Maybe String)  -- Function body expression
     (Set NodeName)  -- Nodes inside the lambda
+    (Maybe NodeName) -- embeded body node
   | CaseIcon Int
   | CaseResultIcon
   | BindTextBoxIcon String
@@ -121,7 +122,7 @@ data SyntaxNode =
   | FunctionArgNode
     [String]  -- Parameter labels
   | FunctionValueNode  -- Function definition (ie. lambda expression)
-    String -- function name
+    (Maybe String) -- function name
     (Set NodeName)  -- Nodes inside the lambda
   | CaseResultNode
   | CaseOrMultiIfNode CaseOrMultiIfTag Int

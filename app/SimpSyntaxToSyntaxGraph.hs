@@ -518,7 +518,7 @@ evalLambda :: Show l
   -> EvalContext
   -> [SimpPat l]
   -> SimpExp l
-  -> String
+  -> Maybe String
   -> State IDState (SyntaxGraph, NameAndPort)
 evalLambda _ context argPatterns expr functionName = do
   lambdaName <- getUniqueName
@@ -529,13 +529,15 @@ evalLambda _ context argPatterns expr functionName = do
     rhsContext = Set.union argPatternStrings context
   GraphAndRef rhsRawGraph rhsRef <- evalExp rhsContext expr
   let
-    argPatternVals = fmap fst argPatternValsWithAsNames
     argNode = makeLambdaArgumentNode argPatternValsWithAsNames
     lambdaNode = makeLambdaNode combinedGraph functionName [lambdaName, argNodeName]
     lambdaPorts = map (nameAndPort argNodeName) $ argumentPorts lambdaNode
+
+    argPatternVals = fmap fst argPatternValsWithAsNames
+    (outputNameAndPort,isOutputStraightFromInput) = getOutputNameAndPort rhsRef argNodeName argPatternVals lambdaPorts
+  
     argPatternGraph = mconcat $ fmap graphAndRefToGraph argPatternVals
 
-    outputNameAndPort = getOutputNameAndPort rhsRef argNodeName argPatternVals lambdaPorts
     lambdaValueEdge = makeSimpleEdge (outputNameAndPort, nameAndPort lambdaName (inputPort lambdaNode))
     -- TODO move adding drawing rank edge after graph simplification and collapsing
     lambdaArgAboveValue = makeInvisibleEdge (justName argNodeName, justName lambdaName)
@@ -555,29 +557,29 @@ evalLambda _ context argPatterns expr functionName = do
                     $ (asBindGraph <> rhsRawGraph <> argPatternGraph <> lambdaIconAndOutputGraph)
 
     resultNameAndPort = nameAndPort lambdaName (resultPort lambdaNode)
-  pure (combinedGraph, resultNameAndPort)
+  if isIdLambda isOutputStraightFromInput argPatterns functionName
+  then makeBox $ Set.elemAt 0 argPatternStrings
+  else pure (combinedGraph, resultNameAndPort)
   -- if functionName == "lambda"
   -- then return (error $ show $ makeEdges (asBindGraph <> rhsRawGraph <> argPatternGraph <> lambdaIconAndOutputGraph))
   -- else pure (combinedGraph, resultNameAndPort)
-
-    -- TODO Like evalPatBind, this edge should have an indicator that it is the
-    -- input to a argPattern.
-    -- makePatternEdgeInLambda creates the edges between the argPatterns and the parameter
-    -- ports.
+isIdLambda ::  Bool -> [SimpPat l] -> Maybe String -> Bool
+isIdLambda isOutputStraightFromInput argPatterns functionName
+  = isOutputStraightFromInput && length argPatterns == 1 && functionName == Nothing
 -- add test \x y = (y, f x)
 getOutputNameAndPort rhsRef argNodeName argPatternVals lambdaPorts = case rhsRef of
-  strRef@(Left _) -> inputStraightToAutput where 
+  strRef@(Left _) -> (inputStraightToAutput,True) where 
     maybeRefList = catMaybes $ zipWith (makeReferenceToArgument strRef) argPatternVals lambdaPorts
     returnPort = NameAndPort argNodeName Nothing
     inputStraightToAutput = fromMaybe returnPort $ listToMaybe maybeRefList
-  (Right np) -> np
+  (Right np) -> (np, False)
 
 makeReferenceToArgument :: Reference -> GraphAndRef -> NameAndPort  -> Maybe NameAndPort
 makeReferenceToArgument rhsRef (GraphAndRef _ ref) lamPort = if rhsRef == ref
       then Just lamPort
       else Nothing
 
-makeLambdaNode :: SyntaxGraph -> String -> [NodeName] -> SyntaxNode
+makeLambdaNode :: SyntaxGraph -> Maybe String -> [NodeName] -> SyntaxNode
 makeLambdaNode combinedGraph  functionName lambdaNames = node where
   allNodeNames = Set.map naName (sgNodes combinedGraph)
   enclosedNodeNames =  Set.difference allNodeNames (Set.fromList lambdaNames)

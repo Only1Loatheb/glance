@@ -37,7 +37,7 @@ applyPortAngle _isInput = 1/4 @@ turn
 nestedApplyPortAngle :: Floating n => Port -> Angle n
 nestedApplyPortAngle InputPortConst = 1/2 @@ turn -- input function
 nestedApplyPortAngle ResultPortConst = 3/4 @@ turn
-nestedApplyPortAngle _isInput = 1/8 @@ turn
+nestedApplyPortAngle _isInput = 3/16 @@ turn
 
 lambdaPortAngle :: Floating n => Port -> Angle n
 lambdaPortAngle InputPortConst = 1/4 @@ turn

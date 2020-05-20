@@ -86,11 +86,11 @@ functionArgIcon labels =
 
 functionDefIcon ::
   Set.Set (NodeName, Edge)  -- embedded icons
-  -> String -- name
+  -> Maybe String -- name
   -> Set.Set NodeName  -- body nodes
   -> Icon
-functionDefIcon embeddedNodes str =
-  FunctionDefIcon (Labeled embeddedBodyNode str)
+functionDefIcon embeddedNodes str bodyNodes=
+  FunctionDefIcon str bodyNodes embeddedBodyNode
   where
     dummyNode = FunctionValueNode str Set.empty
     embeddedBodyNode = makeArg embeddedNodes (inputPort dummyNode)

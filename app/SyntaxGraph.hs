@@ -403,6 +403,13 @@ evalPatBindHelper patRef rhsRef = case patRef of
       case rhsRef of
       (Left rhsStr) -> (mempty, Set.singleton (SgSink rhsStr patternValuePort), SMap.empty)
       (Right rhsPort) -> (Set.singleton (makeSimpleEdge (rhsPort, patternValuePort)), mempty, SMap.empty)
+
+makeBox :: String -> State IDState (SyntaxGraph, NameAndPort)
+makeBox str = do
+  name <- getUniqueName
+  let graph
+        = syntaxGraphFromNodes (Set.singleton (Named name (mkEmbedder (LiteralNode str))))
+  pure (graph, justName name)
 --------- move to SimpSyntaxToSyntaxGraph
 
 -- strToGraphRef is not in SyntaxNodeToIcon, since it is only used by evalQName.
@@ -502,13 +509,6 @@ makeEdgesCore egdeConstructor sinks bindings = (Set.fromList newSinks,Set.fromLi
           Right sourcePort -> Right $ egdeConstructor (sourcePort, destPort)
           Left newStr -> Left $ SgSink newStr destPort
         Nothing -> Left orig
-
-makeBox :: String -> State IDState (SyntaxGraph, NameAndPort)
-makeBox str = do
-  name <- getUniqueName
-  let graph
-        = syntaxGraphFromNodes (Set.singleton (Named name (mkEmbedder (LiteralNode str))))
-  pure (graph, justName name)
 
 patternName :: (GraphAndRef, Maybe String) -> String
 patternName (GraphAndRef _ ref, mStr) = fromMaybe
