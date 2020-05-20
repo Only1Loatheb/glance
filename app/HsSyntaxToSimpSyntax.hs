@@ -160,6 +160,7 @@ qOpToExp :: Exts.QOp l -> Exts.Exp l
 qOpToExp (Exts.QVarOp l n) = Exts.Var l n
 qOpToExp (Exts.QConOp l n) = Exts.Con l n
 
+-- nameToQname = nameToString . strToQName
 nameToString :: Exts.Name l -> String
 nameToString (Exts.Ident _ s) = s
 nameToString (Exts.Symbol _ s) = s
@@ -220,8 +221,16 @@ whereToLet l rhs maybeBinds = val
       Nothing -> rhsExp
       Just binds -> SeLet l (hsBindsToDecls binds) rhsExp
 
-matchToSimpDecl :: Show a => Exts.Match a -> SimpDecl a
-matchToSimpDecl (Exts.Match l name patterns rhs maybeWhereBinds)
+matchToDeclWPattern :: Show a => Exts.Match a -> SimpDecl a
+matchToDeclWPattern (Exts.Match l name [pat] rhs maybeWhereBinds)
+  = SdPatBind
+    l
+    (SpApp l (strToQName l (nameToString name)) [(hsPatToSimpPat pat)])
+    (whereToLet l rhs maybeWhereBinds)
+matchToDeclWPattern x = matchToDeclWLambda x
+
+matchToDeclWLambda :: Show a => Exts.Match a -> SimpDecl a
+matchToDeclWLambda (Exts.Match l name patterns rhs maybeWhereBinds)
   = SdPatBind
     l
     (SpVar l name)
@@ -229,7 +238,7 @@ matchToSimpDecl (Exts.Match l name patterns rhs maybeWhereBinds)
      (fmap hsPatToSimpPat patterns)
      (whereToLet l rhs maybeWhereBinds)
      (Just $ nameToString name))
-matchToSimpDecl m = error $ "Unsupported syntax in matchToSimpDecl: " <> show m
+matchToDeclWLambda m = error $ "Unsupported syntax in matchToDeclWLambda: " <> show m
 
 -- Only used by matchesToCase
 matchToAlt :: Show l => Exts.Match l -> Exts.Alt l
@@ -240,14 +249,11 @@ matchToAlt (Exts.Match l _ mtaPats rhs binds)
       [onePat] -> onePat
       _ -> Exts.PTuple l Exts.Boxed mtaPats
 matchToAlt match = error $ "Unsupported syntax in matchToAlt: " <> show match
-
-matchesToFunBind :: Show a => a -> [Exts.Match a] -> SimpDecl a
-matchesToFunBind l matches = matchToSimpDecl $ matchesToFunBind' l matches
   
-matchesToFunBind' :: Show a => a -> [Exts.Match a] -> Exts.Match a
-matchesToFunBind' l [] = error $ "Empty matches in matchesToFunBind."
-matchesToFunBind' l [match] = match 
-matchesToFunBind' l allMatches@(firstMatch : _) = multipleMatchesToCase l firstMatch allMatches
+matchesToFunBind :: Show a => a -> [Exts.Match a] -> SimpDecl a
+matchesToFunBind l [] = error $ "Empty matches in matchesToFunBind."
+matchesToFunBind l [match] = matchToDeclWPattern match 
+matchesToFunBind l allMatches@(firstMatch : _) = matchToDeclWLambda $ multipleMatchesToCase l firstMatch allMatches
 
 -- TODO combine srcLoc
 multipleMatchesToCase :: Show a => a -> Exts.Match a -> [Exts.Match a] -> Exts.Match a
