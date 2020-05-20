@@ -30,7 +30,13 @@ module StringSymbols
   , actionOverParameterizedType
   , patternSubscribedValueStr
   , fractionalSeparatorStr
+  , showLiteral
+  , nameToString
+  , qNameToString
+  , showSignlessLit
   ) where
+
+import qualified Language.Haskell.Exts as Exts
 
 fractionalSeparatorStr :: String
 fractionalSeparatorStr = "%"
@@ -131,3 +137,45 @@ actionOverParameterizedType = "fmap"
 
 patternSubscribedValueStr :: String
 patternSubscribedValueStr = "@"
+
+nameToString :: Exts.Name l -> String
+nameToString (Exts.Ident _ s) = s
+nameToString (Exts.Symbol _ s) = s
+
+qNameToString :: Show l => Exts.QName l -> String
+qNameToString qName = case qName of
+  Exts.Qual _ (Exts.ModuleName _ modName) name
+    -> modName ++ qualifiedSeparatorStr ++ nameToString name
+  Exts.UnQual _ name -> nameToString name
+  Exts.Special _ constructor -> case constructor of
+    Exts.UnitCon _ -> unitConstructorStr
+    Exts.ListCon _ -> listTypeConstructorStr
+    Exts.FunCon _ -> functionConstructor
+    Exts.TupleCon _ _ n -> nTupleString n
+    Exts.Cons _ -> listDataConstructorStr
+    -- unboxed singleton tuple constructor
+    Exts.UnboxedSingleCon _ -> unboxedTupleConstructorStr
+    -- Exts.ExprHole _ -> "_" -- TODO find out why it is not there
+    _ -> error $ "Unsupported syntax in qNameToSrting: " <> show qName
+
+showFracLiteral ::  Rational -> String
+showFracLiteral = concat . words . show
+
+-- TODO: Test the unboxed literals
+-- TODO: Print the Rational as a floating point.
+
+showLiteral :: Exts.Sign l -> Exts.Literal l -> String
+showLiteral (Exts.Signless _) lit = showSignlessLit lit
+showLiteral (Exts.Negative _) lit = negativeLiteralStr ++ showSignlessLit lit
+
+showSignlessLit :: Exts.Literal l -> String
+showSignlessLit (Exts.Int _ x _) = show x
+showSignlessLit (Exts.Char _ x _) = show x
+showSignlessLit (Exts.String _ x _) = show x
+showSignlessLit (Exts.Frac _ x _) = showFracLiteral x
+showSignlessLit (Exts.PrimInt _ x _) = show x
+showSignlessLit (Exts.PrimWord _ x _) = show x
+showSignlessLit (Exts.PrimFloat _ x _) = show x
+showSignlessLit (Exts.PrimDouble _ x _) = show x
+showSignlessLit (Exts.PrimChar _ x _) = show x
+showSignlessLit (Exts.PrimString _ x _) = show x

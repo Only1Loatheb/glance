@@ -40,6 +40,7 @@ import HsSyntaxToSimpSyntax(
   , SelectorAndVal(..)
   , pattern FunctionCompositionStr
   , SimpQStmt(..)
+  , simpPatNameStr
   )
 import           Types(
   NameAndPort(..)
@@ -107,6 +108,8 @@ import StringSymbols(
   , unusedArgumentStr
   , defaultPatternNameStr
   , fractionalSeparatorStr
+  , showLiteral
+  , showSignlessLit
   )
 
 {-# ANN module "HLint: ignore Use record patterns" #-}
@@ -120,6 +123,9 @@ import StringSymbols(
 -- The core functions and data types used in this module are in SyntaxNodeToIcon.
 -- The SyntaxNodeToIcon also contains most/all of the translation functions that
 -- do not use Language.Haskell.Exts.
+
+
+evalLit = makeBox . showSignlessLit
 
 evalExp :: Show l => EvalContext -> SimpExp l -> State IDState GraphAndRef
 evalExp c x = case x of
@@ -136,24 +142,6 @@ evalExp c x = case x of
 
 -- This is in SimpSyntaxToSyntaxGraph and not SimpSyntaxToSyntaxGraph core since currently it is only used
 -- by evalLit.
-makeLiteral :: (Show x) => x -> State IDState (SyntaxGraph, NameAndPort)
-makeLiteral = makeBox . show
-
-makeFracLiteral ::  Rational -> State IDState (SyntaxGraph, NameAndPort)
-makeFracLiteral = makeBox .	concat . words . show
-
-evalLit :: Exts.Literal l -> State IDState (SyntaxGraph, NameAndPort)
-evalLit (Exts.Int _ x _) = makeLiteral x
-evalLit (Exts.Char _ x _) = makeLiteral x
-evalLit (Exts.String _ x _) = makeLiteral x
-evalLit (Exts.Frac _ x _) = makeFracLiteral x
--- TODO: Test the unboxed literals
-evalLit (Exts.PrimInt _ x _) = makeLiteral x
-evalLit (Exts.PrimWord _ x _) = makeLiteral x
-evalLit (Exts.PrimFloat _ x _) = makeLiteral x
-evalLit (Exts.PrimDouble _ x _) = makeLiteral x
-evalLit (Exts.PrimChar _ x _) = makeLiteral x
-evalLit (Exts.PrimString _ x _) = makeLiteral x
 
 -- END evalLit
 
@@ -174,48 +162,29 @@ makePatternGraph c pat e = do
   pure (patGraphAndRef, rhsGraphAndRef)
 -- TODO use in listComp
 evalPatternApp :: Show l =>
-  Exts.QName l
+  String
   -> [SimpPat l]
   -> State IDState (SyntaxGraph, NameAndPort)
-evalPatternApp name patterns = case patterns of
+evalPatternApp constructorName patterns = case patterns of
   [] -> makeBox constructorName
   _ ->  do
     patName <- getUniqueName
     evaledPatterns <- mapM evalPattern patterns
     pure $ makeNestedPatternGraph patName constructorName evaledPatterns
-  where
-    constructorName = qNameToString name
 
 -- END evalPatternApp
 
--- BEGIN evalPatternLit
-showLiteral :: Exts.Literal l -> String
-showLiteral (Exts.Int _ x _) = show x
-showLiteral (Exts.Char _ x _) = show x
-showLiteral (Exts.String _ x _) = show x
--- TODO: Print the Rational as a floating point.
-showLiteral (Exts.Frac _ x _) = show x
--- TODO: Test the unboxed literals
-showLiteral (Exts.PrimInt _ x _) = show x
-showLiteral (Exts.PrimWord _ x _) = show x
-showLiteral (Exts.PrimFloat _ x _) = show x
-showLiteral (Exts.PrimDouble _ x _) = show x
-showLiteral (Exts.PrimChar _ x _) = show x
-showLiteral (Exts.PrimString _ x _) = show x
 
 evalPatternLit ::
   Exts.Sign l -> Exts.Literal l -> State IDState (SyntaxGraph, NameAndPort)
-evalPatternLit sign l = case sign of
-  Exts.Signless _ -> evalLit l
-  Exts.Negative _ -> makeBox (negativeLiteralStr ++ showLiteral l)
+evalPatternLit sign lit = makeBox $ showLiteral sign lit
 -- END evalPatternLit
 
 evalPAsPat :: Show l =>
-  Exts.Name l -> SimpPat l -> State IDState (GraphAndRef, Maybe String)
-evalPAsPat n p = do
+  String -> SimpPat l -> State IDState (GraphAndRef, Maybe String)
+evalPAsPat outerName p = do
   (GraphAndRef evaledPatGraph evaledPatRef, mInnerName) <- evalPattern p
   let
-    outerName = nameToString n
     asBindGraph = makeAsBindGraph (Left outerName) [mInnerName]
   pure (GraphAndRef (asBindGraph <> evaledPatGraph) evaledPatRef
        , Just outerName)
@@ -223,18 +192,14 @@ evalPAsPat n p = do
 -- TODO add PatternValuePortConst to all
 evalPattern :: Show l => SimpPat l -> State IDState (GraphAndRef, Maybe String)
 evalPattern p = case p of
-  SpVar _ n -> pure (GraphAndRef mempty (Left $ nameToString n), Nothing)
+  SpVar _ _ -> pure (GraphAndRef mempty (Left $ simpPatNameStr p ), Nothing)
   SpLit _ sign lit -> makePatternResult $ evalPatternLit sign lit
-  SpApp _ name patterns -> makePatternResult $ evalPatternApp name patterns
-  SpAsPat _ name pat -> evalPAsPat name pat
+  SpApp _ _ patterns -> makePatternResult $ evalPatternApp (simpPatNameStr p) patterns
+  SpAsPat _ _ pat -> evalPAsPat (simpPatNameStr p) pat
   SpWildCard _ -> makePatternResult $ makeBox patternWildCardStr
   -- _ -> error ("evalPattern todo: " <> show p)
 
 -- END evalPattern
-
--- BEGIN evalQName
-
--- END evalQName
 
 -- BEGIN apply and compose helper functions
 
@@ -409,10 +374,7 @@ evalAlt c (SimpAlt pat rhs) = do
     -- the rhsRef refers to a source in the pattern.
     patRhsAreConnected
       = (rhsRef /= lookedUpRhsRef)
-        -- || 
-        -- ( length (sgEdges grWithEdges)
-        --   >
-        --   (length (sgEdges rhsGraph) + length (sgEdges patGraph)))
+        -- || ( length (sgEdges grWithEdges) > (length (sgEdges rhsGraph) + length (sgEdges patGraph)))
   pure (patRhsAreConnected
        , deleteBindings grWithEdges
        , patRef
@@ -492,13 +454,6 @@ makeRhsGraph patRhsConnected rhsRefs caseIconName resultIconNames = caseResultGr
   resultNodeGraph = mconcat $ zipWith  makeCaseResult resultIconNames connectedRhss
 
   caseResultGraphs = caseEdgeGraph <> resultNodeGraph
-  -- rhsEdges = zip patRhsConnected 
-  -- (connectedRhss, unConnectedRhss) = partition fst rhsEdges
-
-  -- caseResultGraphs = mconcat
-  --   $ fmap (uncurry makeCaseResult) (fmap snd connectedRhss)
-
-  -- filteredRhsEdges = fmap snd unConnectedRhss
 
 makeCaseResult :: NodeName -> (Reference, NameAndPort) -> SyntaxGraph
 makeCaseResult resultIconName (rhsRef, caseValueNamedPort) = case rhsRef of
