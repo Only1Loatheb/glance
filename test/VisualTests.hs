@@ -402,7 +402,8 @@ testDecls = mconcat [
   , nestedTests
   , doTests
   , caseTests
-  , lambdaTests
+  , 
+  lambdaTests
   , guardTests
   , patternTests
   , specialTests
@@ -431,7 +432,7 @@ translateStringToDrawing s = do
     fglGraph = syntaxGraphToFglGraph syntaxGraph
   let
     printAction = do
-      print decl
+      print $ "extsDecl = " ++ show decl
       putStr "\nSyntax Graph:\n"
       putStrLn $ prettyShowSyntaxGraph syntaxGraph
       putStr "\nFGL Graph:\n"

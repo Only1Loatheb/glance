@@ -38,11 +38,10 @@ import GHC.Stack(HasCallStack)
 --import Data.GraphViz.Commands
 
 import Icons(findMaybeIconFromName)
-import IconToSymbolDiagram  ( iconToDiagram
-                , lambdaRegionToDiagram
-                , getArrowShadowOpts
-                , getArrowBaseOpts
-                )
+import IconToSymbolDiagram  ( 
+  getArrowShadowOpts
+  , getArrowBaseOpts
+  )
 import EdgeAngles(getPortAngle)
 
 import SyntaxNodeToIcon(nodeToIcon)
@@ -147,15 +146,15 @@ getArrowsOpts
     node0NameAndPort = fromMaybeError
                 ("makeEdge: node0 is not in graph. node0: " ++ show node0)
                 $ ING.lab graph node0
-    node1NameAndPort = fromMaybeError
+    node1NameAndPort@(Named _ iconTo) = fromMaybeError
                 ("makeEdge: node1 is not in graph. node1: " ++ show node1)
                 $ ING.lab graph node1
 
     angleFrom = findPortAngles iconInfo node0NameAndPort fromNamePort
     angleTo = findPortAngles iconInfo node1NameAndPort toNamePort
 
-    arrowShadowOpts = getArrowShadowOpts (pointFrom, pointTo)  (angleFrom, angleTo) 
-    arrowBaseOpts = getArrowBaseOpts fromNamePort (pointFrom, pointTo)  (angleFrom, angleTo) 
+    arrowShadowOpts = getArrowShadowOpts (pointFrom, pointTo)  (angleFrom, angleTo) iconTo
+    arrowBaseOpts = getArrowBaseOpts fromNamePort (pointFrom, pointTo)  (angleFrom, angleTo) iconTo
 
 
 

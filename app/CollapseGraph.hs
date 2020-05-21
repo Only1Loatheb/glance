@@ -16,7 +16,11 @@ import qualified Data.Set as Set
 import Data.Tuple(swap)
 import GHC.Stack(HasCallStack)
 
-import PortConstants(pattern ResultPortConst, pattern InputPortConst, pattern PatternValuePortConst)
+import PortConstants(
+  pattern ResultPortConst
+  , pattern InputPortConst
+  , pattern PatternValuePortConst
+  , isInputPort)
 import Types(
   SyntaxNode(..)
   , IngSyntaxGraph

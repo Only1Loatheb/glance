@@ -172,6 +172,7 @@ simpPatNameStr (SpVar _ n)     = nameToString n
 simpPatNameStr (SpLit _ sign lit) = showLiteral sign lit
 simpPatNameStr (SpApp _ qn _)  = qNameToString qn
 simpPatNameStr (SpAsPat _ n _) = nameToString n
+simpPatNameStr _ = error "unsupported pattern"
 
 simpExpToRhs :: Show l => l -> SimpExp l -> Exts.Rhs l
 simpExpToRhs l e = Exts.UnGuardedRhs l (simpExpToHsExp e)
@@ -206,13 +207,6 @@ whereToLet l rhs maybeBinds = val
       Nothing -> rhsExp
       Just binds -> SeLet l (hsBindsToDecls binds) rhsExp
 
-matchToDeclWPattern :: Show a => Exts.Match a -> SimpDecl a
-matchToDeclWPattern (Exts.Match l name patterns rhs maybeWhereBinds)
-  = SdPatBind l (SpApp l (nameToQname l name) simpPats) value where
-    value = whereToLet l rhs maybeWhereBinds
-    simpPats = fmap hsPatToSimpPat patterns
-matchToDeclWPattern m = error $ "Unsupported syntax in matchToDeclWPattern: " <> show m
-
 matchToDeclWLambda :: Show a => Exts.Match a -> SimpDecl a
 matchToDeclWLambda (Exts.Match l name patterns rhs maybeWhereBinds)
   = SdPatBind l (SpVar l name) lambda where
@@ -232,10 +226,10 @@ matchToAlt (Exts.Match l _ mtaPats rhs binds)
       _ -> Exts.PTuple l Exts.Boxed mtaPats
 matchToAlt match = error $ "Unsupported syntax in matchToAlt: " <> show match
   
-matchesToFunBind :: Show a => a -> [Exts.Match a] -> SimpDecl a
+matchesToFunBind :: Show a => a -> [Exts.Match a] -> Exts.Match a
 matchesToFunBind l [] = error $ "Empty matches in matchesToFunBind."
-matchesToFunBind l [match] = matchToDeclWPattern match 
-matchesToFunBind l allMatches@(firstMatch : _) = matchToDeclWLambda $ multipleMatchesToCase l firstMatch allMatches
+matchesToFunBind l [match] = match 
+matchesToFunBind l allMatches@(firstMatch : _) = multipleMatchesToCase l firstMatch allMatches
 
 -- TODO combine srcLoc
 multipleMatchesToCase :: Show a => a -> Exts.Match a -> [Exts.Match a] -> Exts.Match a
@@ -257,7 +251,7 @@ multipleMatchesToCase l _ _ = error $ "Unsupported syntax in matchesToFunBind:" 
 hsDeclToSimpDecl :: Show a => Exts.Decl a -> SimpDecl a
 hsDeclToSimpDecl decl = case decl of
   Exts.TypeSig l names typeForNames -> SdTypeSig l names typeForNames
-  Exts.FunBind l matches -> matchesToFunBind l matches
+  Exts.FunBind l matches -> matchToDeclWLambda $ matchesToFunBind l matches
   Exts.PatBind l pat rhs maybeBinds -> SdPatBind l (hsPatToSimpPat pat) expr
   -- TODO Add a visual representation of data declarations
     where
@@ -391,7 +385,7 @@ desugarListComp _ = error "Unsupported syntax in hsQStmtsToSimpStmts'"
                             
 -- http://hackage.haskell.org/package/haskell-src-exts-1.23.0/docs/Language-Haskell-Exts-Syntax.html#g:8
 hsExpToSimpExp :: Show a => Exts.Exp a -> SimpExp a
-hsExpToSimpExp x = {- --TODO fix simplifyExp $ -} case x of
+hsExpToSimpExp x = {- --TODO fix -}simplifyExp $ case x of
   Exts.Var l n -> SeName l (qNameToString n)
   Exts.Con l n -> SeName l (qNameToString n)
   Exts.Lit l n -> SeLit l n

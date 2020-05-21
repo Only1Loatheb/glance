@@ -78,6 +78,10 @@ portSeparationSize = 0.3
 lambdaRegionPadding :: (Fractional a) => a
 lambdaRegionPadding = 2 * letterHeight + defaultLineWidth
 
+
+patternsUpTranslation :: Num a => V2 a
+patternsUpTranslation = V2 0 0
+
 defaultOpacity :: (Fractional a) => a
 defaultOpacity = 0.4
 
@@ -96,12 +100,15 @@ lineColorValue = lineC colorScheme
 
 -- BEGIN diagram basic symbols --
 inputPortSymbol :: SpecialBackend b n => SpecialQDiagram b n
-inputPortSymbol = lw none $ fc lineColorValue $ circle (symbolSize * 0.5)
+inputPortSymbol = memptyWithPosition 
 
 resultPortSymbol :: SpecialBackend b n
   => SpecialQDiagram b n
-resultPortSymbol = valueSymbol -- memptyWithPosition
+resultPortSymbol = memptyWithPosition -- valueSymbol
   
+inputSymbol :: SpecialBackend b n => SpecialQDiagram b n
+inputSymbol = lw none $ fc lineColorValue $ circle (symbolSize * 0.5)
+
 valueSymbol ::SpecialBackend b n => SpecialQDiagram b n
 valueSymbol = fc color $ lw none $ rotateBy (1/2) $ eqTriangle (5/4 * symbolSize) where -- cant be to big to fit in diagrams
   color = caseRhsC colorScheme
@@ -145,12 +152,12 @@ inNoteFrame borderColor diagram
 lambdaBodySymbol :: SpecialBackend b n
   => Maybe String
   -> SpecialQDiagram b n
-lambdaBodySymbol t = inNoteFrame borderColor textBox where
-  label = case t of 
-    Nothing -> lambdaSymbolStr
-    Just s -> s
+lambdaBodySymbol (Just label) = inNoteFrame borderColor textBox where
   borderColor = regionPerimC colorScheme
   textBox = coloredTextBox (textBoxTextC colorScheme) label
+lambdaBodySymbol Nothing = memptyWithPosition
+
+
 
 inMultiIfDecisionFrame :: SpecialBackend b n
   => SpecialQDiagram b n -> SpecialQDiagram b n
@@ -166,7 +173,7 @@ inDecisionFrame :: SpecialBackend b n
   -> SpecialQDiagram b n
 inDecisionFrame borderColor diagram
   = centerXY diagram <> coloredFrame where
-    boxHeight = boxPadding + height diagram
+    boxHeight = boxPadding + max (height diagram) letterHeight
     halfBoxHeight = boxHeight / 2
     boxWidth = boxPadding + width diagram
 
@@ -190,14 +197,14 @@ inFrame :: SpecialBackend b n
   -> SpecialQDiagram b n
 inFrame diagram borderColor diagramWidth diagramHeight
   = centerXY diagram <> coloredArgBox where
-    rectWidth = max (diagramWidth + boxPadding) letterHeight
-    rectHeight = max (diagramHeight + boxPadding) letterHeight
+    rectWidth = boxPadding + max diagramWidth letterHeight
+    rectHeight = boxPadding + max diagramHeight letterHeight
     argBox = rect rectWidth rectHeight
     coloredArgBox = lwG defaultLineWidth $ lcA (withOpacity borderColor defaultOpacity) argBox
 
 -- BEGIN Diagram helper functions --
 memptyWithPosition :: SpecialBackend b n => SpecialQDiagram b n
-memptyWithPosition = strutR2 (V2 0 0)
+memptyWithPosition = strutR2 (V2 symbolSize 0)
 -- | Names the diagram and puts all sub-names in the namespace of the top level
 -- name.
 nameDiagram :: SpecialNum n =>
@@ -299,8 +306,8 @@ bindDiagram :: SpecialBackend b n =>
   String -> TransformableDia b n
 bindDiagram t transformParams = finalDia where
   bindDia = nameDiagram (tpName transformParams) inputPortSymbol 
-  bindText = coloredTextBox (bindTextBoxTextC colorScheme) t
-  finalDia = bindDia === bindText
+  -- bindText = coloredTextBox (bindTextBoxTextC colorScheme) t
+  finalDia = bindDia -- === bindText
 
 literalDiagram :: SpecialBackend b n =>
   String -> TransformableDia b n
@@ -368,13 +375,15 @@ nestedPatternAppDia
 
     constructorDiagram = alignB $ makeInputDiagram iconInfo tp maybeConstructorName name
 
-    patternCases::[SpecialQDiagram b n]
-    patternCases = alignB $ zipWith (makeAppInnerIcon iconInfo tp False) resultPortsConst subIcons
-    patternDiagram = hsep portSeparationSize $  constructorDiagram : subscribedValueDia : patternCases
+    patterns::[SpecialQDiagram b n]
+    patterns = alignB $ zipWith (makeAppInnerIcon iconInfo tp False) resultPortsConst subIcons
+    patternDiagram = hsep portSeparationSize $  constructorDiagram : subscribedValueDia : patterns
 
     patternDiagramInBox = inFrame patternDiagram borderColor (width patternDiagram) (height patternDiagram)
 
     finalDia = patternDiagramInBox  === resultDia
+
+
 
 
 
@@ -542,7 +551,7 @@ functionDefDia functionName (TransformParams name _level)
   lambdaSymbol = lambdaBodySymbol functionName
   inputDiagram = makeQualifiedPort' memptyWithPosition memptyWithPosition InputPortConst name
   outputDiagram = makeQualifiedPort' memptyWithPosition memptyWithPosition ResultPortConst name
-  finalDiagram = vcat [inputDiagram, lambdaSymbol, outputDiagram]
+  finalDiagram = lambdaSymbol ||| (inputDiagram === outputDiagram)
 -- Done to prevent this:
 -- glance-test: circleDiameter too small: 0.0
 -- CallStack (from HasCallStack):
@@ -579,23 +588,25 @@ lambdaRegionSymbol enclosedDiagarms name
 getArrowShadowOpts :: (RealFloat n, Typeable n)
   => (Maybe (Point V2 n),Maybe (Point V2 n))
   -> (Maybe (Angle n), Maybe (Angle n))
+  -> Icon
   -> ArrowOpts n
-getArrowShadowOpts maybePoints maybeAngles =
+getArrowShadowOpts maybePoints maybeAngles icon=
   shaftStyle %~ (lwG arrowShadowWidth .
                 lcA $ withOpacity shaftColor defaultShadowOpacity)
   $ headStyle %~ fc shaftColor
-  $ getArrowOpts maybePoints maybeAngles where
+  $ getArrowOpts maybePoints maybeAngles icon where
     shaftColor = backgroundC colorScheme
 
 getArrowBaseOpts :: (RealFloat n, Typeable n)
   => NameAndPort
   -> (Maybe (Point V2 n),Maybe (Point V2 n))
   -> (Maybe (Angle n), Maybe (Angle n))
+  -> Icon
   -> ArrowOpts n
-getArrowBaseOpts (NameAndPort (NodeName nodeNum) mPort) maybePoints maybeAngles
+getArrowBaseOpts (NameAndPort (NodeName nodeNum) mPort) maybePoints maybeAngles icon
   = shaftStyle %~ (lwG arrowLineWidth . lc shaftColor)
   $ headStyle %~ fc shaftColor
-  $ getArrowOpts maybePoints maybeAngles where
+  $ getArrowOpts maybePoints maybeAngles icon where
     edgeColors = edgeListC colorScheme
     Port portNum = fromMaybe (Port 0) mPort
     namePortHash = mod (portNum + (503 * nodeNum)) (length edgeColors)
@@ -604,23 +615,25 @@ getArrowBaseOpts (NameAndPort (NodeName nodeNum) mPort) maybePoints maybeAngles
 getArrowOpts :: (RealFloat n, Typeable n)
   => (Maybe (Point V2 n),Maybe (Point V2 n))
   -> (Maybe (Angle n), Maybe (Angle n))
+  -> Icon
   -> ArrowOpts n
-getArrowOpts
-  (formMaybePoint, toMaybePoint)
-  (anglesFrom,anglesTo)
-  = arrowOptions
-  where
+getArrowOpts (formMaybePoint, toMaybePoint) (anglesFrom,anglesTo) icon
+  = arrowOptions where
     formPoint = fromMaybe (p2 (0.0,0.0)) formMaybePoint
     toPoint = fromMaybe (p2  (0.0,-1.0)) toMaybePoint
     arrowOptions =
-      arrowHead .~ noHead
-      -- arrowHead .~ tri
+      -- arrowHead .~ noHead
+      arrowHead .~ getArrowHead icon
       $ arrowTail .~ noTail
       $ arrowShaft .~ edgeSymbol formPoint toPoint anglesFrom anglesTo
       -- TODO Don't use a magic number for lengths (headLength and tailLength)
       $ lengths .~ global 0.5
       $ with
 
+-- getArrowHead :: Icon -> 
+getArrowHead :: RealFloat n => Icon -> ArrowHT n
+getArrowHead FunctionDefIcon {} = noHead
+getArrowHead _ = tri
 -- https://archives.haskell.org/projects.haskell.org/diagrams/doc/arrow.html
 
 edgeSymbol :: (R1 (Diff p), Affine p, Transformable (Diff p (N t)),

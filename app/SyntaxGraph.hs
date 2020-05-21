@@ -10,8 +10,6 @@ module SyntaxGraph(
   , getUniqueName
   , getUniqueString
   , combineExpressions
-  , makeApplyGraph
-  , makeMultiIfGraph
   , namesInPattern
   , lookupReference
   , deleteBindings
@@ -19,28 +17,22 @@ module SyntaxGraph(
   , makeNotConstraintEdgesAndDeleteBindings
   , makeEdges
   , makeEdges'
-  , makeBox
   -- , makeOutputEdgesAndSinks
   , asBindGraphZipper
-  , makePatternEdgeInLambda
   , EvalContext
   , GraphAndRef(..)
   , Reference
   , SgSink(..)
   , SgBind
-  , strToGraphRef
   , grNamePortToGrRef
-  , makeNestedPatternGraph
-  , makeAsBindGraph
-  , makePatternResult
   , initialIdState
-  , makeListCompGraph
-  , GraphInPatternRef(..)
-  , evalPatBindHelper
   , lookupInEmbeddingMap
   , edgeForRefPortIsSource
   , edgeForRefPortIsNotSource
   , syntaxGraphFromEdges
+  , makeAsBindGraph
+  , graphsToComponents
+  , combineExpresionsIsSource
 ) where
 
 import Control.Monad.State ( State, state )
@@ -135,21 +127,6 @@ instance Monoid SyntaxGraph where
 
 data GraphAndRef = GraphAndRef SyntaxGraph Reference
 
-data GraphInPatternRef = GraphInPatternRef{
-  syntaxGraph :: SyntaxGraph
-  , valueReference ::  Reference
-  , inPatternRef ::  Reference
-  }
-
-graphInPatternRefToGraph :: GraphInPatternRef -> SyntaxGraph
-graphInPatternRefToGraph (GraphInPatternRef g _ _) = g
-
-graphInPatternRefToGraphAndRef :: GraphInPatternRef -> GraphAndRef
-graphInPatternRefToGraphAndRef (GraphInPatternRef g r _) = (GraphAndRef g r)
-
-graphInPatternRefToGraphAndPat :: GraphInPatternRef -> GraphAndRef
-graphInPatternRefToGraphAndPat (GraphInPatternRef g _ p) = (GraphAndRef g p)
-
 lookupInEmbeddingMap :: NodeName -> IMap.IntMap NodeName -> NodeName
 lookupInEmbeddingMap origName eMap = lookupHelper origName where
   lookupHelper :: NodeName -> NodeName
@@ -223,201 +200,6 @@ makeAsBindGraph ref asNames
     makeBind mName = case mName of
       Nothing -> Nothing
       Just asName -> Just $ (asName, ref)
-
---------- move to SimpSyntaxToSyntaxGraph
-
-makeApplyGraph ::
-  Int
-  -> LikeApplyFlavor
-  -> Bool
-  -> NodeName
-  -> GraphAndRef
-  -> [GraphAndRef]
-  -> (SyntaxGraph, NameAndPort)
-makeApplyGraph numArgs applyFlavor inPattern applyIconName funVal argVals
-  = (newGraph <> combinedGraph
-    , nameAndPort applyIconName (resultPort applyNode)
-    )
-  where
-    applyNode = ApplyNode applyFlavor numArgs
-    argumentNamePorts
-      = map (nameAndPort applyIconName) (argumentPorts applyNode)
-    functionPort = nameAndPort applyIconName (inputPort applyNode)
-    combinedGraph = combineExpressions inPattern
-                    $ zip (funVal:argVals) (functionPort:argumentNamePorts)
-    icons = [Named applyIconName (mkEmbedder applyNode)]
-    newGraph = syntaxGraphFromNodes $ Set.fromList icons
-
-makeMultiIfGraph ::
-  Int
-  -> NodeName
-  -> [GraphAndRef]
-  -> [GraphAndRef]
-  -> (SyntaxGraph, NameAndPort)
-makeMultiIfGraph numPairs multiIfName bools exps
-  = (newGraph, nameAndPort multiIfName (resultPort multiIfNode))
-  where
-    multiIfNode = CaseOrMultiIfNode MultiIfTag numPairs
-    expsWithPorts = zip exps $ map (nameAndPort multiIfName) multiIfValuePorts
-    boolsWithPorts = zip bools $ map (nameAndPort multiIfName) multiIfBoolPorts
-    combindedGraph = combineExpressions False $ expsWithPorts <> boolsWithPorts
-    icons = [Named multiIfName (mkEmbedder multiIfNode)]
-    newGraph = (syntaxGraphFromNodes $ Set.fromList icons) <> combindedGraph
-
-makeNestedPatternGraph ::
-  NodeName
-  -> String
-  -> [(GraphAndRef, Maybe String)]
-  -> (SyntaxGraph, NameAndPort)
-makeNestedPatternGraph applyIconName funStr argVals = nestedApplyResult
-  where
-    dummyNode = PatternApplyNode defaultPatternNameStr []
-
-    argsAndPorts
-      = zip argVals $ map (nameAndPort applyIconName) $ argumentPorts dummyNode
-    mappedArgs = fmap patternArgumentMapper argsAndPorts
-
-    (unnestedArgsAndPort, nestedNamedNodesAndGraphs)
-      = partitionEithers (fmap snd mappedArgs)
-
-    (nestedArgs, _, nestedSinks, nestedBinds, nestedEMaps)
-      = graphsToComponents $ fmap snd nestedNamedNodesAndGraphs
-
-    argListMapper (str, arg) = case arg of
-      Left _ -> Labeled Nothing str
-      Right (namedNode, _) -> Labeled (Just namedNode) str
-
-    argList = fmap argListMapper mappedArgs
-
-    combinedGraph = combineExpressions True unnestedArgsAndPort
-
-    pAppNode = PatternApplyNode funStr argList
-    icons = Set.singleton (Named applyIconName (mkEmbedder pAppNode))
-
-    asNameBinds = mapMaybe asNameBind argVals
-    allBinds = SMap.union nestedBinds (SMap.fromList asNameBinds)
-
-    newEMap = IMap.fromList
-              ((\(Named (NodeName n) _) -> (n, applyIconName))  <$> (Set.toList nestedArgs))
-              <> nestedEMaps
-
-    newGraph = SyntaxGraph
-               icons
-               Set.empty
-               nestedSinks
-               allBinds
-               newEMap
-    nestedApplyResult = (newGraph <> combinedGraph
-                        , nameAndPort applyIconName (resultPort pAppNode))
-
-patternArgumentMapper ::
-  ((GraphAndRef, Maybe String), t)
-  -> (String, Either (GraphAndRef, t) (SgNamedNode, SyntaxGraph))
-patternArgumentMapper (asGraphAndRef@(graphAndRef, _), port)
-  = (patName, eitherVal)
-  where
-    graph = graphAndRefToGraph graphAndRef
-    patName = patternName asGraphAndRef
-
-    nodes = sgNodes graph
-    eitherVal = if Set.size nodes == 1 && Set.size (sgEdges graph) == 0
-      then Right ((Set.elemAt 0 nodes), graph)
-      else Left (graphAndRef, port)
-
-asNameBind :: (GraphAndRef, Maybe String) -> Maybe SgBind
-asNameBind (GraphAndRef _ ref, mAsName) = case mAsName of
-  Nothing -> Nothing
-  Just asName -> Just ( asName, ref)
-
-makePatternResult :: Functor f =>
-  f (SyntaxGraph, NameAndPort) -> f (GraphAndRef, Maybe String)
-makePatternResult
-  = fmap (\(graph, namePort) -> (GraphAndRef graph (Right namePort), Nothing))
-
-makeListCompGraph :: SyntaxNode -> NameAndPort
-                       -> GraphAndRef -> [GraphAndRef] -> [GraphInPatternRef]-> SyntaxGraph
-makeListCompGraph listCompNode listCompNodeRef listCompItemGraphAndRef qualGraphsAndRefs genGraphsAndRefs = combinedGraph where
-  (NameAndPort listCompName _) = listCompNodeRef
-
-  qualGraphs = mconcat $ fmap  graphAndRefToGraph qualGraphsAndRefs
-  genGraphs = mconcat $ fmap  graphInPatternRefToGraph genGraphsAndRefs
-
-  qStmtGraphs = qualGraphs <> genGraphs
-
-  listCompItemGraph = makeEdgesAndDeleteBindings $ combineExpresionsIsSource makeSimpleEdge
-    (listCompItemGraphAndRef, NameAndPort listCompName (Just (inputPort listCompNode)))
-
-  listCompNodeGraph = syntaxGraphFromNodes
-    $ Set.singleton (Named listCompName (mkEmbedder listCompNode))
-
-  innerOutputGraph = makeInnerOutputEdges listCompName 
-    (qualGraphsAndRefs ++ fmap graphInPatternRefToGraphAndPat genGraphsAndRefs)
-
-  innerInputGraph = makeInnerInputEdges listCompName 
-    (qualGraphsAndRefs ++ fmap graphInPatternRefToGraphAndRef genGraphsAndRefs)
-
-  combinedGraph = makeEdgesAndDeleteBindings
-    $ qStmtGraphs <> listCompItemGraph  <> listCompNodeGraph <> innerOutputGraph <> innerInputGraph -- <> outputGraph
-
-makeInnerOutputEdges :: NodeName -> [GraphAndRef] -> SyntaxGraph
-makeInnerOutputEdges listCompName graphsAndRefs = graph where
-  listCompPorts = map (nameAndPort listCompName) resultPortsConst
-  binds = catMaybes $ zipWith makeInnerOutputBind graphsAndRefs listCompPorts
-  graph = bindsToSyntaxGraph ( SMap.fromList binds)
-
-makeInnerOutputBind :: GraphAndRef -> NameAndPort -> Maybe SgBind
-makeInnerOutputBind (GraphAndRef _ ref) lamPort = case ref of
-  Left str -> Just (str, Right lamPort)
-  Right _ -> Nothing
-  
-
-makeInnerInputEdges :: NodeName -> [GraphAndRef] -> SyntaxGraph
-makeInnerInputEdges listCompName graphsAndRefs = graph where
-  listCompPorts = map (nameAndPort listCompName) argPortsConst
-  edges =  catMaybes $ zipWith makeInnerInputEdge graphsAndRefs listCompPorts
-  graph = syntaxGraphFromEdges ( Set.fromList edges)
-
-makeInnerInputEdge :: GraphAndRef -> NameAndPort -> Maybe Edge
-makeInnerInputEdge (GraphAndRef _ ref) listCompPort = case ref of
-  Left _ ->  Nothing
-  Right port -> Just $ makeSimpleEdge (port, listCompPort)
-
-
-
--- lambda
-makePatternEdgeInLambda ::GraphAndRef -> NameAndPort -> Either Edge SgBind
-makePatternEdgeInLambda (GraphAndRef _ ref) lamPort = case ref of
-  Right (NameAndPort name _) 
-    -> Left $ makeSimpleEdge (lamPort, patternValueInputPort name )
-  Left str -> Right (str, Right lamPort)
-
-patternValueInputPort :: NodeName -> NameAndPort
-patternValueInputPort name = NameAndPort name (Just PatternValuePortConst)
-
--- TODO refactor with similar pattern functions
-evalPatBindHelper :: Reference -> Reference -> (Set.Set Edge, Set.Set SgSink, SMap.StringMap Reference)
-evalPatBindHelper patRef rhsRef = case patRef of
-  (Left s) -> (mempty, mempty, SMap.singleton s rhsRef)
-  (Right (NameAndPort name _)) -> 
-    let patternValuePort = patternValueInputPort name in
-      case rhsRef of
-      (Left rhsStr) -> (mempty, Set.singleton (SgSink rhsStr patternValuePort), SMap.empty)
-      (Right rhsPort) -> (Set.singleton (makeSimpleEdge (rhsPort, patternValuePort)), mempty, SMap.empty)
-
-makeBox :: String -> State IDState (SyntaxGraph, NameAndPort)
-makeBox str = do
-  name <- getUniqueName
-  let graph
-        = syntaxGraphFromNodes (Set.singleton (Named name (mkEmbedder (LiteralNode str))))
-  pure (graph, justName name)
---------- move to SimpSyntaxToSyntaxGraph
-
--- strToGraphRef is not in SyntaxNodeToIcon, since it is only used by evalQName.
-strToGraphRef :: EvalContext -> String -> State IDState GraphAndRef
-strToGraphRef c str = fmap mapper (makeBox str) where
-  mapper gr = if Set.member str c
-    then GraphAndRef mempty (Left str)
-    else grNamePortToGrRef gr
     
 
 combineExpressions :: Bool -> [(GraphAndRef, NameAndPort)] -> SyntaxGraph

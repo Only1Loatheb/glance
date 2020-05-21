@@ -20,29 +20,12 @@ import           Diagrams.Prelude               ( toName
                                                 )
 import Diagrams.TwoD.GraphViz(mkGraph, getGraph, layoutGraph')
 import qualified Data.GraphViz as GV
-import qualified Data.GraphViz.Attributes.Complete as GVA
 import qualified Data.IntMap as IMap
 import qualified Data.IntSet as ISet
-import qualified Data.Map as Map
 import qualified Data.Set as Set
 
-import Control.Arrow(first)
 import qualified Data.Graph.Inductive as ING
-import Data.Graph.Inductive.PatriciaTree (Gr)
-import Data.List(find)
-import Data.Maybe(isNothing, mapMaybe)
-import GHC.Stack(HasCallStack)
 
---import qualified Data.GraphViz.Types
---import Data.GraphViz.Commands
-
-import Icons(findMaybeIconFromName)
-import IconToSymbolDiagram  ( iconToDiagram
-                , lambdaRegionToDiagram
-                , getArrowShadowOpts
-                , getArrowBaseOpts
-                )
-import EdgeAngles(getPortAngle)
 
 import SyntaxNodeToIcon(nodeToIcon)
 import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
