@@ -432,15 +432,17 @@ evalLambda _ context argPatterns expr functionName = do
     rhsContext = Set.union argPatternStrings context
   GraphAndRef rhsRawGraph rhsRef <- evalExp rhsContext expr
   let
-    argNode = makeLambdaArgumentNode argPatternValsWithAsNames
-    lambdaNode = makeLambdaNode combinedGraph functionName [lambdaName, argNodeName]
-    lambdaPorts = map (nameAndPort argNodeName) $ argumentPorts lambdaNode
-
     argPatternVals = fmap fst argPatternValsWithAsNames
-    (outputNameAndPort,isOutputStraightFromInput) = getOutputNameAndPort rhsRef argNodeName argPatternVals lambdaPorts
-  
     argPatternGraph = mconcat $ fmap graphAndRefToGraph argPatternVals
-
+    nodesGraph = argPatternGraph <> rhsRawGraph
+    (outputReference,isOutputStraightFromInput) 
+      = getOutputNameAndPort rhsRef  argPatternVals lambdaPorts  nodesGraph -- combinedGraph 
+  
+    argNode = makeLambdaArgumentNode argPatternValsWithAsNames
+    lambdaNode = makeLambdaNode nodesGraph {- was combinedGraph -} functionName [lambdaName, argNodeName]
+    lambdaPorts = map (nameAndPort argNodeName) $ argumentPorts lambdaNode
+  (valueGraph,outputNameAndPort) <- getValueGraphAndNamedPort outputReference
+  let
     lambdaValueEdge = makeSimpleEdge (outputNameAndPort, nameAndPort lambdaName (inputPort lambdaNode))
     -- TODO move adding drawing rank edge after graph simplification and collapsing
     lambdaArgAboveValue = makeInvisibleEdge (justName argNodeName, justName lambdaName)
@@ -452,17 +454,15 @@ evalLambda _ context argPatterns expr functionName = do
     lambdaIconAndOutputGraph
       = makeLambdaOutputGraph lambdaEdges newBinds' (lambdaName ,lambdaNode) (argNodeName,argNode)
 
-    asBindGraph = mconcat $ zipWith
-                  asBindGraphZipper
-                  (fmap snd argPatternValsWithAsNames)
-                  lambdaPorts
-    combinedGraph = makeEdgesAndDeleteBindings
-                    $ (asBindGraph <> rhsRawGraph <> argPatternGraph <> lambdaIconAndOutputGraph)
+    asBindGraph = mconcat $ zipWith asBindGraphZipper (fmap snd argPatternValsWithAsNames) lambdaPorts
+
+    combinedGraph = (asBindGraph <> rhsRawGraph <> argPatternGraph <> lambdaIconAndOutputGraph <> valueGraph)
+    finalGraph = makeEdgesAndDeleteBindings combinedGraph 
 
     resultNameAndPort = nameAndPort lambdaName (resultPort lambdaNode)
   if isIdLambda isOutputStraightFromInput argPatterns functionName
   then makeBox $ Set.elemAt 0 argPatternStrings
-  else pure (combinedGraph, resultNameAndPort)
+  else pure (finalGraph, resultNameAndPort)
   -- if functionName == "lambda"
   -- then return (error $ show $ makeEdges (asBindGraph <> rhsRawGraph <> argPatternGraph <> lambdaIconAndOutputGraph))
   -- else pure (combinedGraph, resultNameAndPort)
@@ -470,16 +470,43 @@ isIdLambda ::  Bool -> [SimpPat l] -> Maybe String -> Bool
 isIdLambda isOutputStraightFromInput argPatterns functionName
   = isOutputStraightFromInput && length argPatterns == 1 && functionName == Nothing
 -- add test \x y = (y, f x)
-getOutputNameAndPort rhsRef argNodeName argPatternVals lambdaPorts = case rhsRef of
-  strRef@(Left _) -> (inputStraightToAutput,True) where 
-    maybeRefList = catMaybes $ zipWith (makeReferenceToArgument strRef) argPatternVals lambdaPorts
-    returnPort = NameAndPort argNodeName Nothing
-    inputStraightToAutput = fromMaybe returnPort $ listToMaybe maybeRefList
-  (Right np) -> (np, False)
+
+getValueGraphAndNamedPort :: Either String NameAndPort -> State IDState (SyntaxGraph, NameAndPort)
+getValueGraphAndNamedPort outputReference = do
+  case outputReference of 
+    Right np -> do
+      getUniqueName
+      pure (mempty , np)
+    Left str -> makeBox str
+
+getOutputNameAndPort :: Reference
+  -> [GraphAndRef]
+  -> [NameAndPort]
+  -> SyntaxGraph
+  -> (Reference, Bool)
+getOutputNameAndPort (Right np)        _              _           _            = (Right np, False)
+getOutputNameAndPort strRef@(Left str) argPatternVals lambdaPorts allNodeGraps = (maybeNamedPort, isItoO) where
+  argumentReferences = catMaybes $ zipWith (makeReferenceToArgument strRef) argPatternVals lambdaPorts
+  referenceToExpresion = lookupReference (sgBinds allNodeGraps) strRef
+  maybeNamedPort = getOutputNameAndPort' argumentReferences referenceToExpresion str
+  isItoO = not $ null argumentReferences
+
+getOutputNameAndPort'  (np:_) _ _= Right np
+getOutputNameAndPort'  _ (Right np) _= Right np
+getOutputNameAndPort'  _ _ str = Left str
+  -- argPatternVals lambdaPorts combinedGraph
+  -- case rhsRef of
+  --   strRef@(Left _) -> (inputStraightToAutput,isItoO) where 
+     
+  --     isItoO = not null maybeRefList
+      
+
+  --     inputStraightToAutput = listToMaybe maybeRefList
+  --   (Right np) -> Just (np, False)
 
 makeReferenceToArgument :: Reference -> GraphAndRef -> NameAndPort  -> Maybe NameAndPort
 makeReferenceToArgument rhsRef (GraphAndRef _ ref) lamPort = if rhsRef == ref
-      then Just lamPort
+      then Just  lamPort
       else Nothing
 
 makeLambdaNode :: SyntaxGraph -> Maybe String -> [NodeName] -> SyntaxNode

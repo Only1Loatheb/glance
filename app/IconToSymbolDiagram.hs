@@ -155,7 +155,7 @@ lambdaBodySymbol :: SpecialBackend b n
 lambdaBodySymbol (Just label) = inNoteFrame borderColor textBox where
   borderColor = regionPerimC colorScheme
   textBox = coloredTextBox (textBoxTextC colorScheme) label
-lambdaBodySymbol Nothing = memptyWithPosition
+lambdaBodySymbol Nothing = mempty
 
 
 
