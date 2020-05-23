@@ -62,8 +62,11 @@ import ClusterNodesBy (
   
 
 edgeGraphVizAttrs :: (a, b, EmbedInfo Edge) -> [GVA.Attribute]
-edgeGraphVizAttrs (_nFrom, _nTo, (EmbedInfo _ (Edge DrawAndNotConstraint _))) = [GVA.Constraint False]
--- edgeGraphVizAttrs (_nFrom, _nTo, (EmbedInfo _ (Edge DoNotDrawButConstraint _))) = [GVA.Weight $ GVA.Dbl 0.1]
+edgeGraphVizAttrs (_nFrom, _nTo, (EmbedInfo _ (Edge DrawAndNotConstraint _))) = [
+  GVA.Constraint False
+  -- MinLen - Minimum edge length (rank difference between head and tail).
+  , GVA.MinLen 0
+  ]
 edgeGraphVizAttrs _ = []
 
 -- | addEdges draws the edges underneath the nodes.

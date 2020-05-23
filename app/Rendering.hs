@@ -152,6 +152,7 @@ customLayoutParams :: GV.GraphvizParams ING.Node v e ClusterT v
 customLayoutParams = GV.defaultParams{
   GV.globalAttributes = [
     GV.NodeAttrs [GVA.Shape GVA.BoxShape]
+    , GV.EdgeAttrs [GVA.MinLen 1]
     --GV.NodeAttrs [GVA.Shape GVA.Circle]
     , GV.GraphAttrs
       [

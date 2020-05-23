@@ -445,8 +445,8 @@ evalLambda _ context argPatterns expr functionName = do
   let
     lambdaValueEdge = makeSimpleEdge (outputNameAndPort, nameAndPort lambdaName (inputPort lambdaNode))
     -- TODO move adding drawing rank edge after graph simplification and collapsing
-    lambdaArgAboveValue = makeInvisibleEdge (justName argNodeName, justName lambdaName)
-    lambdaEdges = (lambdaValueEdge : lambdaArgAboveValue : argPatternEdges')
+    constraintEdgeList = constraintLambdaArgAboveValue outputReference argNodeName lambdaName
+    lambdaEdges = (lambdaValueEdge : constraintEdgeList ++ argPatternEdges')
 
     (argPatternEdges', newBinds') =
       partitionEithers $ zipWith makePatternEdgeInLambda argPatternVals lambdaPorts
@@ -464,11 +464,16 @@ evalLambda _ context argPatterns expr functionName = do
   then makeBox $ Set.elemAt 0 argPatternStrings
   else pure (finalGraph, resultNameAndPort)
 
+constraintLambdaArgAboveValue :: Reference -> NodeName -> NodeName -> [Edge]
+constraintLambdaArgAboveValue outputReference argNodeName lambdaName= case outputReference of 
+    Left _str -> [makeInvisibleEdge (justName argNodeName, justName lambdaName)]
+    _ -> []
+
 isIdLambda ::  Bool -> [SimpPat l] -> Maybe String -> Bool
 isIdLambda isOutputStraightFromInput argPatterns functionName
   = isOutputStraightFromInput && length argPatterns == 1 && functionName == Nothing
 
-getValueGraphAndNamedPort :: Either String NameAndPort -> State IDState (SyntaxGraph, NameAndPort)
+getValueGraphAndNamedPort :: Reference -> State IDState (SyntaxGraph, NameAndPort)
 getValueGraphAndNamedPort outputReference = do
   case outputReference of 
     Right np -> do
