@@ -342,7 +342,8 @@ listCompTests = [
 
 otherInLambdaTest :: [String]
 otherInLambdaTest = [
-  "lambdaWIfUnused = \\a1 a2 -> if cond then v1 else v2"
+  "undefinedFunInLambda = \\x y -> (y, f x)"
+  ,"lambdaWIfUnused = \\a1 a2 -> if cond then v1 else v2"
   ,"lambdaWIfValues = \\a1 a2 a3-> if a1 then a2 else a3"
   ,"lambdaWEnumUnused = \\a1 a2 -> [1..]"
   ,"lambdaWEnumValues = \\a1 a2 -> [a1..a2]"

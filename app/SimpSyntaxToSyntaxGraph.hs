@@ -463,13 +463,10 @@ evalLambda _ context argPatterns expr functionName = do
   if isIdLambda isOutputStraightFromInput argPatterns functionName
   then makeBox $ Set.elemAt 0 argPatternStrings
   else pure (finalGraph, resultNameAndPort)
-  -- if functionName == "lambda"
-  -- then return (error $ show $ makeEdges (asBindGraph <> rhsRawGraph <> argPatternGraph <> lambdaIconAndOutputGraph))
-  -- else pure (combinedGraph, resultNameAndPort)
+
 isIdLambda ::  Bool -> [SimpPat l] -> Maybe String -> Bool
 isIdLambda isOutputStraightFromInput argPatterns functionName
   = isOutputStraightFromInput && length argPatterns == 1 && functionName == Nothing
--- add test \x y = (y, f x)
 
 getValueGraphAndNamedPort :: Either String NameAndPort -> State IDState (SyntaxGraph, NameAndPort)
 getValueGraphAndNamedPort outputReference = do
@@ -491,18 +488,10 @@ getOutputNameAndPort strRef@(Left str) argPatternVals lambdaPorts allNodeGraps =
   maybeNamedPort = getOutputNameAndPort' argumentReferences referenceToExpresion str
   isItoO = not $ null argumentReferences
 
+getOutputNameAndPort' :: [NameAndPort] -> Reference -> String -> Reference  
 getOutputNameAndPort'  (np:_) _ _= Right np
 getOutputNameAndPort'  _ (Right np) _= Right np
 getOutputNameAndPort'  _ _ str = Left str
-  -- argPatternVals lambdaPorts combinedGraph
-  -- case rhsRef of
-  --   strRef@(Left _) -> (inputStraightToAutput,isItoO) where 
-     
-  --     isItoO = not null maybeRefList
-      
-
-  --     inputStraightToAutput = listToMaybe maybeRefList
-  --   (Right np) -> Just (np, False)
 
 makeReferenceToArgument :: Reference -> GraphAndRef -> NameAndPort  -> Maybe NameAndPort
 makeReferenceToArgument rhsRef (GraphAndRef _ ref) lamPort = if rhsRef == ref
@@ -546,8 +535,6 @@ makePatternEdgeInLambda (GraphAndRef _ ref) lamPort = case ref of
 patternValueInputPort :: NodeName -> NameAndPort
 patternValueInputPort name = NameAndPort name (Just PatternValuePortConst)
 -- END END END END END evalLambda 
-
---------- move to SimpSyntaxToSyntaxGraph
 
 makeApplyGraph ::
   Int

@@ -143,7 +143,7 @@ getArrowsOpts
   pointFrom
   pointTo
   = (arrowBaseOpts, arrowShadowOpts) where
-    node0NameAndPort = fromMaybeError
+    node0NameAndPort@(Named _ iconFrom) = fromMaybeError
                 ("makeEdge: node0 is not in graph. node0: " ++ show node0)
                 $ ING.lab graph node0
     node1NameAndPort@(Named _ iconTo) = fromMaybeError
@@ -153,8 +153,8 @@ getArrowsOpts
     angleFrom = findPortAngles iconInfo node0NameAndPort fromNamePort
     angleTo = findPortAngles iconInfo node1NameAndPort toNamePort
 
+    arrowBaseOpts = getArrowBaseOpts fromNamePort (pointFrom, pointTo)  (angleFrom, angleTo) (iconFrom, iconTo)
     arrowShadowOpts = getArrowShadowOpts (pointFrom, pointTo)  (angleFrom, angleTo) iconTo
-    arrowBaseOpts = getArrowBaseOpts fromNamePort (pointFrom, pointTo)  (angleFrom, angleTo) iconTo
 
 
 

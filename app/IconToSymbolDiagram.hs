@@ -152,8 +152,7 @@ inNoteFrame borderColor diagram
 lambdaBodySymbol :: SpecialBackend b n
   => Maybe String
   -> SpecialQDiagram b n
-lambdaBodySymbol (Just label) = inNoteFrame borderColor textBox where
-  borderColor = regionPerimC colorScheme
+lambdaBodySymbol (Just label) = textBox where
   textBox = coloredTextBox (textBoxTextC colorScheme) label
 lambdaBodySymbol Nothing = mempty
 
@@ -590,40 +589,48 @@ getArrowShadowOpts :: (RealFloat n, Typeable n)
   -> (Maybe (Angle n), Maybe (Angle n))
   -> Icon
   -> ArrowOpts n
-getArrowShadowOpts maybePoints maybeAngles icon=
+getArrowShadowOpts maybePoints maybeAngles iconTo=
   shaftStyle %~ (lwG arrowShadowWidth .
                 lcA $ withOpacity shaftColor defaultShadowOpacity)
   $ headStyle %~ fc shaftColor
-  $ getArrowOpts maybePoints maybeAngles icon where
+  $ getArrowOpts maybePoints maybeAngles iconTo where
     shaftColor = backgroundC colorScheme
 
 getArrowBaseOpts :: (RealFloat n, Typeable n)
   => NameAndPort
   -> (Maybe (Point V2 n),Maybe (Point V2 n))
   -> (Maybe (Angle n), Maybe (Angle n))
-  -> Icon
+  -> (Icon, Icon)
   -> ArrowOpts n
-getArrowBaseOpts (NameAndPort (NodeName nodeNum) mPort) maybePoints maybeAngles icon
+getArrowBaseOpts (NameAndPort (NodeName nodeNum) mPort) maybePoints maybeAngles 
+  icons@(_, iconTo)
   = shaftStyle %~ (lwG arrowLineWidth . lc shaftColor)
   $ headStyle %~ fc shaftColor
-  $ getArrowOpts maybePoints maybeAngles icon where
-    edgeColors = edgeListC colorScheme
+  $ getArrowOpts maybePoints maybeAngles iconTo where
     Port portNum = fromMaybe (Port 0) mPort
-    namePortHash = mod (portNum + (503 * nodeNum)) (length edgeColors)
-    shaftColor = edgeColors !! namePortHash
+    shaftColor = getShaftColor nodeNum portNum icons
+
+getShaftColor = getShaftColor' edgeColors where
+  edgeColors = edgeListC colorScheme
+
+getShaftColor' _ _ _ (FunctionDefIcon {}, _) = regionPerimC colorScheme
+getShaftColor' _ _ _ (_, FunctionDefIcon {}) = regionPerimC colorScheme
+getShaftColor' edgeColors nodeNum portNum _ = shaftColor where
+  namePortHash = mod (portNum + (503 * nodeNum)) (length edgeColors)
+  shaftColor = edgeColors !! namePortHash
 
 getArrowOpts :: (RealFloat n, Typeable n)
   => (Maybe (Point V2 n),Maybe (Point V2 n))
   -> (Maybe (Angle n), Maybe (Angle n))
   -> Icon
   -> ArrowOpts n
-getArrowOpts (formMaybePoint, toMaybePoint) (anglesFrom,anglesTo) icon
+getArrowOpts (formMaybePoint, toMaybePoint) (anglesFrom,anglesTo) iconTo
   = arrowOptions where
     formPoint = fromMaybe (p2 (0.0,0.0)) formMaybePoint
     toPoint = fromMaybe (p2  (0.0,-1.0)) toMaybePoint
     arrowOptions =
       -- arrowHead .~ noHead
-      arrowHead .~ getArrowHead icon
+      arrowHead .~ getArrowHead iconTo
       $ arrowTail .~ noTail
       $ arrowShaft .~ edgeSymbol formPoint toPoint anglesFrom anglesTo
       -- TODO Don't use a magic number for lengths (headLength and tailLength)
