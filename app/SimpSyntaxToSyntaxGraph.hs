@@ -85,9 +85,8 @@ import SyntaxGraph(
   , combineExpressions
   , namesInPattern
   , lookupReference
-  , deleteBindings
-  , makeEdgesAndDeleteBindings
   , makeEdges
+  , makeEdgesKeepBindings
   , asBindGraphZipper
   , GraphAndRef(..)
   , Reference(..)
@@ -102,6 +101,8 @@ import SyntaxGraph(
   , makeAsBindGraph
   , graphsToComponents
   , combineExpresionsIsSource
+  , deleteBindings
+  , graphAndRefToRef
   )
 import StringSymbols(
   listCompositionPlaceholderStr
@@ -261,14 +262,17 @@ getBoundVarName d = case d of
   SdTypeSig _ _ _ -> Set.empty
   SdCatchAll _ -> Set.empty
 
+-- TODO make it rerurn -> State IDState [(SyntaxGraph, EvalContext)]
 evalDecls :: Show l =>
   EvalContext -> [SimpDecl l] -> State IDState (SyntaxGraph, EvalContext)
-evalDecls c decls =
+evalDecls c decls = do
   let
     boundNames = Set.unions (fmap getBoundVarName decls)
     augmentedContext = Set.union boundNames c
-  in
-    (,augmentedContext) . mconcat <$> mapM (evalDecl augmentedContext) decls
+  declGraphAndRefs <- mapM ( evalDecl augmentedContext) decls
+  let declGraphs = fmap graphAndRefToGraph declGraphAndRefs
+  let declGraph = mconcat declGraphs
+  pure (declGraph, augmentedContext)
 
 evalLet :: Show l =>
   EvalContext
@@ -280,7 +284,7 @@ evalLet c decls expr = do
   expVal <- evalExp bindContext expr
   let
     GraphAndRef expGraph expResult = expVal
-    newGraph = makeEdgesAndDeleteBindings c $ expGraph <> bindGraph
+    newGraph = makeEdgesKeepBindings c $ expGraph <> bindGraph
     bindings = sgBinds bindGraph
   pure $ GraphAndRef newGraph (lookupReference bindings expResult)
 
@@ -333,7 +337,7 @@ evalAlt c (SimpAlt pat rhs) = do
   ((GraphAndRef patGraph patRef, mPatAsName), GraphAndRef rhsGraph rhsRef) <-
     makePatternGraph c pat rhs
   let
-    grWithEdges = makeEdges c (rhsGraph <> patGraph)
+    grWithEdges = makeEdgesKeepBindings c (rhsGraph <> patGraph)
     lookedUpRhsRef = lookupReference (sgBinds grWithEdges) rhsRef
     -- The pattern and rhs are conneted if makeEdges added extra edges, or if
     -- the rhsRef refers to a source in the pattern.
@@ -383,7 +387,7 @@ evalCaseHelper numAlts context caseIconName resultIconNames (GraphAndRef expGrap
     conditionEdgesGraph = makeConditionEdges patRefs caseIconName 
     caseResultGraphs = makeRhsGraph patRhsConnected rhsRefs caseIconName resultIconNames
 
-    finalGraph = makeEdgesAndDeleteBindings context $ mconcat [
+    finalGraph = makeEdges context $ mconcat [
       bindGraph
       , conditionEdgesGraph
       , caseResultGraphs
@@ -476,7 +480,7 @@ evalLambda _ context argPatterns expr functionName = do
     asBindGraph = mconcat $ zipWith asBindGraphZipper (fmap snd argPatternValsWithAsNames) lambdaPorts
 
     combinedGraph = (asBindGraph <> rhsRawGraph <> argPatternGraph <> lambdaIconAndOutputGraph <> valueGraph)
-    finalGraph = makeEdgesAndDeleteBindings (Set.insert lambdaLabel context) combinedGraph 
+    finalGraph = makeEdges (Set.insert lambdaLabel context) combinedGraph 
 
     resultNameAndPort = nameAndPort lambdaName (resultPort lambdaNode)
   if isIdLambda isOutputStraightFromInput argPatterns functionName
@@ -721,8 +725,10 @@ evalListComp :: Show l =>
 evalListComp context l  itemExp qualExps =  do  
   
   let decls = [d | (SqLet _l d ) <- qualExps]
-  declGraphRefsAndContexts <- mapM (evalDecls context) decls -- TODO add decls to context and graph
-  let declContext =  Set.unions (context : (fmap snd  declGraphRefsAndContexts))
+  declGraphAndRefdeclContexts <-  mapM (evalDecls context) decls -- TODO add decls to context and graph
+  let (declGraphAndRef, declContexts) = unzip declGraphAndRefdeclContexts
+  let declContext =  Set.unions (context : declContexts)
+  
 
   let gens  = [x | x@(SqGen {}) <- qualExps]
   genGRContextsAndGRpatRef <- mapM (evalSqGen declContext)  gens
@@ -731,7 +737,7 @@ evalListComp context l  itemExp qualExps =  do
   let genContext = Set.unions (declContext : (fmap namesInPattern genGraphRefsAndContexts))
 
   listCompItemGraphAndRef@(GraphAndRef _ listCompItemRef)  <- evalExp genContext itemExp
-  let declGraphsAndRefs = fmap (getRefForListCompItem listCompItemRef) (fmap fst declGraphRefsAndContexts)
+  let declGraphsAndRefs = fmap (getRefForListCompItem listCompItemRef) declGraphAndRef
 
   let quals = [q | (SqQual _l q) <- qualExps]
   qualsGraphsAndRefs <- mapM (evalExp genContext) quals
@@ -773,7 +779,7 @@ makeListCompGraph context listCompNode listCompNodeRef listCompItemGraphAndRef q
 
   qStmtGraphs = qualGraphs <> genGraphs
 
-  listCompItemGraph = {-makeEdgesAndDeleteBindings context $-} combineExpresionsIsSource makeSimpleEdge
+  listCompItemGraph = {-makeEdges context $-} combineExpresionsIsSource makeSimpleEdge
     (listCompItemGraphAndRef, NameAndPort listCompName (Just (inputPort listCompNode)))
 
   listCompNodeGraph = syntaxGraphFromNodes
@@ -785,7 +791,7 @@ makeListCompGraph context listCompNode listCompNodeRef listCompItemGraphAndRef q
   innerInputGraph = makeInnerInputEdges listCompName 
     (qualGraphsAndRefs ++ fmap graphInPatternRefToGraphAndRef genGraphsAndRefs)
 
-  combinedGraph = makeEdgesAndDeleteBindings context
+  combinedGraph = makeEdges context
     (qStmtGraphs <> listCompItemGraph  <> listCompNodeGraph <> innerOutputGraph <> innerInputGraph) -- <> outputGraph
 
 makeInnerOutputEdges :: NodeName -> [GraphAndRef] -> SyntaxGraph
@@ -830,7 +836,7 @@ graphInPatternRefToGraphAndPat (GraphInPatternRef g _ p) = (GraphAndRef g p)
 
 -- TODO refactor with similar pattern functions
 evalPatBind :: Show l =>
-  l -> EvalContext -> SimpPat l -> SimpExp l -> State IDState SyntaxGraph
+  l -> EvalContext -> SimpPat l -> SimpExp l -> State IDState GraphAndRef
 evalPatBind _ c pat e = do
   ((GraphAndRef patGraph patRef, mPatAsName), GraphAndRef rhsGraph rhsRef) <-
     makePatternGraph c pat e
@@ -838,7 +844,8 @@ evalPatBind _ c pat e = do
     (newEdges, newSinks, bindings) = evalPatBindHelper patRef rhsRef
     asBindGraph = makeAsBindGraph rhsRef [mPatAsName]
     gr = asBindGraph <> SyntaxGraph mempty newEdges newSinks bindings mempty
-  pure ( makeEdges c (gr <> rhsGraph <> patGraph))
+    combinedGraph = gr <> rhsGraph <> patGraph
+  pure (GraphAndRef (makeEdgesKeepBindings c combinedGraph) patRef)
 
 -- TODO refactor with similar pattern functions
 evalPatBindHelper :: Reference -> Reference -> (Set.Set Edge, Set.Set SgSink, SMap.StringMap Reference)
@@ -864,33 +871,48 @@ evalTypeSig names typeForNames = makeBox
     -- space.
     prettyPrintWithoutNewlines = unwords . words . Exts.prettyPrint
 
-evalDecl :: Show l => EvalContext -> SimpDecl l -> State IDState SyntaxGraph
+evalDecl :: Show l => EvalContext -> SimpDecl l -> State IDState GraphAndRef
 evalDecl c d = case d of
   SdPatBind l pat e -> evalPatBind l c pat e
+  _ -> error "TODO reference for inner graphs"
+  -- SdTypeSig _ names typeForNames -> fst <$> evalTypeSig names typeForNames
+  -- SdCatchAll decl -> fst <$> makeBox (PExts.prettyPrint decl)
+
+evalTopDecl :: Show l => EvalContext -> SimpDecl l -> State IDState SyntaxGraph
+evalTopDecl c d = case d of
+  SdPatBind l pat e -> showTopLevelBind l c pat e
   SdTypeSig _ names typeForNames -> fst <$> evalTypeSig names typeForNames
   SdCatchAll decl -> fst <$> makeBox (PExts.prettyPrint decl)
 
 -- END END END END END evalDecl
 
-showTopLevelBinds :: SyntaxGraph -> State IDState SyntaxGraph
-showTopLevelBinds gr = do
-  let
-    binds = sgBinds gr
-    addBind :: (String, Reference) -> State IDState SyntaxGraph
-    addBind (_, (Left _)) = pure mempty
-    addBind (patName, (Right port)) = do
+-- TODO improve this
+-- showTopLevelBind ::Show l => SimpPat l -> State IDState SyntaxGraph
+showTopLevelBind :: Show l 
+  => l
+  -> EvalContext
+  -> SimpPat l
+  -> SimpExp l
+  -> State IDState SyntaxGraph
+showTopLevelBind  l c pat e = do
+  GraphAndRef gr originalRef <- evalPatBind l c pat e
+  let ref = lookupReference (sgBinds gr) originalRef
+  case ref of 
+    Left str -> do
+      pure (gr)
+    Right np -> do
       uniquePatName <- getUniqueName
       let
+        patName = simpPatNameStr pat
         icons = Set.singleton (Named uniquePatName $ mkEmbedder (BindNameNode patName))
-        edges = Set.singleton (makeSimpleEdge (port, justName uniquePatName))
-        edgeGraph = syntaxGraphFromNodesEdges icons edges
-      pure edgeGraph
-  newGraph <- mconcat <$> mapM addBind (SMap.toList binds)
-  pure $ newGraph <> gr
+        edges = Set.singleton (makeSimpleEdge (np, justName uniquePatName))
+        bindGraph = syntaxGraphFromNodesEdges icons edges
+      pure (bindGraph <> gr)
+
 
 translateDeclToSyntaxGraph :: Show l => SimpDecl l -> SyntaxGraph
-translateDeclToSyntaxGraph d = graph where
-  evaluatedDecl = evalDecl mempty d -- >>= showTopLevelBinds
+translateDeclToSyntaxGraph d = deleteBindings graph where
+  evaluatedDecl = evalTopDecl mempty d -- >>= showTopLevelBinds
   graph = evalState evaluatedDecl initialIdState
 
 -- | Convert a single function declaration into a SyntaxGraph

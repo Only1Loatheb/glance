@@ -13,7 +13,6 @@ module SyntaxGraph(
   , namesInPattern
   , lookupReference
   , deleteBindings
-  , makeEdgesAndDeleteBindings
   , makeEdges
   -- , makeOutputEdgesAndSinks
   , asBindGraphZipper
@@ -31,6 +30,8 @@ module SyntaxGraph(
   , makeAsBindGraph
   , graphsToComponents
   , combineExpresionsIsSource
+  , graphAndRefToRef
+  , makeEdgesKeepBindings
 ) where
 
 import Control.Monad.State ( State, state )
@@ -274,13 +275,15 @@ lookupReference bindings originalRef = lookupReference' originalRef where
 deleteBindings :: SyntaxGraph -> SyntaxGraph
 deleteBindings (SyntaxGraph a b c _ e) = SyntaxGraph a b c SMap.empty e
 
+makeEdgesKeepBindings :: EvalContext -> SyntaxGraph -> SyntaxGraph
+makeEdgesKeepBindings = makeEdges'
 -- | context from upper level
-makeEdgesAndDeleteBindings :: EvalContext -> SyntaxGraph -> SyntaxGraph
-makeEdgesAndDeleteBindings = makeEdges 
-
-
 makeEdges :: EvalContext -> SyntaxGraph -> SyntaxGraph
-makeEdges context (SyntaxGraph icons edges sinks bindings eMap) = newGraph where
+makeEdges c g = deleteBindings $ makeEdges' c g 
+
+
+makeEdges' :: EvalContext -> SyntaxGraph -> SyntaxGraph
+makeEdges' context (SyntaxGraph icons edges sinks bindings eMap) = newGraph where
   (newSinks, newEdges) = makeEdgesCore context sinks bindings
   newGraph = SyntaxGraph icons (newEdges <> edges) newSinks bindings eMap
 

@@ -274,9 +274,9 @@ letTests = [
   "y = let {a = f b; b = g a} in b",
 
   "y = let {a= 1; x = let {a = 27; x = f a 2} in x} in x",
-  "y = let {a = b; b = a; d = f a} in d",
-  "y = let {a = b; b = a} in a",
-  "y = let x = x in x"
+  "y = let {a = b; b = a; d = f a} in d"
+  -- , "y = let {a = b; b = a} in a",
+  -- "y = let x = x in x"
   ]
 
 operatorTests :: [String]
