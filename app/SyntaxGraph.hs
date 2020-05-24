@@ -14,9 +14,7 @@ module SyntaxGraph(
   , lookupReference
   , deleteBindings
   , makeEdgesAndDeleteBindings
-  , makeNotConstraintEdgesAndDeleteBindings
   , makeEdges
-  , makeEdges'
   -- , makeOutputEdgesAndSinks
   , asBindGraphZipper
   , EvalContext
@@ -191,6 +189,10 @@ getUniqueString :: String -> State IDState String
 getUniqueString base = fmap ((base ++). show) getId
 -- END IDState
 
+-- BEGIN Pattern
+asBindGraphZipper :: Maybe String -> NameAndPort -> SyntaxGraph
+asBindGraphZipper asName nameNPort = makeAsBindGraph (Right nameNPort) [asName]
+
 -- | Make a syntax graph that has the bindings for a list of "as pattern" (@)
 -- names.
 makeAsBindGraph :: Reference -> [Maybe String] -> SyntaxGraph
@@ -200,8 +202,29 @@ makeAsBindGraph ref asNames
     makeBind mName = case mName of
       Nothing -> Nothing
       Just asName -> Just $ (asName, ref)
-    
 
+patternName :: (GraphAndRef, Maybe String) -> String
+patternName (GraphAndRef _ ref, mStr) = fromMaybe
+  (case ref of
+    Left str -> str
+    Right _ -> defaultPatternNameStr
+  )
+  mStr
+
+namesInPattern :: (GraphAndRef, Maybe String) -> EvalContext
+namesInPattern (graphAndRef, mName) = case mName of
+  Nothing -> otherNames
+  Just n -> Set.insert n  otherNames
+  where
+    otherNames = namesInPatternHelper graphAndRef
+
+    namesInPatternHelper :: GraphAndRef -> EvalContext
+    namesInPatternHelper (GraphAndRef graph ref) = case ref of
+      Left str -> Set.singleton str
+      Right _ -> Set.fromList $ SMap.keys (sgBinds graph)
+
+-- END Pattern
+-- BEGIN make edges
 combineExpressions :: Bool -> [(GraphAndRef, NameAndPort)] -> SyntaxGraph
 combineExpressions isSource portExpPairs
   = if isSource
@@ -230,24 +253,9 @@ edgeForRefPortIsNotSource edgeConstructor ref port = case ref of
       Right resPort -> syntaxGraphFromEdges $ Set.singleton  (edgeConstructor connection)
         where
           connection = (resPort, port)
-
-
-
-
+-- END make edges
 grNamePortToGrRef :: (SyntaxGraph, NameAndPort) -> GraphAndRef
 grNamePortToGrRef (graph, np) = GraphAndRef graph (Right np)
-
-namesInPattern :: (GraphAndRef, Maybe String) -> EvalContext
-namesInPattern (graphAndRef, mName) = case mName of
-  Nothing -> otherNames
-  Just n -> Set.insert n  otherNames
-  where
-    otherNames = namesInPatternHelper graphAndRef
-
-    namesInPatternHelper :: GraphAndRef -> EvalContext
-    namesInPatternHelper (GraphAndRef graph ref) = case ref of
-      Left str -> Set.singleton str
-      Right _ -> Set.fromList $ SMap.keys (sgBinds graph)
 
 -- | Recursivly find the matching reference in a list of bindings.
 -- TODO: Might want to present some indication if there is a reference cycle.
@@ -266,45 +274,30 @@ lookupReference bindings originalRef = lookupReference' originalRef where
 deleteBindings :: SyntaxGraph -> SyntaxGraph
 deleteBindings (SyntaxGraph a b c _ e) = SyntaxGraph a b c SMap.empty e
 
-makeEdgesAndDeleteBindings :: SyntaxGraph -> SyntaxGraph
-makeEdgesAndDeleteBindings = deleteBindings . (makeEdges' makeSimpleEdge)
+-- | context from upper level
+makeEdgesAndDeleteBindings :: EvalContext -> SyntaxGraph -> SyntaxGraph
+makeEdgesAndDeleteBindings = makeEdges 
 
-makeNotConstraintEdgesAndDeleteBindings :: SyntaxGraph -> SyntaxGraph
-makeNotConstraintEdgesAndDeleteBindings = deleteBindings . (makeEdges' makeNotConstraintEdge)
 
-makeEdges :: SyntaxGraph -> SyntaxGraph
-makeEdges = makeEdges' makeSimpleEdge
-
-makeEdges' :: (Connection -> Edge) -> SyntaxGraph -> SyntaxGraph
-makeEdges' egdeConstructor (SyntaxGraph icons edges sinks bindings eMap) = newGraph where
-  (newSinks, newEdges) = makeEdgesCore egdeConstructor sinks bindings
+makeEdges :: EvalContext -> SyntaxGraph -> SyntaxGraph
+makeEdges context (SyntaxGraph icons edges sinks bindings eMap) = newGraph where
+  (newSinks, newEdges) = makeEdgesCore context sinks bindings
   newGraph = SyntaxGraph icons (newEdges <> edges) newSinks bindings eMap
 
-makeEdgesCore :: (Connection -> Edge)-> (Set.Set SgSink) -> (SMap.StringMap Reference) -> ((Set.Set SgSink), (Set.Set Edge))
-makeEdgesCore egdeConstructor sinks bindings = (Set.fromList newSinks,Set.fromList newEdge) where
+makeEdgesCore :: EvalContext -> (Set.Set SgSink) -> (SMap.StringMap Reference) -> ((Set.Set SgSink), (Set.Set Edge))
+makeEdgesCore context sinks bindings = (Set.fromList newSinks,Set.fromList newEdge) where
   -- TODO check if set->list->set gives optimal performance
   (newSinks, newEdge) = partitionEithers $ fmap renameOrMakeEdge (Set.toList sinks)
   renameOrMakeEdge :: SgSink -> Either SgSink Edge
   renameOrMakeEdge orig@(SgSink s destPort)
     = case SMap.lookup s bindings of
         Just ref -> case lookupReference bindings ref of
-          Right sourcePort -> Right $ egdeConstructor (sourcePort, destPort)
+          Right sourcePort -> Right $ a context s sourcePort destPort
           Left newStr -> Left $ SgSink newStr destPort
         Nothing -> Left orig
 
-patternName :: (GraphAndRef, Maybe String) -> String
-patternName (GraphAndRef _ ref, mStr) = fromMaybe
-  (case ref of
-    Left str -> str
-    Right _ -> defaultPatternNameStr
-  )
-  mStr
-
--- makeOutputEdgesAndSinks :: Reference
---   -> Set.Set Edge -> NameAndPort -> (Set.Set Edge, Set.Set SgSink)
--- makeOutputEdgesAndSinks rhsRef patternEdges returnPort = case rhsRef of
---   Left s -> (patternEdges, Set.singleton (SgSink s returnPort))
---   Right rhsPort -> (Set.insert (makeSimpleEdge (rhsPort, returnPort)) patternEdges, mempty)
-
-asBindGraphZipper :: Maybe String -> NameAndPort -> SyntaxGraph
-asBindGraphZipper asName nameNPort = makeAsBindGraph (Right nameNPort) [asName]
+a :: Ord a => Set.Set a -> a -> NameAndPort -> NameAndPort -> Edge
+a context s sourcePort destPort 
+  = if Set.member s context
+    then makeNotConstraintEdge (sourcePort, destPort)
+    else makeSimpleEdge (sourcePort, destPort)

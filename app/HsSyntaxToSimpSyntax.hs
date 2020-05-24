@@ -28,7 +28,7 @@ import StringSymbols(
   , functionConstructor
   , listDataConstructorStr
   , unboxedTupleConstructorStr
-  , tempVarPrefix
+  , getTempVarLabel
   , otherwiseExpStr
   , negateSymbolStr
   , enumFromStr
@@ -236,7 +236,7 @@ multipleMatchesToCase :: Show a => a -> Exts.Match a -> [Exts.Match a] -> Exts.M
 multipleMatchesToCase srcLoc (Exts.Match _ funName pats _ _ ) allMatches
   = Exts.Match srcLoc funName casePats rhs Nothing where
     -- There is a special case in Icons.hs/makeLabelledPort to exclude " casevar"
-    caseStrings = fmap (\x -> tempVarPrefix ++ show x) [0..(length pats - 1)]
+    caseStrings = fmap getTempVarLabel [0..(length pats - 1)]
     casePats = fmap (makePatVar srcLoc) caseStrings
     alts = fmap matchToAlt allMatches
     rhs = Exts.UnGuardedRhs srcLoc caseExp where 
@@ -356,7 +356,7 @@ rewriteTupleSection l mExprs = deListifyApp
 rewriteRightSection :: Show l => l -> Exts.QOp l -> Exts.Exp l -> Exts.Exp l
 rewriteRightSection l op expr = Exts.Lambda l [tempPat] appExpr
   where
-    tempStr = tempVarPrefix ++ "0"
+    tempStr = getTempVarLabel "0"
     tempPat = makePatVar l tempStr
     tempVar = makeVarExp l tempStr
     appExpr = Exts.App l (Exts.App l (qOpToExp op) tempVar) expr

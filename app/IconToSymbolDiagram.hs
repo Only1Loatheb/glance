@@ -23,7 +23,6 @@ import Diagrams.TwoD.Combinators(strutR2)
 import Data.Maybe(fromMaybe)
 import Data.Either(partitionEithers)
 import Data.Typeable(Typeable)
-import Data.List(isPrefixOf)
 
 import Icons(
   findMaybeIconFromName
@@ -46,8 +45,7 @@ import PortConstants(
   )
 import StringSymbols(
   ifConditionConst
-  , lambdaSymbolStr
-  , tempVarPrefix
+  , isTempLabel
   , patternSubscribedValueStr
   )
 
@@ -150,11 +148,12 @@ inNoteFrame borderColor diagram
     coloredFrame = lwG (defaultLineWidth/2) $  lc borderColor decisionFrame
 
 lambdaBodySymbol :: SpecialBackend b n
-  => Maybe String
+  => String
   -> SpecialQDiagram b n
-lambdaBodySymbol (Just label) = textBox where
-  textBox = coloredTextBox (textBoxTextC colorScheme) label
-lambdaBodySymbol Nothing = mempty
+lambdaBodySymbol label = if isTempLabel label
+  then mempty
+  else coloredTextBox (textBoxTextC colorScheme) label
+
 
 
 
@@ -228,10 +227,10 @@ makeQualifiedPort = makeQualifiedPort' inputPortSymbol resultPortSymbol
 makeQualifiedPort' :: SpecialBackend b n => 
                         SpecialQDiagram b n
                         -> SpecialQDiagram b n -> Port -> NodeName -> SpecialQDiagram b n
-makeQualifiedPort' inputSymbol resultSymbol port name = portAndSymbol where
+makeQualifiedPort' inputDia resultDia port name = portAndSymbol where
   namedPort = name .>> (makePort port)
   portAndSymbol = namedPort <> symbol
-  symbol = if isInputPort port then inputSymbol else resultSymbol
+  symbol = if isInputPort port then inputDia else resultDia
 
 -- Don't display " tempvar" from SimpSyntaxToSyntaxGraph.hs/matchesToCase
 makeLabelledPort :: SpecialBackend b n =>
@@ -249,7 +248,7 @@ choosePortDiagram :: SpecialBackend b n =>
 choosePortDiagram str portAndSymbol portSymbolAndLabel
   = centerX symbol where
     symbol
-      | tempVarPrefix `isPrefixOf` str = portAndSymbol
+      | isTempLabel str = portAndSymbol
       | not (null str) = portSymbolAndLabel
       | otherwise = portAndSymbol
       
@@ -282,7 +281,7 @@ iconToDiagram iconInfo icon = case icon of
   CaseIcon n -> nestedCaseDia iconInfo (replicate (1 + (2 * n)) Nothing) CaseTag
   CaseResultIcon -> identDiaFunc resultPortSymbol
   FunctionArgIcon argumentNames -> functionArgDia argumentNames
-  FunctionDefIcon maybeFname _ _-> functionDefDia maybeFname 
+  FunctionDefIcon funcName _ _-> functionDefDia funcName 
   NestedApply flavor headIcon args
     -> nestedApplyDia
        iconInfo
@@ -543,7 +542,7 @@ functionArgDia argumentNames (TransformParams name _level)
   finalDiagram = combinedArgumetPort
 
 functionDefDia ::  SpecialBackend b n
-  => Maybe String 
+  => String 
   -> TransformableDia b n
 functionDefDia functionName (TransformParams name _level)
   = named name finalDiagram where

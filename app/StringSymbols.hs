@@ -1,7 +1,6 @@
 module StringSymbols
   (
   ifConditionConst
-  , tempVarPrefix
   , qualifiedSeparatorStr
   , unitConstructorStr
   , listTypeConstructorStr
@@ -9,7 +8,6 @@ module StringSymbols
   , listDataConstructorStr
   , unboxedTupleConstructorStr
   , otherwiseExpStr
-  , lambdaSymbolStr
   , negateSymbolStr
   , enumFromStr
   , enumFromToStr
@@ -34,9 +32,14 @@ module StringSymbols
   , nameToString
   , qNameToString
   , showSignlessLit
+  , isTempLabel
+  , getTempVarLabel
+  , getFuncDefLabel
   ) where
 
 import qualified Language.Haskell.Exts as Exts
+import Data.List(isPrefixOf)
+
 
 fractionalSeparatorStr :: String
 fractionalSeparatorStr = "%"
@@ -44,8 +47,26 @@ fractionalSeparatorStr = "%"
 ifConditionConst :: String
 ifConditionConst = "True"
 
+-- tempvar
+tempPrefix :: String
+tempPrefix = " "
+
 tempVarPrefix :: String
-tempVarPrefix = " tempvar"
+tempVarPrefix = tempPrefix ++ "tempvar"
+
+getTempVarLabel :: Show a => a -> String
+getTempVarLabel x = tempVarPrefix ++ show x
+
+lambdaSymbolStr :: String
+lambdaSymbolStr = tempPrefix ++ "lambda"
+
+getFuncDefLabel :: Show a => a -> Maybe String -> String
+getFuncDefLabel _ (Just str) = str
+getFuncDefLabel lambdaName _ = lambdaSymbolStr ++ show lambdaName
+
+isTempLabel :: String -> Bool
+isTempLabel str = tempPrefix `isPrefixOf` str
+-- tempvar
 
 qualifiedSeparatorStr :: String
 qualifiedSeparatorStr = "."
@@ -69,8 +90,7 @@ unboxedTupleConstructorStr = "(# #)"
 otherwiseExpStr :: String
 otherwiseExpStr = "otherwise"
 
-lambdaSymbolStr :: String
-lambdaSymbolStr = "lambda"
+-- isLambdaName 
 
 negateSymbolStr :: String
 negateSymbolStr = "negate"

@@ -86,7 +86,7 @@ functionArgIcon labels =
 
 functionDefIcon ::
   Set.Set (NodeName, Edge)  -- embedded icons
-  -> Maybe String -- name
+  -> String -- name
   -> Set.Set NodeName  -- body nodes
   -> Icon
 functionDefIcon embeddedNodes str bodyNodes=
