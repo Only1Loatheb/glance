@@ -35,6 +35,7 @@ stack build  --exec "glance-exe -c ./examples/tutorial.hs ./images/tutorial.svg 
 stack build  --exec "glance-exe -c ./examples/advantages.hs ./images/advantages.svg 500"
 stack build  --exec "glance-exe ./examples/lab1.hs ./images/lab1.svg 500"
 stack build  --exec "glance-exe ./examples/lab2.hs ./images/lab2.svg 500"
+stack exec glance-exe -- -c  ./examples/simpleFunctions.hs ./images/simpleFunctions.svg 500
 ```
 
 ```stack exec example

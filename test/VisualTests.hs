@@ -175,9 +175,9 @@ caseTests = [
   "y = case x of {Foo a -> f a; Bar a -> f a}",
   "y = case x of {F x -> x; G x -> x}",
   "y = case x of {F -> 0; G -> 1}"
-  ,
-  "z = case x of {0 -> 1; y -> y}",
-  "y x = case f x of {0 -> x; Foo x -> x}"
+  -- ,
+  -- "z = case x of {0 -> 1; y -> y}",
+  -- "y x = case f x of {0 -> x; Foo x -> x}"
   ]
 
 guardTests :: [String]
@@ -215,7 +215,6 @@ patternTests = [
   "[x] = 1",
   "[x, y] = 2",
   "[x, y, z] = 3",
-  -- TODO: Add this test "(x:y) = 3"
 
   "y = let {t@(_,_) = (3,4)} in t + 3",
 
@@ -275,8 +274,8 @@ letTests = [
 
   "y = let {a= 1; x = let {a = 27; x = f a 2} in x} in x",
   "y = let {a = b; b = a; d = f a} in d"
-  -- , "y = let {a = b; b = a} in a",
-  -- "y = let x = x in x"
+  -- , "y = let {a = b; b = a} in a" -- loop
+  -- , "y = let x = x in x" -- loop
   ]
 
 operatorTests :: [String]

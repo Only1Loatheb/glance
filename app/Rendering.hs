@@ -164,6 +164,7 @@ customLayoutParams = GV.defaultParams{
       --GVA.OverlapScaling 4,
       GVA.OverlapShrink True
       , GVA.ClusterRank GVA.Local
+      , GVA.RankSep [0.3]
       ]
     ]
   , GV.clusterID =  GV.Num . GV.Int --   ClusterT

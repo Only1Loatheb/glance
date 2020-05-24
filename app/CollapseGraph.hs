@@ -100,6 +100,7 @@ syntaxNodeIsEmbeddable parentType syntaxNode mParentPort mChildPort
       (CaseParent, PatternApplyNode {})
         -> parentPortNotResult && parentPortNotInput
       (CaseParent, CaseResultNode {}) -> True
+      (CaseParent, CaseOrMultiIfNode {}) -> True
 
       (MultiIfParent, LiteralNode {}) -> parentPortNotResult
       (MultiIfParent, ApplyNode {})

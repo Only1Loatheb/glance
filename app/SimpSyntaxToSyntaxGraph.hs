@@ -19,6 +19,7 @@ import           Data.Maybe                     ( catMaybes
                                                 , fromMaybe
                                                 , mapMaybe
                                                 , maybeToList
+                                                , isNothing
                                                 )
 import qualified Language.Haskell.Exts as Exts
 import qualified Language.Haskell.Exts.Pretty as PExts
@@ -103,6 +104,7 @@ import SyntaxGraph(
   , combineExpresionsIsSource
   , deleteBindings
   , graphAndRefToRef
+  , deleteBindingsWithRef
   )
 import StringSymbols(
   listCompositionPlaceholderStr
@@ -138,6 +140,12 @@ makeBox str = do
   pure (graph, justName name)
 
 evalLit = makeBox . showSignlessLit
+
+-- evalExp :: Show l =>
+--              EvalContext
+--              -> SimpExp l
+--              -> State IDState GraphAndRef
+-- evalExp c x = deleteBindingsWithRef <$> evalExp' c x
 
 evalExp :: Show l => EvalContext -> SimpExp l -> State IDState GraphAndRef
 evalExp c x = case x of
@@ -284,7 +292,7 @@ evalLet c decls expr = do
   expVal <- evalExp bindContext expr
   let
     GraphAndRef expGraph expResult = expVal
-    newGraph = makeEdgesKeepBindings c $ expGraph <> bindGraph
+    newGraph = makeEdges c $ expGraph <> bindGraph
     bindings = sgBinds bindGraph
   pure $ GraphAndRef newGraph (lookupReference bindings expResult)
 
@@ -293,7 +301,10 @@ evalLet c decls expr = do
 evalSelectorAndVal :: Show l =>
   EvalContext -> SelectorAndVal l -> State IDState (GraphAndRef, GraphAndRef)
 evalSelectorAndVal c SelectorAndVal{svSelector=sel, svVal=val}
-  = (,) <$> evalExp c sel <*> evalExp c val
+  = do
+  selGraphAndRef <- evalExp c sel
+  valGraphAndRef <- evalExp c val
+  pure ( selGraphAndRef , valGraphAndRef) 
 
 evalMultiIf :: Show l =>
   EvalContext -> [SelectorAndVal l] -> State IDState (SyntaxGraph, NameAndPort)
@@ -345,7 +356,7 @@ evalAlt c (SimpAlt pat rhs) = do
       = (rhsRef /= lookedUpRhsRef)
         -- || ( length (sgEdges grWithEdges) > (length (sgEdges rhsGraph) + length (sgEdges patGraph)))
   pure (patRhsAreConnected
-       , deleteBindings grWithEdges
+       , grWithEdges
        , patRef
        , lookedUpRhsRef
        , mPatAsName)
@@ -464,22 +475,23 @@ evalLambda _ context argPatterns expr functionName = do
     argNode = makeLambdaArgumentNode argPatternValsWithAsNames
     lambdaNode = makeLambdaNode nodesGraph {- was combinedGraph -} lambdaLabel [lambdaName, argNodeName]
     lambdaPorts = map (nameAndPort argNodeName) $ argumentPorts lambdaNode
-  (valueGraph,outputNameAndPort) <- getValueGraphAndNamedPort outputReference
-  let
-    lambdaValueEdge = makeSimpleEdge (outputNameAndPort, nameAndPort lambdaName (inputPort lambdaNode))
+    lambdaValueLink =  makeValueEdgeInLambda outputReference (nameAndPort lambdaName (inputPort lambdaNode))
+  -- (valueGraph,outputNameAndPort) <- getValueGraphAndNamedPort outputReference
+
+    -- lambdaValueEdge = makeSimpleEdge (outputNameAndPort,)
     -- TODO move adding drawing rank edge after graph simplification and collapsing
     constraintEdgeList = constraintLambdaArgAboveValue outputReference argNodeName lambdaName
-    lambdaEdges = (lambdaValueEdge : constraintEdgeList ++ argPatternEdges')
+    lambdaEdges = (constraintEdgeList ++ argPatternEdges')
 
     (argPatternEdges', newBinds') =
-      partitionEithers $ zipWith makePatternEdgeInLambda argPatternVals lambdaPorts
+      partitionEithers (lambdaValueLink : zipWith makePatternEdgeInLambda argPatternVals lambdaPorts)
 
     lambdaIconAndOutputGraph
       = makeLambdaOutputGraph lambdaEdges newBinds' (lambdaName ,lambdaNode) (argNodeName,argNode)
 
     asBindGraph = mconcat $ zipWith asBindGraphZipper (fmap snd argPatternValsWithAsNames) lambdaPorts
 
-    combinedGraph = (asBindGraph <> rhsRawGraph <> argPatternGraph <> lambdaIconAndOutputGraph <> valueGraph)
+    combinedGraph = (asBindGraph <> rhsRawGraph <> argPatternGraph <> lambdaIconAndOutputGraph)
     finalGraph = makeEdges (Set.insert lambdaLabel context) combinedGraph 
 
     resultNameAndPort = nameAndPort lambdaName (resultPort lambdaNode)
@@ -488,22 +500,13 @@ evalLambda _ context argPatterns expr functionName = do
   else pure (finalGraph, resultNameAndPort)
 
 constraintLambdaArgAboveValue :: Reference -> NodeName -> NodeName -> [Edge]
-constraintLambdaArgAboveValue outputReference argNodeName lambdaName= case outputReference of 
-    Left _str -> [makeInvisibleEdge (justName argNodeName, justName lambdaName)]
-    _ -> []
+constraintLambdaArgAboveValue outputReference argNodeName lambdaName = -- case outputReference of 
+    {- Left _str -> -} [makeInvisibleEdge (justName argNodeName, justName lambdaName)]
+    -- _ -> []
 
 isIdLambda ::  Bool -> [SimpPat l] -> Maybe String -> Bool
 isIdLambda isOutputStraightFromInput argPatterns functionName
-  = isOutputStraightFromInput && length argPatterns == 1 && functionName == Nothing
-
--- TODO change to just making bind if not present in graph bind
-getValueGraphAndNamedPort :: Reference -> State IDState (SyntaxGraph, NameAndPort)
-getValueGraphAndNamedPort outputReference = do
-  case outputReference of 
-    Right np -> do
-      getUniqueName
-      pure (mempty , np)
-    Left str -> makeBox str
+  = isOutputStraightFromInput && length argPatterns == 1 && isNothing functionName 
 
 getOutputNameAndPort :: Reference
   -> [GraphAndRef]
@@ -538,7 +541,6 @@ makeLambdaArgumentNode argPatternValsWithAsNames = node where
   paramNames = fmap patternName argPatternValsWithAsNames
   node = FunctionArgNode paramNames
 
-
 makeLambdaOutputGraph ::
   [Edge] 
   -> [(SMap.Key, Reference)] 
@@ -555,6 +557,11 @@ makeLambdaOutputGraph argPatternEdgesList binds (lambdaName ,lambdaNode) (argNod
   graph = SyntaxGraph lambdaIconSet argPatternEdges mempty bindsSet mempty
 
 -- lambda
+makeValueEdgeInLambda :: Reference -> NameAndPort -> Either Edge SgBind
+makeValueEdgeInLambda ref lamPort = case ref of
+  Right np -> Left $ makeSimpleEdge (np, lamPort)
+  Left str -> Right (str, Right lamPort)
+
 makePatternEdgeInLambda ::GraphAndRef -> NameAndPort -> Either Edge SgBind
 makePatternEdgeInLambda (GraphAndRef _ ref) lamPort = case ref of
   Right (NameAndPort name _) 

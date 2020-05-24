@@ -67,6 +67,7 @@ edgeGraphVizAttrs (_nFrom, _nTo, (EmbedInfo _ (Edge DrawAndNotConstraint _))) = 
   -- MinLen - Minimum edge length (rank difference between head and tail).
   , GVA.MinLen 0
   ]
+edgeGraphVizAttrs (_nFrom, _nTo, (EmbedInfo _ (Edge DoNotDrawButConstraint _))) = [ GVA.MinLen 3 ]
 edgeGraphVizAttrs _ = []
 
 -- | addEdges draws the edges underneath the nodes.

@@ -32,6 +32,7 @@ module SyntaxGraph(
   , combineExpresionsIsSource
   , graphAndRefToRef
   , makeEdgesKeepBindings
+  , deleteBindingsWithRef
 ) where
 
 import Control.Monad.State ( State, state )
@@ -275,11 +276,15 @@ lookupReference bindings originalRef = lookupReference' originalRef where
 deleteBindings :: SyntaxGraph -> SyntaxGraph
 deleteBindings (SyntaxGraph a b c _ e) = SyntaxGraph a b c SMap.empty e
 
+
+deleteBindingsWithRef :: GraphAndRef -> GraphAndRef
+deleteBindingsWithRef (GraphAndRef g r) = GraphAndRef (deleteBindings g) r
+
 makeEdgesKeepBindings :: EvalContext -> SyntaxGraph -> SyntaxGraph
 makeEdgesKeepBindings = makeEdges'
 -- | context from upper level
 makeEdges :: EvalContext -> SyntaxGraph -> SyntaxGraph
-makeEdges c g = deleteBindings $ makeEdges' c g 
+makeEdges c g = makeEdges' c g 
 
 
 makeEdges' :: EvalContext -> SyntaxGraph -> SyntaxGraph

@@ -176,7 +176,7 @@ simpPatNameStr _ = error "unsupported pattern"
 
 simpExpToRhs :: Show l => l -> SimpExp l -> Exts.Rhs l
 simpExpToRhs l e = Exts.UnGuardedRhs l (simpExpToHsExp e)
-
+    
 --
 
 hsPatToSimpPat :: Show a => Exts.Pat a -> SimpPat a

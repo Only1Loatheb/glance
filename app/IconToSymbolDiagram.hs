@@ -19,6 +19,7 @@ where
 
 import Diagrams.Prelude hiding ((&), (#), Name)
 import Diagrams.TwoD.Combinators(strutR2)
+import qualified Diagrams.TwoD.Path.Boolean as B
 
 import Data.Maybe(fromMaybe)
 import Data.Either(partitionEithers)
@@ -570,18 +571,22 @@ lambdaRegionSymbol :: SpecialBackend b Double
   => [SpecialQDiagram b Double]
   -> NodeName
   -> SpecialQDiagram b Double
-lambdaRegionSymbol enclosedDiagarms name
-  = moveTo (centerPoint enclosedBoundingBox) finalDiagram
+lambdaRegionSymbol enclosedDiagarms (NodeName nameInt)
+  = regionSymbol
   where
-    enclosedBoundingBox = boundingBox $ mconcat enclosedDiagarms
+    -- TODO Add lambda ranks/levels
+    paddingSize =  lambdaRegionPadding + (lambdaRegionPadding/30.0) * (fromIntegral $ length enclosedDiagarms)
+    paddedDiagrams = fmap (frame paddingSize) enclosedDiagarms
+    diagramBoxes = map  boundingRect paddedDiagrams
+    boxesPath = mconcat diagramBoxes
+    contentsRect = strokePath $ B.union Winding boxesPath
 
-    contentsRect = dashingG [0.7 * symbolSize, 0.3 * symbolSize] 0
-                   $ rect
-                   (lambdaRegionPadding + width enclosedBoundingBox)
-                   (lambdaRegionPadding + height enclosedBoundingBox)
-    coloredContentsRect = lc lightgreen (lwG defaultLineWidth contentsRect)
+    edgeColors = edgeListC colorScheme
+    namePortHash = mod nameInt (length edgeColors)
+    lineColor = edgeColors !! namePortHash
 
-    finalDiagram = vcat [coloredContentsRect]
+    regionSymbol = dashingG [0.3 * symbolSize, 0.7 * symbolSize] 0 
+      $ lc lineColor (lwG defaultLineWidth contentsRect)
 
 getArrowShadowOpts :: (RealFloat n, Typeable n)
   => (Maybe (Point V2 n),Maybe (Point V2 n))
@@ -653,7 +658,7 @@ edgeSymbol :: (R1 (Diff p), Affine p, Transformable (Diff p (N t)),
 edgeSymbol formPoint toPoint anglesFrom anglesTo = fromSegments [bezier3 offsetToControl1 offsetToControl2 offsetToEnd] where
   angleFrom = fromMaybe (3/4 @@ turn) anglesFrom  -- } edges defaults to go down for unnamed nodes
   angleTo = fromMaybe (1/4 @@ turn) anglesTo  -- }
-  scaleFactor = symbolSize * 10.0
+  scaleFactor = symbolSize * 8.0
   offsetToEnd = toPoint .-. formPoint
   offsetToControl1 = rotate angleFrom (scale scaleFactor unitX)
   offsetToControl2 = rotate angleTo (scale scaleFactor unitX) ^+^ offsetToEnd
