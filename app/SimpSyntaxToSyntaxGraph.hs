@@ -292,7 +292,7 @@ evalLet c decls expr = do
   expVal <- evalExp bindContext expr
   let
     GraphAndRef expGraph expResult = expVal
-    newGraph = makeEdges c $ expGraph <> bindGraph
+    newGraph = makeEdges makeSimpleEdge $ expGraph <> bindGraph
     bindings = sgBinds bindGraph
   pure $ GraphAndRef newGraph (lookupReference bindings expResult)
 
@@ -348,7 +348,7 @@ evalAlt c (SimpAlt pat rhs) = do
   ((GraphAndRef patGraph patRef, mPatAsName), GraphAndRef rhsGraph rhsRef) <-
     makePatternGraph c pat rhs
   let
-    grWithEdges = makeEdgesKeepBindings c (rhsGraph <> patGraph)
+    grWithEdges = makeEdgesKeepBindings makeSimpleEdge (rhsGraph <> patGraph)
     lookedUpRhsRef = lookupReference (sgBinds grWithEdges) rhsRef
     -- The pattern and rhs are conneted if makeEdges added extra edges, or if
     -- the rhsRef refers to a source in the pattern.
@@ -398,7 +398,7 @@ evalCaseHelper numAlts context caseIconName resultIconNames (GraphAndRef expGrap
     conditionEdgesGraph = makeConditionEdges patRefs caseIconName 
     caseResultGraphs = makeRhsGraph patRhsConnected rhsRefs caseIconName resultIconNames
 
-    finalGraph = makeEdges context $ mconcat [
+    finalGraph = makeEdges makeSimpleEdge $ mconcat [
       bindGraph
       , conditionEdgesGraph
       , caseResultGraphs
@@ -463,7 +463,7 @@ evalLambda _ context argPatterns expr functionName = do
   let
     lambdaLabel = getFuncDefLabel lambdaName functionName
     argPatternStrings = Set.unions $ fmap namesInPattern argPatternValsWithAsNames
-    rhsContext = Set.union argPatternStrings context
+    rhsContext = Set.unions [argPatternStrings, context, Set.singleton lambdaLabel]
   GraphAndRef rhsRawGraph rhsRef <- evalExp rhsContext expr
   let
     argPatternVals = fmap fst argPatternValsWithAsNames
@@ -481,18 +481,18 @@ evalLambda _ context argPatterns expr functionName = do
     -- lambdaValueEdge = makeSimpleEdge (outputNameAndPort,)
     -- TODO move adding drawing rank edge after graph simplification and collapsing
     constraintEdgeList = constraintLambdaArgAboveValue outputReference argNodeName lambdaName
-    lambdaEdges = (constraintEdgeList ++ argPatternEdges')
 
     (argPatternEdges', newBinds') =
-      partitionEithers (lambdaValueLink : zipWith makePatternEdgeInLambda argPatternVals lambdaPorts)
+      partitionEithers $ zipWith makePatternEdgeInLambda argPatternVals lambdaPorts
+    lambdaEdges = (constraintEdgeList ++ argPatternEdges')
 
-    lambdaIconAndOutputGraph
-      = makeLambdaOutputGraph lambdaEdges newBinds' (lambdaName ,lambdaNode) (argNodeName,argNode)
+    lambdaArgGraph = makeLambdaArgGraph lambdaEdges newBinds' (argNodeName,argNode)
+    lambdaIconAndOutputGraph = makeLambdaOutputGraph (lambdaName ,lambdaNode) [lambdaValueLink]
 
     asBindGraph = mconcat $ zipWith asBindGraphZipper (fmap snd argPatternValsWithAsNames) lambdaPorts
 
-    combinedGraph = (asBindGraph <> rhsRawGraph <> argPatternGraph <> lambdaIconAndOutputGraph)
-    finalGraph = makeEdges (Set.insert lambdaLabel context) combinedGraph 
+    combinedGraph = makeEdges makeSimpleEdge (rhsRawGraph <> argPatternGraph <> lambdaArgGraph <> asBindGraph )
+    finalGraph = makeEdges makeNotConstraintEdge (combinedGraph <> lambdaIconAndOutputGraph)
 
     resultNameAndPort = nameAndPort lambdaName (resultPort lambdaNode)
   if isIdLambda isOutputStraightFromInput argPatterns functionName
@@ -541,19 +541,23 @@ makeLambdaArgumentNode argPatternValsWithAsNames = node where
   paramNames = fmap patternName argPatternValsWithAsNames
   node = FunctionArgNode paramNames
 
-makeLambdaOutputGraph ::
-  [Edge] 
-  -> [(SMap.Key, Reference)] 
-  -> (NodeName, SyntaxNode)
-  -> (NodeName, SyntaxNode)
-  -> SyntaxGraph
-makeLambdaOutputGraph argPatternEdgesList binds (lambdaName ,lambdaNode) (argNodeName,argNode) = graph where
-  argPatternEdges = Set.fromList argPatternEdgesList
+
+makeLambdaOutputGraph :: (NodeName, SyntaxNode)
+                           -> [Either Edge (SMap.Key, Reference)] -> SyntaxGraph
+makeLambdaOutputGraph  (lambdaName ,lambdaNode) lambdaValueLink = graph where
+  (valueEdges', valueBinds') = partitionEithers lambdaValueLink
+  valueEdges = Set.fromList valueEdges'
+  valueBinds = SMap.fromList valueBinds'
+  lambdaIconSet = Set.singleton (Named lambdaName (mkEmbedder lambdaNode))
+  graph = SyntaxGraph lambdaIconSet valueEdges mempty valueBinds mempty
+
+
+makeLambdaArgGraph :: [Edge]
+                        -> [(SMap.Key, Reference)] -> (NodeName, SyntaxNode) -> SyntaxGraph
+makeLambdaArgGraph argPatternEdgesList binds (argNodeName, argNode) = graph where
   bindsSet = SMap.fromList binds
-  lambdaIconSet = Set.fromList [
-    (Named lambdaName (mkEmbedder lambdaNode))
-    , (Named argNodeName (mkEmbedder argNode))
-    ]
+  argPatternEdges = Set.fromList argPatternEdgesList
+  lambdaIconSet = Set.singleton (Named argNodeName (mkEmbedder argNode))
   graph = SyntaxGraph lambdaIconSet argPatternEdges mempty bindsSet mempty
 
 -- lambda
@@ -798,7 +802,7 @@ makeListCompGraph context listCompNode listCompNodeRef listCompItemGraphAndRef q
   innerInputGraph = makeInnerInputEdges listCompName 
     (qualGraphsAndRefs ++ fmap graphInPatternRefToGraphAndRef genGraphsAndRefs)
 
-  combinedGraph = makeEdges context
+  combinedGraph = makeEdges makeSimpleEdge
     (qStmtGraphs <> listCompItemGraph  <> listCompNodeGraph <> innerOutputGraph <> innerInputGraph) -- <> outputGraph
 
 makeInnerOutputEdges :: NodeName -> [GraphAndRef] -> SyntaxGraph
@@ -852,7 +856,7 @@ evalPatBind _ c pat e = do
     asBindGraph = makeAsBindGraph rhsRef [mPatAsName]
     gr = asBindGraph <> SyntaxGraph mempty newEdges newSinks bindings mempty
     combinedGraph = gr <> rhsGraph <> patGraph
-  pure (GraphAndRef (makeEdgesKeepBindings c combinedGraph) patRef)
+  pure (GraphAndRef (makeEdgesKeepBindings makeSimpleEdge combinedGraph) patRef)
 
 -- TODO refactor with similar pattern functions
 evalPatBindHelper :: Reference -> Reference -> (Set.Set Edge, Set.Set SgSink, SMap.StringMap Reference)

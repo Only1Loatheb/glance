@@ -103,8 +103,9 @@ data SgSink = SgSink String NameAndPort deriving (Eq, Ord, Show)
 data SyntaxGraph = SyntaxGraph {
   sgNodes :: (Set.Set SgNamedNode),
   sgEdges :: (Set.Set Edge),
-  sgSinks :: (Set.Set SgSink),
-  sgBinds :: (SMap.StringMap Reference ), -- Reference -> Reference 
+  sgSinks :: (Set.Set SgSink), -- values that havent been used (unused bindings)
+  -- TODO change to SMap.StringMap NameAndPort
+  sgBinds :: (SMap.StringMap Reference ), -- name form upper leval -> reference -- Reference -> Reference 
   -- sgEmbedMap keeps track of nodes embedded in other nodes. If (child, parent)
   -- is in the Map, then child is embedded inside parent.
   sgEmbedMap :: IMap.IntMap NodeName -- NodeName -> NodeName
@@ -280,32 +281,27 @@ deleteBindings (SyntaxGraph a b c _ e) = SyntaxGraph a b c SMap.empty e
 deleteBindingsWithRef :: GraphAndRef -> GraphAndRef
 deleteBindingsWithRef (GraphAndRef g r) = GraphAndRef (deleteBindings g) r
 
-makeEdgesKeepBindings :: EvalContext -> SyntaxGraph -> SyntaxGraph
+makeEdgesKeepBindings :: (Connection -> Edge) -> SyntaxGraph -> SyntaxGraph
 makeEdgesKeepBindings = makeEdges'
 -- | context from upper level
-makeEdges :: EvalContext -> SyntaxGraph -> SyntaxGraph
-makeEdges c g = makeEdges' c g 
+makeEdges :: (Connection -> Edge) -> SyntaxGraph -> SyntaxGraph
+makeEdges e g = deleteBindings $ makeEdges' e g 
 
 
-makeEdges' :: EvalContext -> SyntaxGraph -> SyntaxGraph
-makeEdges' context (SyntaxGraph icons edges sinks bindings eMap) = newGraph where
-  (newSinks, newEdges) = makeEdgesCore context sinks bindings
+makeEdges' :: (Connection -> Edge) -> SyntaxGraph -> SyntaxGraph
+makeEdges' edgeConstructor (SyntaxGraph icons edges sinks bindings eMap) = newGraph where
+  (newSinks, newEdges) = makeEdgesCore edgeConstructor sinks bindings
   newGraph = SyntaxGraph icons (newEdges <> edges) newSinks bindings eMap
 
-makeEdgesCore :: EvalContext -> (Set.Set SgSink) -> (SMap.StringMap Reference) -> ((Set.Set SgSink), (Set.Set Edge))
-makeEdgesCore context sinks bindings = (Set.fromList newSinks,Set.fromList newEdge) where
+makeEdgesCore :: (Connection -> Edge) -> (Set.Set SgSink) -> (SMap.StringMap Reference) -> ((Set.Set SgSink), (Set.Set Edge))
+makeEdgesCore edgeConstructor sinks bindings = (Set.fromList newSinks,Set.fromList newEdge) where
   -- TODO check if set->list->set gives optimal performance
   (newSinks, newEdge) = partitionEithers $ fmap renameOrMakeEdge (Set.toList sinks)
   renameOrMakeEdge :: SgSink -> Either SgSink Edge
   renameOrMakeEdge orig@(SgSink s destPort)
     = case SMap.lookup s bindings of
         Just ref -> case lookupReference bindings ref of
-          Right sourcePort -> Right $ a context s sourcePort destPort
+          Right sourcePort -> Right $ edgeConstructor (sourcePort, destPort)
           Left newStr -> Left $ SgSink newStr destPort
         Nothing -> Left orig
-
-a :: Ord a => Set.Set a -> a -> NameAndPort -> NameAndPort -> Edge
-a context s sourcePort destPort 
-  = if Set.member s context
-    then makeNotConstraintEdge (sourcePort, destPort)
-    else makeSimpleEdge (sourcePort, destPort)
+    

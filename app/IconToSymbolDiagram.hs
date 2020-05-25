@@ -608,7 +608,7 @@ getArrowBaseOpts :: (RealFloat n, Typeable n)
   -> ArrowOpts n
 getArrowBaseOpts (NameAndPort (NodeName nodeNum) mPort) maybePoints maybeAngles 
   icons@(_, iconTo)
-  = shaftStyle %~ (lwG arrowLineWidth . lc shaftColor)
+  = shaftStyle %~ (lwG arrowLineWidth ) -- . lc shaftColor)
   $ headStyle %~ fc shaftColor
   $ getArrowOpts maybePoints maybeAngles iconTo where
     Port portNum = fromMaybe (Port 0) mPort

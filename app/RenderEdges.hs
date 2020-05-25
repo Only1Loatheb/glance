@@ -87,8 +87,8 @@ makeEdge :: (ING.Graph gr,HasCallStack, SpecialBackend b n)
   -> ING.LEdge (EmbedInfo Edge)
   -> SpecialQDiagram b n
   -> SpecialQDiagram b n
-makeEdge _ _ (_, _,(EmbedInfo _ (Edge DoNotDrawButConstraint _))) origDia
-  = origDia
+-- makeEdge _ _ (_, _,(EmbedInfo _ (Edge DoNotDrawButConstraint _))) origDia
+--   = origDia
 makeEdge iconInfo graph lEdge origDia
   = connectMaybePorts iconInfo graph lEdge origDia
 
@@ -141,7 +141,7 @@ getArrowsOpts
   graph
   (node0, node1, 
     (EmbedInfo _embedDir --edge@(EmbedInfo _ (Edge _ (_namePort0, _namePort1)))
-    (Edge
+    e@(Edge
       _
       (fromNamePort, toNamePort))))
   pointFrom
@@ -157,10 +157,13 @@ getArrowsOpts
     angleFrom = findPortAngles iconInfo node0NameAndPort fromNamePort
     angleTo = findPortAngles iconInfo node1NameAndPort toNamePort
 
-    arrowBaseOpts = getArrowBaseOpts fromNamePort (pointFrom, pointTo)  (angleFrom, angleTo) (iconFrom, iconTo)
+    arrowBaseOpts' = getArrowBaseOpts fromNamePort (pointFrom, pointTo)  (angleFrom, angleTo) (iconFrom, iconTo)
+    arrowBaseOpts = Dia.shaftStyle Dia.%~ ( Dia.lc (shaftColor e))  $ arrowBaseOpts'
     arrowShadowOpts = getArrowShadowOpts (pointFrom, pointTo)  (angleFrom, angleTo) iconTo
 
-
+shaftColor (Edge DrawAndNotConstraint _) = Dia.red
+shaftColor (Edge DoNotDrawButConstraint _) = Dia.blue
+shaftColor _ = Dia.white
 
 findPortAngles :: SpecialNum n
   => IconInfo -> NamedIcon -> NameAndPort -> Maybe (Angle n)
