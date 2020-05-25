@@ -77,10 +77,6 @@ portSeparationSize = 0.3
 lambdaRegionPadding :: (Fractional a) => a
 lambdaRegionPadding = 2 * letterHeight + defaultLineWidth
 
-
-patternsUpTranslation :: Num a => V2 a
-patternsUpTranslation = V2 0 0
-
 defaultOpacity :: (Fractional a) => a
 defaultOpacity = 0.4
 
@@ -376,7 +372,7 @@ nestedPatternAppDia
 
     patterns::[SpecialQDiagram b n]
     patterns = alignB $ zipWith (makeAppInnerIcon iconInfo tp False) resultPortsConst subIcons
-    patternDiagram = hsep portSeparationSize $  constructorDiagram : subscribedValueDia : patterns
+    patternDiagram = hcat $  constructorDiagram : subscribedValueDia : patterns
 
     patternDiagramInBox = inFrame patternDiagram borderColor (width patternDiagram) (height patternDiagram)
 

@@ -1,4 +1,3 @@
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -31,13 +30,13 @@ letterHeight :: Fractional a => a
 letterHeight = textBoxFontSize * textBoxHeightFactor
 
 monoLetterWidthToHeightFraction :: (Fractional a) => a
-monoLetterWidthToHeightFraction = 0.61
+monoLetterWidthToHeightFraction = 0.631
 
 textBoxHeightFactor :: (Fractional a) => a
 textBoxHeightFactor = 1.4
 
 sidePadding :: Fractional a => a
-sidePadding = textBoxFontSize * 0.3
+sidePadding = letterWidth * 0
 
 textFont :: String
 textFont = "monospace"
@@ -74,15 +73,28 @@ multilineComment' :: SpecialBackend b n =>
   Colour Double -> String -> SpecialQDiagram b n
 multilineComment' textColor t = textDia where
   textLines = lines t
-  textAreas = map (coloredTextBox textColor) textLines
-  textDia = vcat textAreas
+  textAreas = map (coloredCommentBox textColor) textLines
+  textsAlignd = map alignL textAreas
+  textDia = vcat textsAlignd
+
+coloredCommentBox :: SpecialBackend b n =>
+  Colour Double -> String -> SpecialQDiagram b n
+coloredCommentBox textColor t = coloredTextBox' textColor objectWithSize textDiagram where
+    textDiagram = alignedText onLeftSide inTheMiddle t
+    onLeftSide = 0
+    inTheMiddle =  0.5
+    objectWithSize = alignL $ textSizeDiagram t
 
 coloredTextBox :: SpecialBackend b n =>
   Colour Double -> String -> SpecialQDiagram b n
-coloredTextBox textColor t
-  = objectWithSize <> textLabel  where
-    textLabel = moveTo textCorrection $
-      fontSize
-      (local textBoxFontSize)
-      (font textFont $ fillColor textColor $ text t) -- dont have size
-    objectWithSize = textSizeDiagram t
+coloredTextBox textColor t = coloredTextBox' textColor objectWithSize textDiagram where 
+  textDiagram = text t -- dont have size
+  objectWithSize = textSizeDiagram t
+
+coloredTextBox' :: SpecialBackend b n =>
+  Colour Double -> SpecialQDiagram b n -> SpecialQDiagram b n -> SpecialQDiagram b n
+coloredTextBox' textColor objectWithSize textDiagram = objectWithSize <> textLabel where
+  textLabel = moveTo textCorrection $
+    fontSize
+    (local textBoxFontSize)
+    (font textFont $ fillColor textColor  textDiagram)
