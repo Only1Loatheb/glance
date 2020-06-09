@@ -33,8 +33,9 @@ diagramFromModule inputFilename includeComments = do
   --print "\n\n"
   --print drawings
 
-  declarationDiagrams <- traverse (renderIngSyntaxGraph "") drawingsGraphs
+  declarationDiagramsAndPositionMap <- traverse (renderIngSyntaxGraph "") drawingsGraphs
   let
+    (declarationDiagrams, positionMaps) = unzip declarationDiagramsAndPositionMap
     commentsInBoxes
       = fmap (\(Exts.Comment _ srcSpan c) -> (srcSpan, multilineComment  c) ) comments
 

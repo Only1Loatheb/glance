@@ -441,7 +441,8 @@ translateStringToDrawing s = do
       ING.prettyPrint collapsedGraph
       putStr "\n\n"
   if False then printAction else pure ()  -- Supress unused printAction warning
-  renderIngSyntaxGraph s collapsedGraph
+  (declarationDiagrams, _)<- renderIngSyntaxGraph s collapsedGraph
+  pure declarationDiagrams
 
 visualTranslateTests :: (HasCallStack, SpecialBackend b Double)
                      => IO (SpecialQDiagram b Double)
@@ -459,4 +460,4 @@ visualTranslateTests = do
 textBox :: SpecialBackend b n =>
   String -> TransformableDia b n
 textBox t (TransformParams name _)
-  = nameDiagram name $ coloredTextBox (white) t
+  = nameDiagram name $ coloredTextBox white t

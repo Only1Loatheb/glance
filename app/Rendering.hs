@@ -171,11 +171,10 @@ customLayoutParams = GV.defaultParams{
   }
 
 
-renderIconGraph :: forall b.
-  SpecialBackend b Double =>
-  String  -- ^ Debugging information
+renderIconGraph :: forall b. SpecialBackend b Double
+  => String  -- ^ Debugging information
   -> Gr (NodeInfo NamedIcon) (EmbedInfo Edge)
-  -> IO (SpecialQDiagram b Double)
+  -> IO (SpecialQDiagram b Double, Map.Map NamedIcon (P2 Double))
 renderIconGraph debugInfo fullGraphWithInfo = do
     -- graph = ING.nmap niVal fullGraphWithInfo
   layoutResult <- layoutGraph' layoutParams GVA.Dot parentGraph
@@ -189,7 +188,7 @@ renderIconGraph debugInfo fullGraphWithInfo = do
     placedRegions = drawLambdaRegions iconInfo placedNodeList
     placedNodesAndRegions = placedNodes <> placedRegions
     edges = addEdges debugInfo iconInfo parentGraph placedNodesAndRegions
-  pure (placedNodesAndRegions <> edges)
+  pure (placedNodesAndRegions <> edges, positionMap)
   where
     parentGraph
       = ING.nmap niVal $ ING.labfilter (isNothing . niParent) fullGraphWithInfo
@@ -233,14 +232,16 @@ minialDiaDimention = 0.01
 renderDrawing :: SpecialBackend b Double
   => String  -- ^ Debugging information
   -> Drawing
-  -> IO (SpecialQDiagram b Double)
+  -> IO (SpecialQDiagram b Double, Map.Map NamedIcon (P2 Double))
 renderDrawing debugInfo drawing
   = renderIconGraph debugInfo graph
   where
     graph = ING.nmap (NodeInfo Nothing) . drawingToIconGraph $ drawing
 
 renderIngSyntaxGraph :: (HasCallStack, SpecialBackend b Double)
-  => String -> AnnotatedGraph Gr -> IO (SpecialQDiagram b Double)
+  => String 
+  -> AnnotatedGraph Gr 
+  -> IO (SpecialQDiagram b Double, Map.Map NamedIcon (P2 Double))
 renderIngSyntaxGraph debugInfo gr
   = renderIconGraph debugInfo
     $ ING.nmap (fmap (fmap nodeToIcon)) gr

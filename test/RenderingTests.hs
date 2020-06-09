@@ -154,7 +154,7 @@ lambdaDia = Drawing icons []
 renderTests :: SpecialBackend b Double => IO (SpecialQDiagram b Double)
 renderTests = do
   renderedDiagrams <- traverse (renderDrawing "") allDrawings
-  let vCattedDrawings = Dia.vsep 0.5 renderedDiagrams
+  let vCattedDrawings = Dia.vsep 0.5 (map fst renderedDiagrams)
   pure vCattedDrawings
   where
     -- TODO Re-enable tests
