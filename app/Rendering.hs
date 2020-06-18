@@ -62,26 +62,14 @@ import ClusterNodesBy (
   , ClusterT
   )
 import RenderEdges( addEdges, edgeGraphVizAttrs)
+
+import NodePlacementMap (
+  getDiagramWidthAndHeight
+  , placeNode
+  , makePointToIcon
+  ) 
 -- If the inferred types for these functions becomes unweildy,
 -- try using PartialTypeSignitures.
-
--- CONSTANT
-graphvizScaleFactor :: (Fractional a) => a
-
--- For Neato
-graphvizScaleFactor = 0.12
-
--- For Fdp
---scaleFactor = 0.09
-
---scaleFactor = 0.04
-
-drawingToGraphvizScaleFactor :: Fractional a => a
--- For Neato, ScaleOverlaps
---drawingToGraphvizScaleFactor = 0.08
-
--- For Neato, PrismOverlap
-drawingToGraphvizScaleFactor = 0.15
 
 -- TODO Refactor with syntaxGraphToFglGraph in SyntaxNodeToIcon
 -- TODO Make this work with nested icons now that names are not qualified.
@@ -130,24 +118,6 @@ drawLambdaRegions iconInfo placedNodes
            (headIcon:icons)
       _ -> mempty
 
--- TODO place nodes from top to bottom 
--- placeNode :: SpecialBackend b Double 
---   => IconInfo
---   -> Icon
---   -> SpecialQDiagram b Double
-placeNode :: SpecialBackend b Double
-  => IconInfo 
-  -> (NamedIcon, P2 Double) 
-  -> (NamedIcon, SpecialQDiagram b Double)
-placeNode namedIcons (key@(Named name icon), targetPosition)
-  = (key, place transformedDia diaPosition) where
-      origDia = iconToDiagram
-                namedIcons
-                icon
-                (TransformParams name 0)
-      transformedDia = centerXY origDia
-      diaPosition = graphvizScaleFactor *^ targetPosition
-
 customLayoutParams :: GV.GraphvizParams ING.Node v e ClusterT v
 customLayoutParams = GV.defaultParams{
   GV.globalAttributes = [
@@ -170,11 +140,12 @@ customLayoutParams = GV.defaultParams{
   , GV.clusterID =  GV.Num . GV.Int --   ClusterT
   }
 
+getBoundingRects layoutResult = []
 
 renderIconGraph :: forall b. SpecialBackend b Double
   => String  -- ^ Debugging information
   -> Gr (NodeInfo NamedIcon) (EmbedInfo Edge)
-  -> IO (SpecialQDiagram b Double, Map.Map NamedIcon (P2 Double))
+  -> IO (SpecialQDiagram b Double, (Dia.P2 Double -> Maybe Icon))
 renderIconGraph debugInfo fullGraphWithInfo = do
     -- graph = ING.nmap niVal fullGraphWithInfo
   layoutResult <- layoutGraph' layoutParams GVA.Dot parentGraph
@@ -188,7 +159,10 @@ renderIconGraph debugInfo fullGraphWithInfo = do
     placedRegions = drawLambdaRegions iconInfo placedNodeList
     placedNodesAndRegions = placedNodes <> placedRegions
     edges = addEdges debugInfo iconInfo parentGraph placedNodesAndRegions
-  pure (placedNodesAndRegions <> edges, positionMap)
+
+    iconAndBoudingRect = getBoundingRects layoutResult
+    pointToIcon = makePointToIcon  iconAndBoudingRect
+  pure (placedNodesAndRegions <> edges, pointToIcon)
   where
     parentGraph
       = ING.nmap niVal $ ING.labfilter (isNothing . niParent) fullGraphWithInfo
@@ -209,17 +183,11 @@ renderIconGraph debugInfo fullGraphWithInfo = do
     nodeAttribute :: (_, NamedIcon) -> [GV.Attribute]
     nodeAttribute (_, Named _ nodeIcon) =
       [ GVA.Width diaWidth, GVA.Height diaHeight] where
-        -- This type annotation (:: SpecialQDiagram b n) requires Scoped Typed
-        -- Variables, which only works if the function's
-        -- type signiture has "forall b e."
+        (diaWidth, diaHeight) = getDiagramWidthAndHeight dummyDiagram
         dummyDiagram :: SpecialQDiagram b Double
         dummyDiagram = iconToDiagram iconInfo nodeIcon (TransformParams (NodeName (-1)) 0)
-        diaWidth = max (drawingToGraphvizScaleFactor * width dummyDiagram) minialDiaDimention
-        diaHeight = max (drawingToGraphvizScaleFactor * height dummyDiagram) minialDiaDimention
--- GVA.Width and GVA.Height have a minimum of 0.01
-minialDiaDimention :: Double
-minialDiaDimention = 0.01
-        
+          
+
 -- clusterAtributeList :: IconInfo -> ClusterT -> [GV.GlobalAttributes]
 -- clusterAtributeList iconInfo m = [GV.GraphAttrs [ GVA.Rank rank]] where 
 --   rank = case iconInfo IMap.! m of  
@@ -232,16 +200,17 @@ minialDiaDimention = 0.01
 renderDrawing :: SpecialBackend b Double
   => String  -- ^ Debugging information
   -> Drawing
-  -> IO (SpecialQDiagram b Double, Map.Map NamedIcon (P2 Double))
-renderDrawing debugInfo drawing
-  = renderIconGraph debugInfo graph
+  -> IO (SpecialQDiagram b Double)
+renderDrawing debugInfo drawing = do
+  (diagram, _) <- renderIconGraph debugInfo graph
+  pure diagram
   where
     graph = ING.nmap (NodeInfo Nothing) . drawingToIconGraph $ drawing
 
 renderIngSyntaxGraph :: (HasCallStack, SpecialBackend b Double)
   => String 
   -> AnnotatedGraph Gr 
-  -> IO (SpecialQDiagram b Double, Map.Map NamedIcon (P2 Double))
-renderIngSyntaxGraph debugInfo gr
-  = renderIconGraph debugInfo
-    $ ING.nmap (fmap (fmap nodeToIcon)) gr
+  -> IO (SpecialQDiagram b Double, (Dia.P2 Double -> Maybe Icon))
+renderIngSyntaxGraph debugInfo gr 
+  = renderIconGraph debugInfo graph where
+    graph = ING.nmap (fmap (fmap nodeToIcon)) gr

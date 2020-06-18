@@ -69,6 +69,7 @@ executable glance-exe
                , ModuleToDiagram
                , ClusterNodesBy
                , RenderEdges
+               , NodePlacementMap
 
 test-suite glance-test
   type:                exitcode-stdio-1.0
@@ -124,6 +125,7 @@ test-suite glance-test
                , ModuleToDiagram
                , ClusterNodesBy
                , RenderEdges
+               , NodePlacementMap
 
 source-repository head
   type:     git
