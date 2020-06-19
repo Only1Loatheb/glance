@@ -30,7 +30,8 @@ import qualified Data.Set as Set
 
 import Control.Arrow(first)
 import qualified Data.Graph.Inductive as ING
-import Data.Graph.Inductive.PatriciaTree (Gr)
+import qualified Data.Graph.Inductive as G
+import Data.Graph.Inductive.PatriciaTree (Gr) 
 import Data.List(find)
 import Data.Maybe(isNothing, mapMaybe)
 import GHC.Stack(HasCallStack)
@@ -54,6 +55,7 @@ import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
             , Named(..)
             , TransformParams(..)
             , EdgeOption(..)
+            , TransformableDia
             )
 
 import Util(nodeNameToInt, fromMaybeError, namedToTuple)
@@ -64,8 +66,7 @@ import ClusterNodesBy (
 import RenderEdges( addEdges, edgeGraphVizAttrs)
 
 import NodePlacementMap (
-  getDiagramWidthAndHeight
-  , placeNode
+  placeNode
   , makePointToIcon
   ) 
 -- If the inferred types for these functions becomes unweildy,
@@ -140,27 +141,43 @@ customLayoutParams = GV.defaultParams{
   , GV.clusterID =  GV.Num . GV.Int --   ClusterT
   }
 
-getBoundingRects layoutResult = []
+
+drawingToGraphvizScaleFactor :: Double
+-- For Neato, ScaleOverlaps
+--drawingToGraphvizScaleFactor = 0.08
+drawingToGraphvizScaleFactor = 0.15
+
+-- GVA.Width and GVA.Height have a minimum of 0.01
+minialGVADimention :: Double
+minialGVADimention = 0.01
+
+getDiagramWidthAndHeight dummyDiagram = (diaWidth, diaHeight) where
+  diaWidth = max (drawingToGraphvizScaleFactor * width dummyDiagram) minialGVADimention
+  diaHeight = max (drawingToGraphvizScaleFactor * height dummyDiagram) minialGVADimention    
+
+
+getBoundingRects iconAndPlacedNodes 
+  = [(icon,box) | (icon, diagram) <- iconAndPlacedNodes, let box = Dia.boundingBox diagram]
 
 renderIconGraph :: forall b. SpecialBackend b Double
   => String  -- ^ Debugging information
   -> Gr (NodeInfo NamedIcon) (EmbedInfo Edge)
-  -> IO (SpecialQDiagram b Double, (Dia.P2 Double -> Maybe Icon))
+  -> IO (SpecialQDiagram b Double, (Dia.P2 Double -> Maybe NamedIcon))
 renderIconGraph debugInfo fullGraphWithInfo = do
     -- graph = ING.nmap niVal fullGraphWithInfo
   layoutResult <- layoutGraph' layoutParams GVA.Dot parentGraph
   --  layoutResult <- layoutGraph' layoutParams GVA.Fdp graph
   let
-    positionMap = fst $ getGraph layoutResult
+    iconAndPositions = Map.toList $  fst $ getGraph layoutResult
     -- rotationMap = rotateNodes iconInfo positionMap parentGraph
-    placedNodeList :: [(NamedIcon,SpecialQDiagram b Double)]
-    placedNodeList = fmap (placeNode iconInfo) (Map.toList positionMap)
-    placedNodes = mconcat $ fmap snd placedNodeList
-    placedRegions = drawLambdaRegions iconInfo placedNodeList
+    iconAndPlacedNodes :: [(NamedIcon,SpecialQDiagram b Double)]
+    iconAndPlacedNodes = fmap (placeNode iconInfo) iconAndPositions
+    placedNodes = mconcat $ fmap snd iconAndPlacedNodes
+    placedRegions = drawLambdaRegions iconInfo iconAndPlacedNodes
     placedNodesAndRegions = placedNodes <> placedRegions
     edges = addEdges debugInfo iconInfo parentGraph placedNodesAndRegions
 
-    iconAndBoudingRect = getBoundingRects layoutResult
+    iconAndBoudingRect = getBoundingRects iconAndPlacedNodes
     pointToIcon = makePointToIcon  iconAndBoudingRect
   pure (placedNodesAndRegions <> edges, pointToIcon)
   where
@@ -210,7 +227,7 @@ renderDrawing debugInfo drawing = do
 renderIngSyntaxGraph :: (HasCallStack, SpecialBackend b Double)
   => String 
   -> AnnotatedGraph Gr 
-  -> IO (SpecialQDiagram b Double, (Dia.P2 Double -> Maybe Icon))
+  -> IO (SpecialQDiagram b Double, (Dia.P2 Double -> Maybe NamedIcon))
 renderIngSyntaxGraph debugInfo gr 
   = renderIconGraph debugInfo graph where
     graph = ING.nmap (fmap (fmap nodeToIcon)) gr

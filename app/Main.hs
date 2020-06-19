@@ -54,30 +54,33 @@ renderFile :: CmdLineOptions -> IO ()
 renderFile (CmdLineOptions
              inputFilename
              outputFilename
-             imageWidth
+             imageScale
              includeComments)
   = do
   putStrLn $ "Translating file " ++ inputFilename ++ " into a Glance image."
-  moduleDiagram <- diagramFromModule inputFilename includeComments
-  -- BC.blankCanvas 3000 { BC.events = ["mousedown"] } $ \ context -> loop context moduleDiagram
-  customRenderSVG outputFilename (Dia.mkWidth imageWidth) moduleDiagram
+  moduleDiagramAndPointToIcon <- diagramFromModule inputFilename includeComments
+  BC.blankCanvas 3000 { BC.events = ["mousedown"] } $ \ context -> loop context moduleDiagramAndPointToIcon imageScale
+  -- customRenderSVG outputFilename (Dia.mkWidth imageWidth) moduleDiagram
   putStrLn $ "Successfully wrote " ++ outputFilename
 
 -- loop :: SpecialBackend b Double => BC.DeviceContext ->  IO (SpecialQDiagram b Double) -> IO ()
-loop context moduleDiagram = do
-  let w = (BC.width context)
+loop context moduleDiagramAndPointToIcon imageScale = do
+  let (moduleDiagram, pointToIcon) = moduleDiagramAndPointToIcon
+  -- let w = BC.width context
+  let sizeSpec =  Dia.dims2D (imageScale * Dia.width moduleDiagram) (imageScale * Dia.height moduleDiagram)
 
-  BC.send context $ Dia.renderDia CV.Canvas (CanvasOptions (Dia.mkWidth w)) moduleDiagram
+  BC.send context $ Dia.renderDia CV.Canvas (CanvasOptions sizeSpec) moduleDiagram
 
   event <- BC.wait context
   --        print event
   case BC.ePageXY event of
-      -- if no mouse location, ignore, and redraw
-      Nothing -> loop context moduleDiagram
-      Just (x',y') -> do
-        print x'
-        print y'
-        loop context moduleDiagram
+    -- if no mouse location, ignore, and redraw
+    Nothing -> loop context moduleDiagramAndPointToIcon imageScale
+    Just point@(x',y') -> do
+      print (x'/imageScale)
+      print (y'/imageScale)
+      print $ show $ pointToIcon ((1.0/imageScale) Dia.*^ Dia.p2 point)
+      loop context moduleDiagramAndPointToIcon imageScale
 
 translateFileMain :: IO ()
 translateFileMain = customExecParser parserPrefs  opts >>= renderFile where
