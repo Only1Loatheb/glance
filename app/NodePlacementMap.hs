@@ -7,6 +7,7 @@ module NodePlacementMap (
 
 import qualified Data.Map as Map
 import qualified Diagrams.Prelude as Dia
+import qualified Diagrams.BoundingBox as Box
 import Data.Maybe(listToMaybe)
 
 import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
@@ -16,11 +17,6 @@ import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
   , Named(..)
   , TransformParams(..)
   , EdgeOption(..)
-  )
-
-import Diagrams.Prelude ( 
-  height
-  , width
   )
 
 import IconToSymbolDiagram  ( iconToDiagram)
@@ -50,5 +46,5 @@ getDiaPosition layoutPosition = graphvizScaleFactor Dia.*^ layoutPosition
 makePointToIcon :: [(NamedIcon, Dia.BoundingBox Dia.V2 Double)]
                      -> Dia.P2 Double -> Maybe NamedIcon
 makePointToIcon iconAndBoudingRect point = maybeIcon where
-  insideIcons = [i | (i, rect) <- iconAndBoudingRect, rect `Dia.contains'` point]
+  insideIcons = [i | (i, rect) <- iconAndBoudingRect, rect `Box.contains` point]
   maybeIcon = listToMaybe insideIcons

@@ -4,20 +4,7 @@ module ClusterNodesBy (
   ) where
 
 import qualified Diagrams.Prelude as Dia
-import           Diagrams.Prelude               ( toName
-                                                , Angle
-                                                , P2
-                                                , height
-                                                , width
-                                                , (*^)
-                                                , centerXY
-                                                , place
-                                                , applyAll
-                                                , (.>)
-                                                , connectOutside'
-                                                , connect'
-                                                , (*^)
-                                                )
+
 import Diagrams.TwoD.GraphViz(mkGraph, getGraph, layoutGraph')
 import qualified Data.GraphViz as GV
 import qualified Data.IntMap as IMap

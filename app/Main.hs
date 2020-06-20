@@ -66,21 +66,21 @@ renderFile (CmdLineOptions
 -- loop :: SpecialBackend b Double => BC.DeviceContext ->  IO (SpecialQDiagram b Double) -> IO ()
 loop context moduleDiagramAndPointToIcon imageScale = do
   let (moduleDiagram, pointToIcon) = moduleDiagramAndPointToIcon
-  -- let w = BC.width context
   let sizeSpec =  Dia.dims2D (imageScale * Dia.width moduleDiagram) (imageScale * Dia.height moduleDiagram)
-
   BC.send context $ Dia.renderDia CV.Canvas (CanvasOptions sizeSpec) moduleDiagram
 
   event <- BC.wait context
-  --        print event
   case BC.ePageXY event of
     -- if no mouse location, ignore, and redraw
     Nothing -> loop context moduleDiagramAndPointToIcon imageScale
-    Just point@(x',y') -> do
-      print (x'/imageScale)
-      print (y'/imageScale)
-      print $ show $ pointToIcon ((1.0/imageScale) Dia.*^ Dia.p2 point)
+    Just point -> do
+      let scaledPoint = (1.0/imageScale) Dia.*^ Dia.p2 point
+      let maybeClickedIcon =  pointToIcon scaledPoint
+      print point
+      print maybeClickedIcon
       loop context moduleDiagramAndPointToIcon imageScale
+
+    -- [0.0,11.4,42.98,54.379999999999995,88.47999999999999,99.88,153.62333319266665]
 
 translateFileMain :: IO ()
 translateFileMain = customExecParser parserPrefs  opts >>= renderFile where

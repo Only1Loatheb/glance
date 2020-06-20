@@ -7,20 +7,7 @@ module Rendering (
 ) where
 
 import qualified Diagrams.Prelude as Dia
-import           Diagrams.Prelude               ( toName
-                                                , Angle
-                                                , P2
-                                                , height
-                                                , width
-                                                , (*^)
-                                                , centerXY
-                                                , place
-                                                , applyAll
-                                                , (.>)
-                                                , connectOutside'
-                                                , connect'
-                                                , (*^)
-                                                )
+
 import Diagrams.TwoD.GraphViz(mkGraph, getGraph, layoutGraph')
 import qualified Data.GraphViz as GV
 import qualified Data.GraphViz.Attributes.Complete as GVA
@@ -30,7 +17,6 @@ import qualified Data.Set as Set
 
 import Control.Arrow(first)
 import qualified Data.Graph.Inductive as ING
-import qualified Data.Graph.Inductive as G
 import Data.Graph.Inductive.PatriciaTree (Gr) 
 import Data.List(find)
 import Data.Maybe(isNothing, mapMaybe)
@@ -42,20 +28,15 @@ import GHC.Stack(HasCallStack)
 import Icons(findMaybeIconFromName)
 import IconToSymbolDiagram  ( iconToDiagram
                 , lambdaRegionToDiagram
-                , getArrowShadowOpts
-                , getArrowBaseOpts
                 )
-import EdgeAngles(getPortAngle)
 
 import SyntaxNodeToIcon(nodeToIcon)
 import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
             , Drawing(..), NameAndPort(..)
-            , SpecialQDiagram, SpecialBackend, SpecialNum, NodeName(..)
+            , SpecialQDiagram, SpecialBackend, NodeName(..)
             , NamedIcon, Icon(..), NodeInfo(..), IconInfo
             , Named(..)
             , TransformParams(..)
-            , EdgeOption(..)
-            , TransformableDia
             )
 
 import Util(nodeNameToInt, fromMaybeError, namedToTuple)
@@ -152,24 +133,24 @@ minialGVADimention :: Double
 minialGVADimention = 0.01
 
 getDiagramWidthAndHeight dummyDiagram = (diaWidth, diaHeight) where
-  diaWidth = max (drawingToGraphvizScaleFactor * width dummyDiagram) minialGVADimention
-  diaHeight = max (drawingToGraphvizScaleFactor * height dummyDiagram) minialGVADimention    
+  diaWidth = max (drawingToGraphvizScaleFactor * Dia.width dummyDiagram) minialGVADimention
+  diaHeight = max (drawingToGraphvizScaleFactor * Dia.height dummyDiagram) minialGVADimention    
 
+boundingBoxPadding :: Double
+boundingBoxPadding =  2.5
 
-getBoundingRects iconAndPlacedNodes 
-  = [(icon,box) | (icon, diagram) <- iconAndPlacedNodes, let box = Dia.boundingBox diagram]
+getBoundingBoxes iconAndPlacedNodes 
+  = [(icon,box) | (icon, diagram) <- iconAndPlacedNodes,
+    let box = Dia.boundingBox $ Dia.frame boundingBoxPadding diagram]
 
 renderIconGraph :: forall b. SpecialBackend b Double
   => String  -- ^ Debugging information
   -> Gr (NodeInfo NamedIcon) (EmbedInfo Edge)
   -> IO (SpecialQDiagram b Double, (Dia.P2 Double -> Maybe NamedIcon))
 renderIconGraph debugInfo fullGraphWithInfo = do
-    -- graph = ING.nmap niVal fullGraphWithInfo
   layoutResult <- layoutGraph' layoutParams GVA.Dot parentGraph
-  --  layoutResult <- layoutGraph' layoutParams GVA.Fdp graph
   let
     iconAndPositions = Map.toList $  fst $ getGraph layoutResult
-    -- rotationMap = rotateNodes iconInfo positionMap parentGraph
     iconAndPlacedNodes :: [(NamedIcon,SpecialQDiagram b Double)]
     iconAndPlacedNodes = fmap (placeNode iconInfo) iconAndPositions
     placedNodes = mconcat $ fmap snd iconAndPlacedNodes
@@ -177,7 +158,8 @@ renderIconGraph debugInfo fullGraphWithInfo = do
     placedNodesAndRegions = placedNodes <> placedRegions
     edges = addEdges debugInfo iconInfo parentGraph placedNodesAndRegions
 
-    iconAndBoudingRect = getBoundingRects iconAndPlacedNodes
+    iconAndBoudingRect = getBoundingBoxes iconAndPlacedNodes
+    -- boxesDia = mconcat $ map (Dia.lc Dia.blue $ Dia.boundingRect . snd) iconAndBoudingRect
     pointToIcon = makePointToIcon  iconAndBoudingRect
   pure (placedNodesAndRegions <> edges, pointToIcon)
   where
@@ -189,7 +171,6 @@ renderIconGraph debugInfo fullGraphWithInfo = do
                 <$> ING.labNodes fullGraph
 
     layoutParams :: GV.GraphvizParams ING.Node NamedIcon (EmbedInfo Edge) ClusterT NamedIcon
-    --layoutParams :: GV.GraphvizParams Int l el Int l
     layoutParams = customLayoutParams{
       GV.fmtNode = nodeAttribute
       , GV.clusterBy = (clusterNodesBy iconInfo)

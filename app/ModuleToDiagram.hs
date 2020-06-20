@@ -10,7 +10,6 @@ module ModuleToDiagram(
 -- code.
 import qualified Diagrams.Prelude as Dia hiding ((#), (&))
 import qualified Data.Map as Map
-import qualified Data.Set as Set
 import           Data.Maybe                     ( fromMaybe
                                                 , listToMaybe
                                                 )
@@ -27,6 +26,7 @@ import           Types  ( SpecialQDiagram
                         , NamedIcon
                         )
 
+
 diagramFromModule :: SpecialBackend b Double =>
   String -> Bool -> IO (SpecialQDiagram b Double, Dia.P2 Double -> Maybe NamedIcon)
 diagramFromModule inputFilename includeComments = do
@@ -35,16 +35,15 @@ diagramFromModule inputFilename includeComments = do
     (parsedModule, comments) = Exts.fromParseResult parseResult
     drawingsGraphs = translateModuleToCollapsedGraphs parsedModule
     declarationSpans = moduleToSrcSpanStarts parsedModule
-  --print parsedModule
-  --print "\n\n"
-  --print drawings
-
+  --print drawingsGraphs
   declarationDiagramsAndPointToIcon <- traverse (renderIngSyntaxGraph "") drawingsGraphs
   let
     commentDiagramsAndNothing = fmap commentAndPointToIcon comments
     declarations = zip declarationSpans declarationDiagramsAndPointToIcon
 
-    diagramsAndIconPosition = if includeComments then commentDiagramsAndNothing ++ declarations else declarations
+    diagramsAndIconPosition = if includeComments 
+      then commentDiagramsAndNothing ++ declarations 
+      else declarations
     moduleDiagramAndPointToIcon = composeDiagrams diagramsAndIconPosition
   --print comments
   pure moduleDiagramAndPointToIcon
@@ -80,28 +79,30 @@ composeDiagrams diagrams = finalDiagram where
   sortedDiagarms = snd <$> sortBy (compare `on` fst) diagrams
   finalDiagram = composeDiagramsInModule sortedDiagarms
 
+diagramSeparation :: Fractional p => p
+diagramSeparation = 1.0
+
 composeDiagramsInModule :: SpecialBackend b Double
   => [(SpecialQDiagram b Double, Dia.P2 Double -> Maybe NamedIcon)]
   -> (SpecialQDiagram b Double, Dia.P2 Double -> Maybe NamedIcon)
 composeDiagramsInModule diagramAndPointToIcons = (finalDia, pointToIcon) where
   (diagrams, pointToIcons) = unzip diagramAndPointToIcons
-  moduleDiagram = Dia.vcat diagrams
+  moduleDiagram = Dia.vsep diagramSeparation diagrams
   finalDia = Dia.bg (backgroundC colorScheme) moduleDiagram
 
   diagramHeights = map Dia.height diagrams
-  pointToIcon = composePointToIcons diagramHeights pointToIcons
+  diagramsTopY = scanl (\a b -> a + b + diagramSeparation) 0.0 diagramHeights
+  pointToIcon = composePointToIcons diagramsTopY pointToIcons
 
 composePointToIcons ::
   [Double]
   -> [Dia.P2 Double -> Maybe NamedIcon]
   -> Dia.P2 Double
   -> Maybe NamedIcon
-composePointToIcons diagramHeights pointToIcons point@(Dia.P (Dia.V2 _x y)) = maybeIcon where
-  diagramsTopY = scanl (+) 0.0 diagramHeights
+composePointToIcons diagramsTopY pointToIcons point@(Dia.P (Dia.V2 _x y)) = maybeIcon where
   maxYToPointToIcon = Map.fromList $ zip diagramsTopY pointToIcons
   maybePointToIcon = listToMaybe $ Map.toDescList $ fst $ Map.split y maxYToPointToIcon
   (diagramTopY, pointToIcon) = fromMaybe (0.0, const Nothing) maybePointToIcon
   adjustedPoint = point Dia.^-^ Dia.unitY Dia.^* diagramTopY
   maybeIcon = pointToIcon adjustedPoint
-    -- $ error $ "topY: " ++ show diagramTopY ++ " adjustedPoint: " ++ show adjustedPoint
-
+    -- error $ show diagramsTopY ++ "topY: " ++ show diagramTopY ++ " adjustedPoint: " ++ show adjustedPoint

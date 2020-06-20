@@ -579,10 +579,10 @@ lambdaRegionSymbol enclosedDiagarms (NodeName nameInt)
 
     edgeColors = edgeListC colorScheme
     namePortHash = mod nameInt (length edgeColors)
-    lineColor = edgeColors !! namePortHash
+    regionLineColor = edgeColors !! namePortHash
 
     regionSymbol = dashingG [0.3 * symbolSize, 0.7 * symbolSize] 0 
-      $ lc lineColor (lwG defaultLineWidth contentsRect)
+      $ lc regionLineColor (lwG defaultLineWidth contentsRect)
 
 getArrowShadowOpts :: (RealFloat n, Typeable n)
   => (Maybe (Point V2 n),Maybe (Point V2 n))
