@@ -47,7 +47,7 @@ import EdgeAngles(getPortAngle)
 import SyntaxNodeToIcon(nodeToIcon)
 import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
             , Drawing(..), NameAndPort(..)
-            , SpecialQDiagram, SpecialBackend, SpecialNum, NodeName(..)
+            , SpecialDiagram, SpecialBackend, SpecialNum, NodeName(..)
             , NamedIcon, Icon(..), NodeInfo(..), IconInfo
             , Named(..)
             , TransformParams(..)
@@ -75,8 +75,8 @@ addEdges :: (HasCallStack, SpecialBackend b n, ING.Graph gr) =>
   String  -- ^ Debugging information
   -> IconInfo
   -> gr NamedIcon (EmbedInfo Edge)
-  -> SpecialQDiagram b n
-  -> SpecialQDiagram b n
+  -> SpecialDiagram b n
+  -> SpecialDiagram b n
 addEdges _debugInfo iconInfo graph = applyAll connections
   where
             connections = makeEdge  iconInfo graph <$> ING.labEdges graph
@@ -85,8 +85,8 @@ makeEdge :: (ING.Graph gr,HasCallStack, SpecialBackend b n)
   => IconInfo
   -> gr NamedIcon (EmbedInfo Edge)
   -> ING.LEdge (EmbedInfo Edge)
-  -> SpecialQDiagram b n
-  -> SpecialQDiagram b n
+  -> SpecialDiagram b n
+  -> SpecialDiagram b n
 -- makeEdge _ _ (_, _,(EmbedInfo _ (Edge DoNotDrawButConstraint _))) origDia
 --   = origDia
 makeEdge iconInfo graph lEdge origDia
@@ -97,8 +97,8 @@ connectMaybePorts ::  (ING.Graph gr,SpecialBackend b n)
   => IconInfo 
   -> gr NamedIcon (EmbedInfo Edge)
   -> ING.LEdge (EmbedInfo Edge)
-  -> SpecialQDiagram b n
-  -> SpecialQDiagram b n
+  -> SpecialDiagram b n
+  -> SpecialDiagram b n
 connectMaybePorts
   iconInfo
   graph

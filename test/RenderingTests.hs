@@ -13,7 +13,7 @@ import           Types                          ( Labeled(..)
                                                 , Edge
                                                 , Icon(..)
                                                 , Port(..)
-                                                , SpecialQDiagram
+                                                , SpecialDiagram
                                                 , SpecialBackend
                                                 , Named(..)
                                                 , NamedIcon
@@ -151,7 +151,7 @@ lambdaDia = Drawing icons []
 -}
 
 --renderTests :: IO (Diagram B)
-renderTests :: SpecialBackend b Double => IO (SpecialQDiagram b Double)
+renderTests :: SpecialBackend b Double => IO (SpecialDiagram b Double)
 renderTests = do
   renderedDiagrams <- traverse (renderDrawing "") allDrawings
   let vCattedDrawings = Dia.vsep 0.5 renderedDiagrams

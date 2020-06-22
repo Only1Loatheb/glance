@@ -17,7 +17,7 @@ import qualified Data.Graph.Inductive as ING
 import SyntaxNodeToIcon(nodeToIcon)
 import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
             , Drawing(..), NameAndPort(..)
-            , SpecialQDiagram, SpecialBackend, SpecialNum, NodeName(..)
+            , SpecialDiagram, SpecialBackend, SpecialNum, NodeName(..)
             , NamedIcon, Icon(..), NodeInfo(..), IconInfo
             , Named(..)
             , TransformParams(..))

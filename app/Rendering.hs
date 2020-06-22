@@ -33,10 +33,11 @@ import IconToSymbolDiagram  ( iconToDiagram
 import SyntaxNodeToIcon(nodeToIcon)
 import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
             , Drawing(..), NameAndPort(..)
-            , SpecialQDiagram, SpecialBackend, NodeName(..)
+            , SpecialDiagram, SpecialBackend, NodeName(..)
             , NamedIcon, Icon(..), NodeInfo(..), IconInfo
             , Named(..)
             , TransformParams(..)
+            , SpecialQDiagram
             )
 
 import Util(nodeNameToInt, fromMaybeError, namedToTuple)
@@ -48,7 +49,7 @@ import RenderEdges( addEdges, edgeGraphVizAttrs)
 
 import NodePlacementMap (
   placeNode
-  , makePointToIcon
+  , getQueryRects
   ) 
 -- If the inferred types for these functions becomes unweildy,
 -- try using PartialTypeSignitures.
@@ -76,18 +77,18 @@ drawingToIconGraph (Drawing nodes edges) =
 
 drawLambdaRegions :: forall b . SpecialBackend b Double =>
   IconInfo
-  -> [(NamedIcon, SpecialQDiagram b Double)]
-  -> SpecialQDiagram b Double
+  -> [(NamedIcon, SpecialDiagram b Double)]
+  -> SpecialDiagram b Double
 drawLambdaRegions iconInfo placedNodes
   = mconcat $ fmap (drawRegion Set.empty . fst) placedNodes
   where
-    findDia :: NodeName -> SpecialQDiagram b Double
+    findDia :: NodeName -> SpecialDiagram b Double
     findDia n1
       = maybe mempty snd
         (find (\(Named n2 _, _) -> n1 == n2) placedNodes)
 
     -- Also draw the region around the icon the lambda is in.
-    drawRegion :: Set.Set NodeName -> NamedIcon -> SpecialQDiagram b Double
+    drawRegion :: Set.Set NodeName -> NamedIcon -> SpecialDiagram b Double
     drawRegion parentNames icon = case icon of
       Named lambdaName lambdaIcon@(FunctionDefIcon _ enclosedNames _)
         -> lambdaRegionToDiagram enclosed lambdaName where
@@ -136,32 +137,25 @@ getDiagramWidthAndHeight dummyDiagram = (diaWidth, diaHeight) where
   diaWidth = max (drawingToGraphvizScaleFactor * Dia.width dummyDiagram) minialGVADimention
   diaHeight = max (drawingToGraphvizScaleFactor * Dia.height dummyDiagram) minialGVADimention    
 
-boundingBoxPadding :: Double
-boundingBoxPadding =  2.5
-
-getBoundingBoxes iconAndPlacedNodes 
-  = [(icon,box) | (icon, diagram) <- iconAndPlacedNodes,
-    let box = Dia.boundingBox $ Dia.frame boundingBoxPadding diagram]
-
 renderIconGraph :: forall b. SpecialBackend b Double
   => String  -- ^ Debugging information
   -> Gr (NodeInfo NamedIcon) (EmbedInfo Edge)
-  -> IO (SpecialQDiagram b Double, (Dia.P2 Double -> Maybe NamedIcon))
+  -> IO (SpecialQDiagram b Double)
 renderIconGraph debugInfo fullGraphWithInfo = do
   layoutResult <- layoutGraph' layoutParams GVA.Dot parentGraph
   let
     iconAndPositions = Map.toList $  fst $ getGraph layoutResult
-    iconAndPlacedNodes :: [(NamedIcon,SpecialQDiagram b Double)]
+    iconAndPlacedNodes :: [(NamedIcon,SpecialDiagram b Double)]
     iconAndPlacedNodes = fmap (placeNode iconInfo) iconAndPositions
     placedNodes = mconcat $ fmap snd iconAndPlacedNodes
-    placedRegions = drawLambdaRegions iconInfo iconAndPlacedNodes
-    placedNodesAndRegions = placedNodes <> placedRegions
-    edges = addEdges debugInfo iconInfo parentGraph placedNodesAndRegions
 
-    iconAndBoudingRect = getBoundingBoxes iconAndPlacedNodes
+    placedRegions = Dia.value mempty $ drawLambdaRegions iconInfo iconAndPlacedNodes
+
+    placedEdgesAndNodes = Dia.value mempty $ addEdges debugInfo iconInfo parentGraph placedNodes
+
+    boundingRects = mconcat $ getQueryRects iconAndPlacedNodes
     -- boxesDia = mconcat $ map (Dia.lc Dia.blue $ Dia.boundingRect . snd) iconAndBoudingRect
-    pointToIcon = makePointToIcon  iconAndBoudingRect
-  pure (placedNodesAndRegions <> edges, pointToIcon)
+  pure  (Dia.atop boundingRects ( placedRegions <> placedEdgesAndNodes)) -- <> placedRegions <> placedEdges)
   where
     parentGraph
       = ING.nmap niVal $ ING.labfilter (isNothing . niParent) fullGraphWithInfo
@@ -182,7 +176,7 @@ renderIconGraph debugInfo fullGraphWithInfo = do
     nodeAttribute (_, Named _ nodeIcon) =
       [ GVA.Width diaWidth, GVA.Height diaHeight] where
         (diaWidth, diaHeight) = getDiagramWidthAndHeight dummyDiagram
-        dummyDiagram :: SpecialQDiagram b Double
+        dummyDiagram :: SpecialDiagram b Double
         dummyDiagram = iconToDiagram iconInfo nodeIcon (TransformParams (NodeName (-1)) 0)
           
 
@@ -198,17 +192,17 @@ renderIconGraph debugInfo fullGraphWithInfo = do
 renderDrawing :: SpecialBackend b Double
   => String  -- ^ Debugging information
   -> Drawing
-  -> IO (SpecialQDiagram b Double)
+  -> IO (SpecialDiagram b Double)
 renderDrawing debugInfo drawing = do
-  (diagram, _) <- renderIconGraph debugInfo graph
-  pure diagram
+  diagram <- renderIconGraph debugInfo graph
+  pure $ Dia.clearValue diagram
   where
     graph = ING.nmap (NodeInfo Nothing) . drawingToIconGraph $ drawing
 
 renderIngSyntaxGraph :: (HasCallStack, SpecialBackend b Double)
   => String 
   -> AnnotatedGraph Gr 
-  -> IO (SpecialQDiagram b Double, (Dia.P2 Double -> Maybe NamedIcon))
+  -> IO (SpecialQDiagram b Double)
 renderIngSyntaxGraph debugInfo gr 
   = renderIconGraph debugInfo graph where
     graph = ING.nmap (fmap (fmap nodeToIcon)) gr

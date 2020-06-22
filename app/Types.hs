@@ -15,6 +15,7 @@ module Types (
   , EdgeOption(..)
   , Drawing(..)
   , IDState(..)
+  , SpecialDiagram
   , SpecialQDiagram
   , SpecialBackend
   , SpecialNum
@@ -32,6 +33,7 @@ module Types (
   , EmbedderSyntaxNode
   , TransformParams(..)
   , TransformableDia
+  , NameQuery(..)
 ) where
 
 import Diagrams.Prelude(QDiagram, V2, Any, Renderable, Path, IsName)
@@ -41,7 +43,7 @@ import qualified Data.GraphViz.Attributes.Complete as GVA
 import Control.Applicative(Applicative(..))
 import qualified Data.Graph.Inductive as ING
 import qualified Data.IntMap as IMap
-import Data.Set(Set, empty)
+import qualified Data.Set as Set
 import Data.Typeable(Typeable)
 
 newtype NodeName = NodeName Int deriving (Typeable, Eq, Ord, Show)
@@ -73,7 +75,7 @@ data Icon = TextBoxIcon String
     [String]  -- Parameter labels
   | FunctionDefIcon
     String  -- Function name
-    (Set NodeName)  -- Nodes inside the lambda
+    (Set.Set NodeName)  -- Nodes inside the lambda
     (Maybe NodeName) -- embeded body node
   | CaseIcon Int
   | CaseResultIcon
@@ -98,13 +100,13 @@ data CaseOrMultiIfTag = CaseTag | MultiIfTag deriving (Show, Eq, Ord)
 
 -- TODO The full edge does not need to be included, just the port.
 data Embedder a = Embedder {
-  emEmbedded :: Set (NodeName, Edge)  -- ^ Set of embedded nodes
+  emEmbedded :: Set.Set (NodeName, Edge)  -- ^ Set of embedded nodes
   , emNode :: a
   }
   deriving (Show, Eq, Ord, Functor)
 
 mkEmbedder :: a -> Embedder a
-mkEmbedder = Embedder empty
+mkEmbedder = Embedder Set.empty
 
 type EmbedderSyntaxNode = Embedder SyntaxNode
 
@@ -123,7 +125,7 @@ data SyntaxNode =
     [String]  -- Parameter labels
   | FunctionValueNode  -- Function definition (ie. lambda expression)
     String -- function name
-    (Set NodeName)  -- Nodes inside the lambda
+    (Set.Set NodeName)  -- Nodes inside the lambda
   | CaseResultNode
   | CaseOrMultiIfNode CaseOrMultiIfTag Int
   | ListCompNode
@@ -150,7 +152,7 @@ data Edge = Edge { edgeOption :: EdgeOption
 
 -- | A drawing is a map from names to Icons, a list of edges,
 -- and a map of names to subDrawings
-data Drawing = Drawing [NamedIcon] (Set Edge) deriving (Show, Eq)
+data Drawing = Drawing [NamedIcon] (Set.Set Edge) deriving (Show, Eq)
 
 -- | IDState is an Abstract Data Type that is used as a state whose value is a
 -- unique id.
@@ -163,7 +165,9 @@ type SpecialNum n
 type SpecialBackend b n
   = (SpecialNum n, Renderable (Path V2 n) b, Renderable (Text n) b)
 
-type SpecialQDiagram b n = QDiagram b V2 n Any
+type SpecialDiagram b n = QDiagram b V2 n Any
+
+type SpecialQDiagram b n = QDiagram b V2 n NameQuery
 
 type IngSyntaxGraph gr = gr SgNamedNode Edge
 
@@ -194,4 +198,13 @@ data TransformParams n = TransformParams {
 -- | A TransformableDia is a function that returns a diagram for an icon when
 -- given the icon's name, its nesting depth, whether it will be reflected, and
 -- by what angle it will be rotated.
-type TransformableDia b n = TransformParams n -> SpecialQDiagram b n
+type TransformableDia b n = TransformParams n -> SpecialDiagram b n
+
+newtype NameQuery = NameQuery ( Set.Set NodeName ) deriving (Show, Eq)
+
+instance Semigroup NameQuery where
+  (<>) (NameQuery l) (NameQuery r) = NameQuery $ Set.union l r
+
+instance Monoid NameQuery where
+  mempty = NameQuery Set.empty
+  mappend = (<>)

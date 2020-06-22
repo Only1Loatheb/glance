@@ -7,13 +7,14 @@ module TextBox
   ( coloredTextBox
   , multilineComment
   , letterHeight
+  , transparentAlpha
   )
 where
 
 import Diagrams.Prelude hiding ((&), (#), Name)
 import Diagrams.TwoD.Combinators(strutR2)
 
-import           Types  ( SpecialQDiagram
+import           Types  ( SpecialDiagram
                         , SpecialBackend
                         )
 {-# ANN module "HLint: ignore Use record patterns" #-}
@@ -55,22 +56,26 @@ textCorrection = p2 (0,- textBoxFontSize * textBoxHeightFactor /4)
 -- needed to determine the size of the text's bounding box.
 -- textSizeDiagram ::  => Int -> t
 
+transparentAlpha :: Fractional a => a
+transparentAlpha = 0.0
+
 textSizeDiagram :: SpecialBackend b n 
-  => String -> SpecialQDiagram b n
-textSizeDiagram t = strutR2 (V2 textWidth textHeight)
+  => String -> SpecialDiagram b n
+textSizeDiagram t = invisibleRect
   where
     n = length t
     textHeight = letterHeight
     textWidth = (fromIntegral n * letterWidth) + sidePadding
+    invisibleRect =  opacity transparentAlpha $ rect textWidth textHeight
 
 -- END Text helper functions
 
 multilineComment :: SpecialBackend b n 
-  => String -> SpecialQDiagram b n
+  => String -> SpecialDiagram b n
 multilineComment = multilineComment' white
 
 multilineComment' :: SpecialBackend b n =>
-  Colour Double -> String -> SpecialQDiagram b n
+  Colour Double -> String -> SpecialDiagram b n
 multilineComment' textColor t = textDia where
   textLines = lines t
   textAreas = map (coloredCommentBox textColor) textLines
@@ -78,7 +83,7 @@ multilineComment' textColor t = textDia where
   textDia = vcat textsAlignd
 
 coloredCommentBox :: SpecialBackend b n =>
-  Colour Double -> String -> SpecialQDiagram b n
+  Colour Double -> String -> SpecialDiagram b n
 coloredCommentBox textColor t = coloredTextBox' textColor objectWithSize textDiagram where
     textDiagram = alignedText onLeftSide inTheMiddle t
     onLeftSide = 0
@@ -86,13 +91,13 @@ coloredCommentBox textColor t = coloredTextBox' textColor objectWithSize textDia
     objectWithSize = alignL $ textSizeDiagram t
 
 coloredTextBox :: SpecialBackend b n =>
-  Colour Double -> String -> SpecialQDiagram b n
+  Colour Double -> String -> SpecialDiagram b n
 coloredTextBox textColor t = coloredTextBox' textColor objectWithSize textDiagram where 
   textDiagram = text t -- dont have size
   objectWithSize = textSizeDiagram t
 
 coloredTextBox' :: SpecialBackend b n =>
-  Colour Double -> SpecialQDiagram b n -> SpecialQDiagram b n -> SpecialQDiagram b n
+  Colour Double -> SpecialDiagram b n -> SpecialDiagram b n -> SpecialDiagram b n
 coloredTextBox' textColor objectWithSize textDiagram = objectWithSize <> textLabel where
   textLabel = moveTo textCorrection $
     fontSize

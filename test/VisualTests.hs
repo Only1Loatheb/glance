@@ -10,7 +10,7 @@ import qualified Data.Graph.Inductive.Graph as ING
 import Data.List(intercalate)
 import GHC.Stack(HasCallStack)
 
-import Types(SpecialQDiagram, SpecialBackend, NodeName(..),TransformParams(..))
+import Types(SpecialDiagram, SpecialBackend, NodeName(..),TransformParams(..))
 import CollapseGraph(translateStringToCollapsedGraphAndDecl, syntaxGraphToFglGraph)
 import SimpSyntaxToSyntaxGraph(translateStringToSyntaxGraph)
 import SyntaxGraph( SyntaxGraph(..))
@@ -18,7 +18,7 @@ import Rendering(renderIngSyntaxGraph)
 import qualified Data.Set as Set
 import qualified Data.StringMap as SMap
 
-import Types(Icon(..), SpecialQDiagram, SpecialBackend, SpecialNum
+import Types(Icon(..), SpecialDiagram, SpecialBackend, SpecialNum
             , NodeName(..), Port(..), LikeApplyFlavor(..)
             , NamedIcon, Labeled(..), IconInfo
             , Named(..), NameAndPort(..)
@@ -423,7 +423,7 @@ testDecls = mconcat [
 
 translateStringToDrawing :: SpecialBackend b Double =>
   String
-  -> IO (SpecialQDiagram b Double)
+  -> IO (SpecialDiagram b Double)
 translateStringToDrawing s = do
   putStrLn $ "Translating string: " ++ s
   let
@@ -441,23 +441,18 @@ translateStringToDrawing s = do
       ING.prettyPrint collapsedGraph
       putStr "\n\n"
   if False then printAction else pure ()  -- Supress unused printAction warning
-  (declarationDiagrams, _)<- renderIngSyntaxGraph s collapsedGraph
-  pure declarationDiagrams
+  declarationDiagrams <- renderIngSyntaxGraph s collapsedGraph
+  pure $ clearValue declarationDiagrams
 
 visualTranslateTests :: (HasCallStack, SpecialBackend b Double)
-                     => IO (SpecialQDiagram b Double)
+                     => IO (SpecialDiagram b Double)
 visualTranslateTests = do
   drawings <- traverse translateStringToDrawing testDecls
   let
-    textDrawings
-      = fmap
-        (\t ->
-           alignL $ textBox t (TransformParams (NodeName (-1)) 0))
-        testDecls
+    textDrawings = fmap (\t -> alignL $ textBox t) testDecls
     vCattedDrawings = vsep 1 $ zipWith (===) (fmap alignL drawings) textDrawings
   pure vCattedDrawings
 
 textBox :: SpecialBackend b n =>
-  String -> TransformableDia b n
-textBox t (TransformParams name _)
-  = nameDiagram name $ coloredTextBox white t
+  String -> SpecialDiagram b n
+textBox t = coloredTextBox white t

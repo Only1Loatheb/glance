@@ -24,10 +24,12 @@ import           Data.Text (Text)
 import Diagrams.Backend.Canvas as CV
 -- import           Control.Concurrent
 import qualified Graphics.Blank as BC hiding (rotate, scale, ( # ))
-import           Types  ( SpecialQDiagram
+import           Types  ( SpecialDiagram
                         , SpecialBackend
+                        , NameQuery
                         )
 ---------------------------------------
+import IconToSymbolDiagram(ColorStyle(..), colorScheme, multilineComment)
 
 import ModuleToDiagram(diagramFromModule)
 
@@ -58,27 +60,32 @@ renderFile (CmdLineOptions
              includeComments)
   = do
   putStrLn $ "Translating file " ++ inputFilename ++ " into a Glance image."
-  moduleDiagramAndPointToIcon <- diagramFromModule inputFilename includeComments
-  BC.blankCanvas 3000 { BC.events = ["mousedown"] } $ \ context -> loop context moduleDiagramAndPointToIcon imageScale
+  moduleDiagram <- diagramFromModule inputFilename includeComments
+  let moduleDiagramAligned = Dia.alignTL moduleDiagram
+  BC.blankCanvas 3000 { BC.events = ["mousedown"] } $ \ context -> loop context moduleDiagramAligned imageScale
   -- customRenderSVG outputFilename (Dia.mkWidth imageWidth) moduleDiagram
   putStrLn $ "Successfully wrote " ++ outputFilename
 
--- loop :: SpecialBackend b Double => BC.DeviceContext ->  IO (SpecialQDiagram b Double) -> IO ()
-loop context moduleDiagramAndPointToIcon imageScale = do
-  let (moduleDiagram, pointToIcon) = moduleDiagramAndPointToIcon
+-- loop :: SpecialBackend b Double => BC.DeviceContext ->  IO (SpecialDiagram b Double) -> IO ()
+loop :: BC.DeviceContext
+  -> Dia.QDiagram Canvas Dia.V2 Double NameQuery -> Double -> IO b
+loop context moduleDiagram imageScale = do
   let sizeSpec =  Dia.dims2D (imageScale * Dia.width moduleDiagram) (imageScale * Dia.height moduleDiagram)
-  BC.send context $ Dia.renderDia CV.Canvas (CanvasOptions sizeSpec) moduleDiagram
+  let moduleDrawing = Dia.bg (backgroundC colorScheme) $ Dia.clearValue moduleDiagram
+  BC.send context $ Dia.renderDia CV.Canvas (CanvasOptions sizeSpec) moduleDrawing 
 
   event <- BC.wait context
   case BC.ePageXY event of
     -- if no mouse location, ignore, and redraw
-    Nothing -> loop context moduleDiagramAndPointToIcon imageScale
-    Just point -> do
-      let scaledPoint = (1.0/imageScale) Dia.*^ Dia.p2 point
-      let maybeClickedIcon =  pointToIcon scaledPoint
-      print point
-      print maybeClickedIcon
-      loop context moduleDiagramAndPointToIcon imageScale
+    Nothing -> loop context moduleDiagram imageScale
+    Just point@(x, y) -> do
+      let scaledPoint = (1.0/imageScale) Dia.*^ Dia.p2 (x,-y)
+      print scaledPoint
+
+      print $ Dia.sample  moduleDiagram scaledPoint
+      -- let maybeClickedIcon =  pointToIcon scaledPoint
+      -- print maybeClickedIcon
+      loop context moduleDiagram imageScale
 
     -- [0.0,11.4,42.98,54.379999999999995,88.47999999999999,99.88,153.62333319266665]
 

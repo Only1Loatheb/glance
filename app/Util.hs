@@ -14,6 +14,7 @@ module Util (
   , customRenderSVG
   , namedToTuple
   , tupleToNamed
+  , nameQuery
   ) where
 
 import Diagrams.Backend.SVG(renderSVG', Options(..), SVG)
@@ -23,6 +24,7 @@ import Data.Maybe(fromMaybe)
 import Data.Text as T(pack, filter, Text) 
 import Data.Char(isAlpha)
 import System.FilePath(takeBaseName)
+import qualified Data.Set as Set
 import Data.Typeable(Typeable)
 import qualified Debug.Trace
 
@@ -34,6 +36,7 @@ import           Types (
   , Port
   , Named(..)
   , EdgeOption(..)
+  , NameQuery(..)
   )
 
 
@@ -90,3 +93,6 @@ customRenderSVG outputFilename size = renderSVG' outputFilename svgOptions where
   mkPrefix = T.filter isAlpha . T.pack . takeBaseName
 
   svgOptions = SVGOptions size Nothing (mkPrefix outputFilename) attributes True
+
+nameQuery :: Named a -> NameQuery
+nameQuery (Named name _) = NameQuery $ Set.singleton name

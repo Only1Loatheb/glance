@@ -51,12 +51,24 @@ import StringSymbols(
   )
 
 import DrawingColors(colorScheme, ColorStyle(..))
-import Types(Icon(..), SpecialQDiagram, SpecialBackend, SpecialNum
-            , NodeName(..), Port(..), LikeApplyFlavor(..)
-            , NamedIcon, Labeled(..), IconInfo
-            , Named(..), NameAndPort(..)
-            ,TransformParams(..),TransformableDia
-            ,CaseOrMultiIfTag(..))
+import Types(
+  Icon(..)
+  , SpecialDiagram
+  , SpecialBackend
+  , SpecialNum
+  , NodeName(..)
+  , Port(..)
+  , LikeApplyFlavor(..)
+  , NamedIcon
+  , Labeled(..)
+  , IconInfo
+  , Named(..)
+  , NameAndPort(..)
+  , TransformParams(..)
+  , TransformableDia
+  , CaseOrMultiIfTag(..)
+  , SpecialQDiagram 
+  )
 
 {-# ANN module "HLint: ignore Use record patterns" #-}
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
@@ -94,23 +106,23 @@ lineColorValue :: Colour Double
 lineColorValue = lineC colorScheme
 
 -- BEGIN diagram basic symbols --
-inputPortSymbol :: SpecialBackend b n => SpecialQDiagram b n
+inputPortSymbol :: SpecialBackend b n => SpecialDiagram b n
 inputPortSymbol = memptyWithPosition 
 
 resultPortSymbol :: SpecialBackend b n
-  => SpecialQDiagram b n
+  => SpecialDiagram b n
 resultPortSymbol = memptyWithPosition -- valueSymbol
   
-inputSymbol :: SpecialBackend b n => SpecialQDiagram b n
+inputSymbol :: SpecialBackend b n => SpecialDiagram b n
 inputSymbol = lw none $ fc lineColorValue $ circle (symbolSize * 0.5)
 
-valueSymbol ::SpecialBackend b n => SpecialQDiagram b n
+valueSymbol ::SpecialBackend b n => SpecialDiagram b n
 valueSymbol = fc color $ lw none $ rotateBy (1/2) $ eqTriangle (5/4 * symbolSize) where -- cant be to big to fit in diagrams
   color = caseRhsC colorScheme
 
 multiIfVarSymbol :: SpecialBackend b n
   => Colour Double
-  ->  SpecialQDiagram b n
+  ->  SpecialDiagram b n
 multiIfVarSymbol color = alignB coloredSymbol  where
     symbol = vrule (2 * symbolSize)
     coloredSymbol
@@ -118,8 +130,8 @@ multiIfVarSymbol color = alignB coloredSymbol  where
 
 inNoteFrame :: SpecialBackend b n
   => Colour Double
-  -> SpecialQDiagram b n
-  -> SpecialQDiagram b n
+  -> SpecialDiagram b n
+  -> SpecialDiagram b n
 inNoteFrame borderColor diagram
   = centerXY diagram <> coloredFrame where
   
@@ -146,7 +158,7 @@ inNoteFrame borderColor diagram
 
 lambdaBodySymbol :: SpecialBackend b n
   => String
-  -> SpecialQDiagram b n
+  -> SpecialDiagram b n
 lambdaBodySymbol label = if isTempLabel label
   then mempty
   else coloredTextBox (textBoxTextC colorScheme) label
@@ -155,17 +167,17 @@ lambdaBodySymbol label = if isTempLabel label
 
 
 inMultiIfDecisionFrame :: SpecialBackend b n
-  => SpecialQDiagram b n -> SpecialQDiagram b n
+  => SpecialDiagram b n -> SpecialDiagram b n
 inMultiIfDecisionFrame = inDecisionFrame (boolC colorScheme)
 
 inCaseDecisionFrame :: SpecialBackend b n
-  => SpecialQDiagram b n -> SpecialQDiagram b n
+  => SpecialDiagram b n -> SpecialDiagram b n
 inCaseDecisionFrame = inDecisionFrame (caseRhsC colorScheme)
 
 inDecisionFrame :: SpecialBackend b n
   => Colour Double
-  -> SpecialQDiagram b n
-  -> SpecialQDiagram b n
+  -> SpecialDiagram b n
+  -> SpecialDiagram b n
 inDecisionFrame borderColor diagram
   = centerXY diagram <> coloredFrame where
     boxHeight = boxPadding + max (height diagram) letterHeight
@@ -185,11 +197,11 @@ inDecisionFrame borderColor diagram
     coloredFrame = lwG defaultLineWidth $  lc borderColor decisionFrame
 
 inFrame :: SpecialBackend b n
-  => SpecialQDiagram b n
+  => SpecialDiagram b n
   -> Colour Double
   -> n
   -> n
-  -> SpecialQDiagram b n
+  -> SpecialDiagram b n
 inFrame diagram borderColor diagramWidth diagramHeight
   = centerXY diagram <> coloredArgBox where
     rectWidth = boxPadding + max diagramWidth letterHeight
@@ -198,32 +210,32 @@ inFrame diagram borderColor diagramWidth diagramHeight
     coloredArgBox = lwG defaultLineWidth $ lcA (withOpacity borderColor defaultOpacity) argBox
 
 -- BEGIN Diagram helper functions --
-memptyWithPosition :: SpecialBackend b n => SpecialQDiagram b n
+memptyWithPosition :: SpecialBackend b n => SpecialDiagram b n
 memptyWithPosition = strutR2 (V2 symbolSize 0)
 -- | Names the diagram and puts all sub-names in the namespace of the top level
 -- name.
 nameDiagram :: SpecialNum n =>
   NodeName
-  -> SpecialQDiagram b n
-  -> SpecialQDiagram b n
+  -> SpecialDiagram b n
+  -> SpecialDiagram b n
 nameDiagram name dia = named name (name .>> dia)
 
 -- | Make an port with an integer name. Always use <> to add a ports
 -- (not === or |||)  since mempty has no size and will not be placed where you
 -- want it.
-makePort ::  SpecialBackend b n => Port -> SpecialQDiagram b n
+makePort ::  SpecialBackend b n => Port -> SpecialDiagram b n
 makePort x = named x mempty
 --makePort x = circle 0.2 # fc green # named x
 -- Note, the version of makePort below seems to have a different type.
 --makePort x = textBox (show x) # fc green # named x
 
 makeQualifiedPort :: SpecialBackend b n 
-  =>  Port -> NodeName -> SpecialQDiagram b n
+  =>  Port -> NodeName -> SpecialDiagram b n
 makeQualifiedPort = makeQualifiedPort' inputPortSymbol resultPortSymbol
 
 makeQualifiedPort' :: SpecialBackend b n => 
-                        SpecialQDiagram b n
-                        -> SpecialQDiagram b n -> Port -> NodeName -> SpecialQDiagram b n
+                        SpecialDiagram b n
+                        -> SpecialDiagram b n -> Port -> NodeName -> SpecialDiagram b n
 makeQualifiedPort' inputDia resultDia port name = portAndSymbol where
   namedPort = name .>> (makePort port)
   portAndSymbol = namedPort <> symbol
@@ -231,7 +243,7 @@ makeQualifiedPort' inputDia resultDia port name = portAndSymbol where
 
 -- Don't display " tempvar" from SimpSyntaxToSyntaxGraph.hs/matchesToCase
 makeLabelledPort :: SpecialBackend b n =>
-  NodeName -> Port -> String ->  SpecialQDiagram b n
+  NodeName -> Port -> String ->  SpecialDiagram b n
 makeLabelledPort name port str
   = choosePortDiagram str portAndSymbol portSymbolAndLabel where
     portAndSymbol = makeQualifiedPort port name
@@ -241,7 +253,7 @@ makeLabelledPort name port str
       else label === portAndSymbol
 
 choosePortDiagram :: SpecialBackend b n =>
-  String -> SpecialQDiagram b n -> SpecialQDiagram b n ->SpecialQDiagram b n
+  String -> SpecialDiagram b n -> SpecialDiagram b n ->SpecialDiagram b n
 choosePortDiagram str portAndSymbol portSymbolAndLabel
   = centerX symbol where
     symbol
@@ -250,7 +262,7 @@ choosePortDiagram str portAndSymbol portSymbolAndLabel
       | otherwise = portAndSymbol
       
 -- makePassthroughPorts :: SpecialBackend b n =>
---   NodeName -> (Port,Port) -> String ->  SpecialQDiagram b n
+--   NodeName -> (Port,Port) -> String ->  SpecialDiagram b n
 -- makePassthroughPorts name (port1,port2) str
 --   = choosePortDiagram str portsDiagram portSymbolsAndLabel where
 --     portAndSymbol1 = makeQualifiedPort port1 name
@@ -264,7 +276,7 @@ choosePortDiagram str portAndSymbol portSymbolAndLabel
 -- before)
 
 -- | Make an identity TransformableDia
-identDiaFunc :: SpecialNum n => SpecialQDiagram b n -> TransformableDia b n
+identDiaFunc :: SpecialNum n => SpecialDiagram b n -> TransformableDia b n
 identDiaFunc dia transformParams = nameDiagram (tpName transformParams) dia
 
 iconToDiagram :: SpecialBackend b n
@@ -316,7 +328,7 @@ makeInputDiagram :: SpecialBackend b n
   -> TransformParams n
   -> Labeled (Maybe NamedIcon)
   -> NodeName
-  -> SpecialQDiagram b n
+  -> SpecialDiagram b n
 makeInputDiagram iconInfo tp maybeFunText name = case laValue maybeFunText of
   Just _ ->
     makeAppInnerIcon iconInfo tp True InputPortConst maybeFunText
@@ -325,7 +337,7 @@ makeInputDiagram iconInfo tp maybeFunText name = case laValue maybeFunText of
 
 makeResultDiagram :: SpecialBackend b n
   => NodeName
-  -> SpecialQDiagram b n
+  -> SpecialDiagram b n
 makeResultDiagram = makeQualifiedPort ResultPortConst
 
 makeAppInnerIcon :: SpecialBackend b n
@@ -334,7 +346,7 @@ makeAppInnerIcon :: SpecialBackend b n
   -> Bool  -- If False then add one to the nesting level. 
   -> Port  -- Port number (if the NamedIcon is Nothing)
   -> Labeled (Maybe NamedIcon) -- The icon 
-  -> SpecialQDiagram b n
+  -> SpecialDiagram b n
 makeAppInnerIcon _iconInfo (TransformParams name _) _isSameNestingLevel  port
   (Labeled Nothing str)
   = makeLabelledPort name port str
@@ -370,7 +382,7 @@ nestedPatternAppDia
 
     constructorDiagram = alignB $ makeInputDiagram iconInfo tp maybeConstructorName name
 
-    patterns::[SpecialQDiagram b n]
+    patterns::[SpecialDiagram b n]
     patterns = alignB $ zipWith (makeAppInnerIcon iconInfo tp False) resultPortsConst subIcons
     patternDiagram = hcat $  constructorDiagram : subscribedValueDia : patterns
 
@@ -483,7 +495,7 @@ nestedCaseDia iconInfo
 generalNestedMultiIf ::forall b n. SpecialBackend b n
                    => IconInfo
                    -> Colour Double
-                   -> (SpecialQDiagram b n -> SpecialQDiagram b n)
+                   -> (SpecialDiagram b n -> SpecialDiagram b n)
                    -> [Maybe NamedIcon]
                    -> CaseOrMultiIfTag
                    -> TransformableDia b n
@@ -553,9 +565,9 @@ functionDefDia functionName (TransformParams name _level)
 -- error, called at app/Rendering.hs:315:18 in main:Rendering
 
 lambdaRegionToDiagram :: SpecialBackend b Double 
-  => [SpecialQDiagram b Double]
+  => [SpecialDiagram b Double]
   -> NodeName
-  -> SpecialQDiagram b Double
+  -> SpecialDiagram b Double
 lambdaRegionToDiagram
     = lambdaRegionSymbol
 
@@ -564,9 +576,9 @@ lambdaRegionToDiagram
 -- 1: The lambda function value
 -- 2,3.. : The parameters
 lambdaRegionSymbol :: SpecialBackend b Double
-  => [SpecialQDiagram b Double]
+  => [SpecialDiagram b Double]
   -> NodeName
-  -> SpecialQDiagram b Double
+  -> SpecialDiagram b Double
 lambdaRegionSymbol enclosedDiagarms (NodeName nameInt)
   = regionSymbol
   where

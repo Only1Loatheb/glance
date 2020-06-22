@@ -2,7 +2,7 @@
 
 module NodePlacementMap (
   placeNode
-  , makePointToIcon
+  , getQueryRects
 ) where
 
 import qualified Data.Map as Map
@@ -12,14 +12,20 @@ import Data.Maybe(listToMaybe)
 
 import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
   , Drawing(..), NameAndPort(..)
-  , SpecialQDiagram, SpecialBackend, SpecialNum, NodeName(..)
+  , SpecialDiagram, SpecialBackend, SpecialNum, NodeName(..)
+  , SpecialQDiagram
   , NamedIcon, Icon(..), NodeInfo(..), IconInfo
   , Named(..)
   , TransformParams(..)
   , EdgeOption(..)
   )
 
+import TextBox(transparentAlpha)
+
 import IconToSymbolDiagram  ( iconToDiagram)
+
+import Util(nameQuery)
+
 -- CONSTANT
 graphvizScaleFactor :: (Fractional a) => a
 graphvizScaleFactor = 0.12 -- For Neato
@@ -30,11 +36,11 @@ graphvizScaleFactor = 0.12 -- For Neato
 placeNode :: SpecialBackend b Double
   => IconInfo 
   -> (NamedIcon, Dia.P2 Double) 
-  -> (NamedIcon, SpecialQDiagram b Double)
-placeNode namedIcons (key@(Named name icon), layoutPosition)
-  = (key, Dia.place transformedDia diaPosition) where
+  -> (NamedIcon, SpecialDiagram b Double)
+placeNode iconInfo (namedIcon@(Named name icon), layoutPosition)
+  = (namedIcon, Dia.place transformedDia diaPosition) where
       origDia = iconToDiagram
-                namedIcons
+                iconInfo
                 icon
                 (TransformParams name 0)
       transformedDia = Dia.centerXY origDia
@@ -43,8 +49,13 @@ placeNode namedIcons (key@(Named name icon), layoutPosition)
 getDiaPosition :: (Functor f, Fractional a) => f a -> f a
 getDiaPosition layoutPosition = graphvizScaleFactor Dia.*^ layoutPosition
 
-makePointToIcon :: [(NamedIcon, Dia.BoundingBox Dia.V2 Double)]
-                     -> Dia.P2 Double -> Maybe NamedIcon
-makePointToIcon iconAndBoudingRect point = maybeIcon where
-  insideIcons = [i | (i, rect) <- iconAndBoudingRect, rect `Box.contains` point]
-  maybeIcon = listToMaybe insideIcons
+
+boundingBoxPadding :: Double
+boundingBoxPadding = 2
+
+getQueryRects :: SpecialBackend b Double
+  =>[(Named a, SpecialDiagram b Double)]
+  -> [SpecialQDiagram b Double]
+getQueryRects iconAndPlacedNodes 
+  = [box | (icon, diagram) <- iconAndPlacedNodes,
+    let box = Dia.value (nameQuery icon) $ Dia.opacity transparentAlpha $  Dia.boundingRect $ Dia.frame boundingBoxPadding diagram]
