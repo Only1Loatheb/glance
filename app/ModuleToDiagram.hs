@@ -2,6 +2,7 @@
 
 module ModuleToDiagram(
   diagramFromModule
+  , getModuleGraphs
   ) where
 -- import Prelude hiding (return)
 
@@ -47,21 +48,25 @@ moduleToSrcSpanStarts moduleSyntax
   = error $ "Unsupported syntax in moduleToSrcSpanStarts: "
     <> show moduleSyntax
 
-diagramFromModule :: SpecialBackend b Double =>
-  String -> Bool -> IO (SpecialQDiagram b Double)
-diagramFromModule inputFilename includeComments = do
+-- getModuleGraphs :: String -> IO( _ )
+getModuleGraphs inputFilename = do
   parseResult <- parseModule inputFilename
   let
     (parsedModule, comments) = Exts.fromParseResult parseResult
-    drawingsGraphs = translateModuleToCollapsedGraphs parsedModule
+    declGraphs = translateModuleToCollapsedGraphs parsedModule
+    declSpans = moduleToSrcSpanStarts parsedModule
+    declSpansAndGraphs = zip declSpans declGraphs
+  pure (declSpansAndGraphs, comments)
+
+-- diagramFromModule :: SpecialBackend b Double =>
+--   String -> Bool -> IO (SpecialQDiagram b Double)
+diagramFromModule (declSpansAndGraphs, comments) includeComments = do
+  let (declarationSpans, drawingsGraphs) = unzip declSpansAndGraphs
   --print drawingsGraphs
   declarationDiagrams <- traverse (renderIngSyntaxGraph "") drawingsGraphs
   let
-    declarationSpans = moduleToSrcSpanStarts parsedModule
-    -- spanAndDeclarations :: [(Exts.SrcSpan, SpecialQDiagram b Double)]
     spanAndDeclarations = zip declarationSpans declarationDiagrams
 
-    -- spanAndcomments :: [(Exts.SrcSpan, SpecialQDiagram b Double)]
     spanAndcomments = fmap commentToDiagram comments
 
     spanAndDiagrams = if includeComments 

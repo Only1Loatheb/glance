@@ -13,93 +13,87 @@ import Prelude hiding (return)
 import qualified Diagrams.Prelude as Dia hiding ((#), (&))
 
 -- Options.Applicative does not seem to work qualified
-import Options.Applicative(header, progDesc, fullDesc, helper, info
-                          , defaultPrefs, customExecParser, help, short, switch
-                          , metavar, auto, argument, str, prefShowHelpOnError
-                          , Parser)
---------------------------------------
+
 import Util(customRenderSVG)
---------------------------------------
+
 import           Data.Text (Text)
 import Diagrams.Backend.Canvas as CV
 -- import           Control.Concurrent
 import qualified Graphics.Blank as BC hiding (rotate, scale, ( # ))
-import           Types  ( SpecialDiagram
-                        , SpecialBackend
-                        , NameQuery
-                        )
----------------------------------------
+import           Types (
+  SpecialDiagram
+  ,SpecialQDiagram
+  , SpecialBackend
+  , NameQuery
+  )
+
 import IconToSymbolDiagram(ColorStyle(..), colorScheme, multilineComment)
 
-import ModuleToDiagram(diagramFromModule)
+import ModuleToDiagram(getModuleGraphs, diagramFromModule)
 
-
+import ParseCmdLineArgs as CMD
 -- {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
-data CmdLineOptions = CmdLineOptions {
-  cmdInputFilename :: String,
-  cmdOutputFilename :: String,
-  cmdImageWidth :: Double,
-  cmdIncludeComments :: Bool
+  
+getBlankCanvasOpts :: Int -> BC.Options
+getBlankCanvasOpts  portNumber =  BC.Options {
+  BC.port = portNumber
+  , BC.events = ["mousedown"] 
+  , BC.debug = False
+  , BC.root = "."
+  , BC.middleware = [BC.local_only]
+  , BC.weak = False
   }
 
-optionParser :: Parser CmdLineOptions
-optionParser = CmdLineOptions
-  <$> argument str (metavar "INPUT_FILE" Dia.<> help "Input .hs filename")
-  <*> argument str (metavar "OUTPUT_FILE" Dia.<> help "Output .svg filename")
-  <*> argument auto (metavar "IMAGE_WIDTH" Dia.<> help "Output image width")
-  <*> switch
-  (short 'c' Dia.<> help "Include comments between top level declarations.")
-  -- TODO add port option
-  -- TODO add which function are detiled option
-renderFile :: CmdLineOptions -> IO ()
-renderFile (CmdLineOptions
+diagramForBlankCanvas ::  SpecialBackend b Double 
+  => SpecialQDiagram b Double
+  -> Double
+  -> (SpecialQDiagram b Double, (Double, Double) -> Dia.Point Dia.V2 Double,  Dia.SizeSpec Dia.V2 Double)
+diagramForBlankCanvas moduleDiagram imageScale = (moduleDiagramAligned, pointToDiaPoint, sizeSpec) where
+  moduleDiagramAligned = Dia.alignTL moduleDiagram
+  pointToDiaPoint _point@(x,y) = (1.0/imageScale) Dia.*^ Dia.p2 (x,-y)
+  sizeSpec =  Dia.dims2D (imageScale * Dia.width moduleDiagram) (imageScale * Dia.height moduleDiagram)
+
+renderFile :: CMD.CmdLineOptions -> IO ()
+renderFile (CMD.CmdLineOptions
              inputFilename
              outputFilename
+             portNumber
              imageScale
              includeComments)
   = do
   putStrLn $ "Translating file " ++ inputFilename ++ " into a Glance image."
-  moduleDiagram <- diagramFromModule inputFilename includeComments
-  let moduleDiagramAligned = Dia.alignTL moduleDiagram
-  BC.blankCanvas 3000 { BC.events = ["mousedown"] } $ \ context -> loop context moduleDiagramAligned imageScale
+  moduleGraphs <- getModuleGraphs inputFilename
+  moduleDiagram <- diagramFromModule moduleGraphs includeComments
+  let (moduleDiagramAligned, pointToDiaPoint, sizeSpec) = diagramForBlankCanvas moduleDiagram imageScale
+  let blankCanvasOpts  = getBlankCanvasOpts portNumber
+
+  BC.blankCanvas blankCanvasOpts $ \ context -> loop context sizeSpec moduleDiagramAligned pointToDiaPoint
   -- customRenderSVG outputFilename (Dia.mkWidth imageWidth) moduleDiagram
   putStrLn $ "Successfully wrote " ++ outputFilename
 
--- loop :: SpecialBackend b Double => BC.DeviceContext ->  IO (SpecialDiagram b Double) -> IO ()
-loop :: BC.DeviceContext
-  -> Dia.QDiagram Canvas Dia.V2 Double NameQuery -> Double -> IO b
-loop context moduleDiagram imageScale = do
-  let sizeSpec =  Dia.dims2D (imageScale * Dia.width moduleDiagram) (imageScale * Dia.height moduleDiagram)
+loop :: (Show a, Monoid a) =>
+          BC.DeviceContext
+          -> Dia.SizeSpec Dia.V2 Double
+          -> Dia.QDiagram Canvas Dia.V2 Double a
+          -> ((Double, Double) -> Dia.Point Dia.V2 Double)
+          -> IO b
+loop context sizeSpec moduleDiagram pointToDiaPoint = do
   let moduleDrawing = Dia.bg (backgroundC colorScheme) $ Dia.clearValue moduleDiagram
   BC.send context $ Dia.renderDia CV.Canvas (CanvasOptions sizeSpec) moduleDrawing 
 
   event <- BC.wait context
   case BC.ePageXY event of
     -- if no mouse location, ignore, and redraw
-    Nothing -> loop context moduleDiagram imageScale
-    Just point@(x, y) -> do
-      let scaledPoint = (1.0/imageScale) Dia.*^ Dia.p2 (x,-y)
-      print scaledPoint
-
+    Nothing -> loop context sizeSpec moduleDiagram pointToDiaPoint
+    Just point -> do
+      let scaledPoint = pointToDiaPoint point
       print $ Dia.sample  moduleDiagram scaledPoint
-      -- let maybeClickedIcon =  pointToIcon scaledPoint
-      -- print maybeClickedIcon
-      loop context moduleDiagram imageScale
+      loop context sizeSpec moduleDiagram pointToDiaPoint
 
-    -- [0.0,11.4,42.98,54.379999999999995,88.47999999999999,99.88,153.62333319266665]
 
 translateFileMain :: IO ()
-translateFileMain = customExecParser parserPrefs  opts >>= renderFile where
-
-  parserPrefs = defaultPrefs{
-    prefShowHelpOnError = True
-    }
-
-  opts = info (helper <*> optionParser)
-    (fullDesc
-    Dia.<> progDesc "SimpSyntaxToSyntaxGraph a Haskell source file (.hs) into an SVG image."
-    Dia.<> header "Glance - a visual representation of Haskell")
+translateFileMain = CMD.customExecParser CMD.parserPrefs  CMD.opts >>= renderFile
 
 main :: IO ()
 main = translateFileMain
