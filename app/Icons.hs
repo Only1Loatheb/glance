@@ -16,9 +16,15 @@ import qualified Data.IntMap as IMap
 import Data.List(find)
 import Data.Maybe(listToMaybe, isJust, fromJust, mapMaybe)
 
-import Types(Icon(..)
-            , NodeName(..), NamedIcon, Labeled(..), IconInfo
-            , Named(..))
+import           Types(
+  Icon(..)
+  , NodeName(..)
+  , NamedIcon
+  , Labeled(..)
+  , IconInfo
+  , Named(..)
+  , DiagramIcon(..)
+  )
 
 {-# ANN module "HLint: ignore Use record patterns" #-}
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
@@ -52,7 +58,7 @@ findIcon iconInfo name args = icon where
             Just x -> Just (argNum, x)
 
 findNestedIcon :: IconInfo -> NodeName -> Icon -> Maybe Icon
-findNestedIcon iconInfo name icon = case icon of
+findNestedIcon iconInfo name (Icon icon _) = case icon of
   NestedApply _ headIcon args
     -> snd
         <$> findIcon

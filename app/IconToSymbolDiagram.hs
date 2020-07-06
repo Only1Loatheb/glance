@@ -53,6 +53,7 @@ import StringSymbols(
 import DrawingColors(colorScheme, ColorStyle(..))
 import Types(
   Icon(..)
+  , DiagramIcon(..)
   , SpecialDiagram
   , SpecialBackend
   , SpecialNum
@@ -283,7 +284,7 @@ iconToDiagram :: SpecialBackend b n
   => IconInfo
   -> Icon
   -> TransformableDia b n
-iconToDiagram iconInfo icon = case icon of
+iconToDiagram iconInfo (Icon icon _) = case icon of
   TextBoxIcon s -> literalDiagram s
   BindTextBoxIcon s -> bindDiagram s
   MultiIfIcon n -> nestedMultiIfDia iconInfo (replicate (1 + (2 * n)) Nothing) MultiIfTag
@@ -615,18 +616,21 @@ getArrowBaseOpts :: (RealFloat n, Typeable n)
   -> (Icon, Icon)
   -> ArrowOpts n
 getArrowBaseOpts (NameAndPort (NodeName nodeNum) mPort) maybePoints maybeAngles 
-  icons@(_, iconTo)
+  iconPair@(_, iconTo)
   = shaftStyle %~ (lwG arrowLineWidth ) -- . lc shaftColor)
   $ headStyle %~ fc shaftColor
   $ getArrowOpts maybePoints maybeAngles iconTo where
     Port portNum = fromMaybe (Port 0) mPort
-    shaftColor = getShaftColor nodeNum portNum icons
+    shaftColor = getShaftColor nodeNum portNum iconPair
 
+getShaftColor :: Int -> Int -> (Icon, Icon) -> Colour Double
 getShaftColor = getShaftColor' edgeColors where
   edgeColors = edgeListC colorScheme
 
-getShaftColor' _ _ _ (FunctionDefIcon {}, _) = regionPerimC colorScheme
-getShaftColor' _ _ _ (_, FunctionDefIcon {}) = regionPerimC colorScheme
+getShaftColor' :: [Colour Double]
+                    -> Int -> Int -> (Icon, Icon) -> Colour Double
+getShaftColor' _ _ _ (Icon FunctionDefIcon {} _, _) = regionPerimC colorScheme
+getShaftColor' _ _ _ (_, Icon FunctionDefIcon {} _) = regionPerimC colorScheme
 getShaftColor' edgeColors nodeNum portNum _ = shaftColor where
   namePortHash = mod (portNum + (503 * nodeNum)) (length edgeColors)
   shaftColor = edgeColors !! namePortHash
@@ -651,7 +655,7 @@ getArrowOpts (formMaybePoint, toMaybePoint) (anglesFrom,anglesTo) iconTo
 
 -- getArrowHead :: Icon -> 
 getArrowHead :: RealFloat n => Icon -> ArrowHT n
-getArrowHead FunctionDefIcon {} = noHead
+getArrowHead (Icon FunctionDefIcon {} _) = noHead
 getArrowHead _ = tri
 -- https://archives.haskell.org/projects.haskell.org/diagrams/doc/arrow.html
 

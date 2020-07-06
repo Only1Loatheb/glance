@@ -14,9 +14,10 @@ import qualified Diagrams.Prelude as Dia hiding ((#), (&))
 
 -- Options.Applicative does not seem to work qualified
 
-import Util(customRenderSVG)
+import Util(customRenderSVG, showSrcInfo)
 
 import           Data.Text (Text)
+import Data.Maybe
 import Diagrams.Backend.Canvas as CV
 -- import           Control.Concurrent
 import qualified Graphics.Blank as BC hiding (rotate, scale, ( # ))
@@ -24,7 +25,7 @@ import           Types (
   SpecialDiagram
   ,SpecialQDiagram
   , SpecialBackend
-  , NameQuery
+  , DiaQuery
   )
 
 import IconToSymbolDiagram(ColorStyle(..), colorScheme, multilineComment)
@@ -72,12 +73,12 @@ renderFile (CMD.CmdLineOptions
   -- customRenderSVG outputFilename (Dia.mkWidth imageWidth) moduleDiagram
   putStrLn $ "Successfully wrote " ++ outputFilename
 
-loop :: (Show a, Monoid a) =>
-          BC.DeviceContext
-          -> Dia.SizeSpec Dia.V2 Double
-          -> Dia.QDiagram Canvas Dia.V2 Double a
-          -> ((Double, Double) -> Dia.Point Dia.V2 Double)
-          -> IO b
+loop :: 
+  BC.DeviceContext
+  -> Dia.SizeSpec Dia.V2 Double
+  -> Dia.QDiagram Canvas Dia.V2 Double DiaQuery
+  -> ((Double, Double) -> Dia.Point Dia.V2 Double)
+  -> IO b
 loop context sizeSpec moduleDiagram pointToDiaPoint = do
   let moduleDrawing = Dia.bg (backgroundC colorScheme) $ Dia.clearValue moduleDiagram
   BC.send context $ Dia.renderDia CV.Canvas (CanvasOptions sizeSpec) moduleDrawing 
@@ -87,8 +88,12 @@ loop context sizeSpec moduleDiagram pointToDiaPoint = do
     -- if no mouse location, ignore, and redraw
     Nothing -> loop context sizeSpec moduleDiagram pointToDiaPoint
     Just point -> do
-      let scaledPoint = pointToDiaPoint point
-      print $ Dia.sample  moduleDiagram scaledPoint
+      let
+        scaledPoint = pointToDiaPoint point
+        clicked = Dia.sample  moduleDiagram scaledPoint
+      if not $ null clicked
+      then putStrLn $ showSrcInfo clicked
+      else pure ()
       loop context sizeSpec moduleDiagram pointToDiaPoint
 
 

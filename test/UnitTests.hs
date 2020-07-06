@@ -11,8 +11,19 @@ import qualified Data.IntMap as IMap
 
 import SimpSyntaxToSyntaxGraph(translateStringToSyntaxGraph)
 import SyntaxGraph(SyntaxGraph(..), Reference)
-import Types(Embedder(..), Labeled(..), SgNamedNode, Edge(..), SyntaxNode(..),
-             NodeName(..), NameAndPort(..), Named(..), mkEmbedder, NodeName)
+import           Types (
+  Embedder(..)
+  , Labeled(..)
+  , SgNamedNode
+  , Edge(..)
+  , SyntaxNode(..)
+  , SyntaxNodeCore(..)
+  , NodeName(..)
+  , NameAndPort(..)
+  , Named(..)
+  , mkEmbedder
+  , NodeName
+  )
 import Util(fromMaybeError, nodeNameToInt)
 
 -- Unit Test Helpers --
@@ -52,11 +63,10 @@ maybeRenameNodeFolder (renamedNodes, nameMap, counter) mNode = case mNode of
 renameSyntaxNode :: NameMap -> SyntaxNode -> Int  -> (SyntaxNode, NameMap, Int)
 renameSyntaxNode nameMap node counter = case node of
   -- TODO Keep the Nothing subNodes
-  PatternApplyNode s subNodes
-    -> (PatternApplyNode s (reverse renamedSubNodes)
-       , newNameMap
-       , counter2)
-    where
+  (SyntaxNode (PatternApplyNode s subNodes) srcRef)
+    -> (SyntaxNode (PatternApplyNode s (reverse renamedSubNodes)) srcRef
+      , newNameMap
+      , counter2) where
       (renamedSubNodes, newNameMap, counter2)
         = foldl'
           maybeRenameNodeFolder

@@ -14,10 +14,12 @@ module Util (
   , customRenderSVG
   , namedToTuple
   , tupleToNamed
-  , nameQuery
+  , queryValue
+  , showSrcInfo
   ) where
 
 import Diagrams.Backend.SVG(renderSVG', Options(..), SVG)
+import qualified Language.Haskell.Exts.SrcLoc as SrcLoc
 import qualified Diagrams.Prelude as Dia
 import Graphics.Svg.Attributes(bindAttr, AttrTag(..))
 import Data.Maybe(fromMaybe)
@@ -30,13 +32,16 @@ import qualified Debug.Trace
 
 import           Types (
   Edge(..)
+  , Icon(..)
+  , NamedIcon(..)
   , NameAndPort(..)
   , Connection
   , NodeName(..)
   , Port
   , Named(..)
   , EdgeOption(..)
-  , NameQuery(..)
+  , DiaQuery(..)
+  , SrcRef
   )
 
 
@@ -94,5 +99,11 @@ customRenderSVG outputFilename size = renderSVG' outputFilename svgOptions where
 
   svgOptions = SVGOptions size Nothing (mkPrefix outputFilename) attributes True
 
-nameQuery :: Named a -> NameQuery
-nameQuery (Named name _) = NameQuery $ Set.singleton name
+queryValue :: (NamedIcon -> DiaQuery)
+queryValue (Named _ (Icon _ srcRef)) = [srcRef]
+
+showSrcInfo :: DiaQuery -> String
+showSrcInfo (x:_) = SrcLoc.srcSpanFilename x 
+  ++ ":" ++ (show $ SrcLoc.srcSpanStartLine x)
+  ++ ":" ++ (show $ SrcLoc.srcSpanStartColumn x)
+showSrcInfo [] = error "Nothing is clicked"

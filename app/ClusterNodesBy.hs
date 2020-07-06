@@ -18,7 +18,10 @@ import SyntaxNodeToIcon(nodeToIcon)
 import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
             , Drawing(..), NameAndPort(..)
             , SpecialDiagram, SpecialBackend, SpecialNum, NodeName(..)
-            , NamedIcon, Icon(..), NodeInfo(..), IconInfo
+            , NamedIcon
+            , Icon(..)
+            , DiagramIcon(..)
+            , NodeInfo(..), IconInfo
             , Named(..)
             , TransformParams(..))
 
@@ -39,7 +42,7 @@ clusterNodesBy iconInfo  = clusterBy where
   clusterMap = foldr combineClusterMaps IMap.empty $ map iconClusterMap (IMap.toList iconInfo)
 
 iconClusterMap :: (IMap.Key, Icon) -> IMap.IntMap ClusterT
-iconClusterMap (name, (FunctionDefIcon _ nodesInside _)) = lambdaClusterMap where
+iconClusterMap (name, (Icon (FunctionDefIcon _ nodesInside _) _) ) = lambdaClusterMap where
   lambdaClusterMap = IMap.fromAscList $ map (\x -> (nodeNameToInt x, name)) (Set.toAscList nodesInside)
 iconClusterMap _ = IMap.empty -- TODO other nested nodes
 

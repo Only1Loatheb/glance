@@ -15,7 +15,9 @@ import           PortConstants(
 import           Types(
   Labeled(..)
   , Icon(..)
+  , DiagramIcon(..)
   , SyntaxNode(..)
+  , SyntaxNodeCore(..)
   , Edge(..)
   , NameAndPort(..)
   , SgNamedNode
@@ -26,26 +28,22 @@ import           Types(
   , Embedder(..)
   , Named(..)
   , EmbedderSyntaxNode
+  , SrcRef
   )
 import Util(maybeBoolToBool)
 
 nodeToIcon :: EmbedderSyntaxNode -> Icon
-nodeToIcon (Embedder embeddedNodes node) = case node of
-  (ApplyNode flavor x)
-    -> nestedApplySyntaxNodeToIcon flavor x embeddedNodes
-  (PatternApplyNode s children)
-    -> nestedPatternNodeToIcon s children embeddedNodes
-  (NameNode s) -> TextBoxIcon s
-  (BindNameNode s) -> BindTextBoxIcon s
-  (LiteralNode s) -> TextBoxIcon s
-  (FunctionArgNode labels)
-    -> functionArgIcon labels
-  (FunctionValueNode str bodyNodes)
-    -> functionDefIcon embeddedNodes str bodyNodes
-  CaseResultNode -> CaseResultIcon
-  (CaseOrMultiIfNode tag x)
-    -> nestedCaseOrMultiIfNodeToIcon tag x embeddedNodes
-  (ListCompNode) -> ListCompIcon -- TODO actualy embede nodes
+nodeToIcon (Embedder embeddedNodes (SyntaxNode node src)) = case node of
+  (ApplyNode flavor x)              -> nestedApplySyntaxNodeToIcon flavor x embeddedNodes src
+  (PatternApplyNode s children)     -> nestedPatternNodeToIcon s children embeddedNodes src
+  (NameNode s)                      -> Icon (TextBoxIcon s) src
+  (BindNameNode s)                  -> Icon (BindTextBoxIcon s) src
+  (LiteralNode s)                   -> Icon (TextBoxIcon s) src
+  (FunctionArgNode labels)          -> functionArgIcon labels src
+  (FunctionValueNode str bodyNodes) -> functionDefIcon embeddedNodes str bodyNodes src
+  CaseResultNode                    -> Icon (CaseResultIcon) src
+  (CaseOrMultiIfNode tag x)         -> nestedCaseOrMultiIfNodeToIcon tag x embeddedNodes src
+  (ListCompNode)                    -> Icon ListCompIcon src -- TODO actualy embede nodes
 
 -- listCompIcon embeddedNodes =  
 --   ListCompIcon argList
@@ -69,52 +67,65 @@ makeArg args port = fst <$> find (findArg port) args
 nestedApplySyntaxNodeToIcon :: LikeApplyFlavor
                             -> Int
                             -> Set.Set (NodeName, Edge)
+                            -> SrcRef
                             -> Icon
-nestedApplySyntaxNodeToIcon flavor numArgs args =
-  NestedApply flavor headIcon argList
+nestedApplySyntaxNodeToIcon flavor numArgs args src =
+  Icon (NestedApply flavor headIcon argList) src
   where
-    dummyNode = ApplyNode flavor numArgs
+    dummyNode = SyntaxNode (ApplyNode flavor numArgs) src
     argPorts = take numArgs (argumentPorts dummyNode)
     headIcon = makeArg args (inputPort dummyNode)
     argList = fmap (makeArg args) argPorts
 
 functionArgIcon ::
   [String]  -- labels
+  -> SrcRef
   -> Icon
-functionArgIcon labels =
-  FunctionArgIcon labels 
+functionArgIcon labels src=
+  Icon (FunctionArgIcon labels) src 
 
 functionDefIcon ::
   Set.Set (NodeName, Edge)  -- embedded icons
   -> String -- name
   -> Set.Set NodeName  -- body nodes
+  -> SrcRef
   -> Icon
-functionDefIcon embeddedNodes str bodyNodes=
-  FunctionDefIcon str bodyNodes embeddedBodyNode
+functionDefIcon embeddedNodes str bodyNodes src =
+  Icon (FunctionDefIcon str bodyNodes embeddedBodyNode) src
   where
-    dummyNode = FunctionValueNode str Set.empty
+    dummyNode = SyntaxNode (FunctionValueNode str Set.empty) src
     embeddedBodyNode = makeArg embeddedNodes (inputPort dummyNode)
 
 nestedCaseOrMultiIfNodeToIcon ::
   CaseOrMultiIfTag
   -> Int
   -> Set.Set (NodeName, Edge)
+  -> SrcRef
   -> Icon
-nestedCaseOrMultiIfNodeToIcon tag numArgs args = case tag of
-  CaseTag -> NestedCaseIcon argList
-  MultiIfTag -> NestedMultiIfIcon argList
+nestedCaseOrMultiIfNodeToIcon tag numArgs args src = case tag of
+  CaseTag -> Icon (NestedCaseIcon argList) src
+  MultiIfTag -> Icon (NestedMultiIfIcon argList) src
   where
-    dummyNode = CaseOrMultiIfNode CaseTag numArgs
+    dummyNode = SyntaxNode (CaseOrMultiIfNode CaseTag numArgs) src
     argPorts = take (2 * numArgs) $ argumentPorts dummyNode
     argList = fmap (makeArg args) (inputPort dummyNode : argPorts)
 
-nestedPatternNodeToIcon :: String -> [Labeled (Maybe SgNamedNode)] -> Set.Set (NodeName, Edge) -> Icon
-nestedPatternNodeToIcon str children args = NestedPatternApp
-  (pure (Just (Named (NodeName (-1)) (TextBoxIcon str))))
-  -- Why so many fmaps?
-  ( (fmap . fmap . fmap . fmap) nodeToIcon children)
-  asigendValueName
+nestedPatternNodeToIcon :: 
+  String
+  -> [Labeled (Maybe SgNamedNode)]
+  -> Set.Set (NodeName, Edge)
+  -> SrcRef
+  -> Icon
+nestedPatternNodeToIcon str children args src = Icon (
+    NestedPatternApp
+    icon
+    -- Why so many fmaps?
+    ( (fmap . fmap . fmap . fmap) nodeToIcon children)
+    asigendValueName
+  )
+  src
   where
+    icon = pure $ Just (Named (NodeName (-1)) (Icon (TextBoxIcon str) src))
     asigendValueName = makeArg args PatternValuePortConst
 
 

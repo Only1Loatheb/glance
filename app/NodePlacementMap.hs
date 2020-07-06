@@ -24,7 +24,7 @@ import TextBox(transparentAlpha)
 
 import IconToSymbolDiagram  ( iconToDiagram)
 
-import Util(nameQuery)
+import Util(queryValue)
 
 -- CONSTANT
 graphvizScaleFactor :: (Fractional a) => a
@@ -54,8 +54,11 @@ boundingBoxPadding :: Double
 boundingBoxPadding = 2
 
 getQueryRects :: SpecialBackend b Double
-  =>[(Named a, SpecialDiagram b Double)]
+  =>[(NamedIcon, SpecialDiagram b Double)]
   -> [SpecialQDiagram b Double]
 getQueryRects iconAndPlacedNodes 
   = [box | (icon, diagram) <- iconAndPlacedNodes,
-    let box = Dia.value (nameQuery icon) $ Dia.opacity transparentAlpha $  Dia.boundingRect $ Dia.frame boundingBoxPadding diagram]
+    let 
+      box = Dia.value (queryValue icon) 
+        $ Dia.opacity transparentAlpha $  Dia.boundingRect
+        $ Dia.frame boundingBoxPadding diagram]

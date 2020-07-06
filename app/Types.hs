@@ -33,18 +33,21 @@ module Types (
   , EmbedderSyntaxNode
   , TransformParams(..)
   , TransformableDia
-  , NameQuery(..)
+  , DiaQuery(..)
+  , SyntaxNodeCore(..)
+  , DiagramIcon(..)
+  , SrcRef
 ) where
 
 import Diagrams.Prelude(QDiagram, V2, Any, Renderable, Path, IsName)
 import Diagrams.TwoD.Text(Text)
-import qualified Data.GraphViz as GV
-import qualified Data.GraphViz.Attributes.Complete as GVA
 import Control.Applicative(Applicative(..))
 import qualified Data.Graph.Inductive as ING
 import qualified Data.IntMap as IMap
 import qualified Data.Set as Set
 import Data.Typeable(Typeable)
+import qualified Language.Haskell.Exts as Exts
+
 
 newtype NodeName = NodeName Int deriving (Typeable, Eq, Ord, Show)
 instance IsName NodeName
@@ -66,9 +69,15 @@ instance Applicative Labeled where
 
 type IconInfo = IMap.IntMap Icon
 
+type SrcRef = Exts.SrcSpan
+
 -- | A datatype that represents an icon.
 -- The TextBoxIcon's data is the text that appears in the text box.
-data Icon = TextBoxIcon String
+data Icon = Icon DiagramIcon SrcRef
+  deriving (Show, Eq, Ord)
+
+data DiagramIcon = 
+  TextBoxIcon String
   | MultiIfIcon
     Int  -- Number of alternatives
   | FunctionArgIcon
@@ -113,7 +122,10 @@ type EmbedderSyntaxNode = Embedder SyntaxNode
 type SgNamedNode = Named EmbedderSyntaxNode
 
 -- TODO remove Ints from SyntaxNode data constructors.
-data SyntaxNode =
+data SyntaxNode = SyntaxNode SyntaxNodeCore SrcRef 
+  deriving (Show, Eq, Ord)
+
+data SyntaxNodeCore = 
   -- Function application, composition, and applying to a composition
   -- The list of nodes is unordered (replace with a map?)
   ApplyNode LikeApplyFlavor Int
@@ -167,7 +179,7 @@ type SpecialBackend b n
 
 type SpecialDiagram b n = QDiagram b V2 n Any
 
-type SpecialQDiagram b n = QDiagram b V2 n NameQuery
+type SpecialQDiagram b n = QDiagram b V2 n DiaQuery
 
 type IngSyntaxGraph gr = gr SgNamedNode Edge
 
@@ -200,11 +212,5 @@ data TransformParams n = TransformParams {
 -- by what angle it will be rotated.
 type TransformableDia b n = TransformParams n -> SpecialDiagram b n
 
-newtype NameQuery = NameQuery ( Set.Set NodeName ) deriving (Show, Eq)
+type DiaQuery = [SrcRef]
 
-instance Semigroup NameQuery where
-  (<>) (NameQuery l) (NameQuery r) = NameQuery $ Set.union l r
-
-instance Monoid NameQuery where
-  mempty = NameQuery Set.empty
-  mappend = (<>)

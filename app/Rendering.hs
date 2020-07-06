@@ -31,14 +31,24 @@ import IconToSymbolDiagram  ( iconToDiagram
                 )
 
 import SyntaxNodeToIcon(nodeToIcon)
-import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
-            , Drawing(..), NameAndPort(..)
-            , SpecialDiagram, SpecialBackend, NodeName(..)
-            , NamedIcon, Icon(..), NodeInfo(..), IconInfo
-            , Named(..)
-            , TransformParams(..)
-            , SpecialQDiagram
-            )
+import           Types (
+  EmbedInfo(..)
+  , AnnotatedGraph
+  , Edge(..)
+  , Drawing(..)
+  , NameAndPort(..)
+  , SpecialDiagram
+  , SpecialBackend
+  , NodeName(..)
+  , NamedIcon
+  , Icon(..)
+  , DiagramIcon(..)
+  , NodeInfo(..)
+  , IconInfo
+  , Named(..)
+  , TransformParams(..)
+  , SpecialQDiagram
+  )
 
 import Util(nodeNameToInt, fromMaybeError, namedToTuple)
 import ClusterNodesBy (
@@ -89,13 +99,13 @@ drawLambdaRegions iconInfo placedNodes
 
     -- Also draw the region around the icon the lambda is in.
     drawRegion :: Set.Set NodeName -> NamedIcon -> SpecialDiagram b Double
-    drawRegion parentNames icon = case icon of
-      Named lambdaName _lambdaIcon@(FunctionDefIcon _ enclosedNames _)
-        -> lambdaRegionToDiagram enclosed lambdaName where
-            enclosed = findDia <$> (lambdaName : Set.toList (parentNames <> enclosedNames))
-      Named parentName (NestedApply _ headIcon icons)
+    drawRegion parentNames (Named name (Icon diagramIcon _)) = case diagramIcon of
+      (FunctionDefIcon _ enclosedNames _)
+        -> lambdaRegionToDiagram enclosed name where
+            enclosed = findDia <$> (name : Set.toList (parentNames <> enclosedNames))
+      (NestedApply _ headIcon icons)
         -> mconcat
-           $ drawRegion (Set.insert parentName parentNames)
+           $ drawRegion (Set.insert name parentNames)
            <$> mapMaybe
            (findMaybeIconFromName iconInfo)
            (headIcon:icons)
@@ -153,9 +163,9 @@ renderIconGraph debugInfo fullGraphWithInfo = do
 
     placedEdgesAndNodes = Dia.value mempty $ addEdges debugInfo iconInfo parentGraph placedNodes
 
-    boundingRects = mconcat $ getQueryRects iconAndPlacedNodes
+    queryRects = mconcat $ getQueryRects iconAndPlacedNodes
     -- boxesDia = mconcat $ map (Dia.lc Dia.blue $ Dia.boundingRect . snd) iconAndBoudingRect
-  pure  (Dia.atop boundingRects ( placedRegions <> placedEdgesAndNodes)) -- <> placedRegions <> placedEdges)
+  pure  (Dia.atop queryRects ( placedRegions <> placedEdgesAndNodes)) -- <> placedRegions <> placedEdges)
   where
     parentGraph
       = ING.nmap niVal $ ING.labfilter (isNothing . niParent) fullGraphWithInfo

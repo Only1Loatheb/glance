@@ -1,11 +1,16 @@
 {-# LANGUAGE PatternSynonyms #-}
 module HsSyntaxToSimpSyntax (
   SimpExp(..)
+  , SrcRef(..)
   , SelectorAndVal(..)
   , SimpAlt(..)
   , SimpDecl(..)
   , SimpPat(..)
   , SimpQStmt(..)
+  , SimpQStmtCore(..)
+  , SimpExpCore(..)
+  , SimpPatCore(..)
+  , SimpDeclCore(..)
   , stringToSimpDecl
   , qNameToString
   , nameToString
@@ -18,6 +23,11 @@ module HsSyntaxToSimpSyntax (
 
 import Data.List(foldl')
 import Data.Maybe(catMaybes, isJust, fromMaybe)
+
+import Types (
+  SrcRef
+  )
+
 
 import qualified Language.Haskell.Exts as Exts
 
@@ -53,105 +63,137 @@ import StringSymbols(
 -- A simplified Haskell syntax tree
 
 -- rhs is now SimpExp
+-- class WithReference aa where
+--   -- | Retrieve the annotation of an AST node.
+--   ref :: aa -> SrcRef
 
 -- A simplified Haskell expression.
-data SimpExp l =
-    SeName 
-    { lSeName :: l
-    , nameStr :: String }
+data SimpExp = SimpExp SrcRef SimpExpCore
+  deriving (Show, Eq)
+
+-- instance WithReference SimpExp where
+--   ref (SimpExp s _) = s
+
+data SimpExpCore =
+  SeName 
+    { nameStr :: String }
   | SeLit
-    { lSeLit  :: l
-    , literal :: Exts.Literal l}
+    { literal :: Exts.Literal Exts.SrcSpanInfo}
   | SeApp
-    { lSeApp  :: l
-    , function :: SimpExp l
-    , argument :: SimpExp l}
+    { function :: SimpExp
+    , argument :: SimpExp}
   | SeLambda
-    { lSeLambda  :: l
-    , patAplications :: [SimpPat l]
-    , bodyExpresion :: SimpExp l
+    { patAplications :: [SimpPat]
+    , bodyExpresion :: SimpExp
     , laNameStr :: (Maybe String)}
   | SeLet
-    { lSeLet  :: l
-    , declarations :: [SimpDecl l]
-    , bodyExpresion :: SimpExp l}
+    { declarations :: [SimpDecl]
+    , bodyExpresion :: SimpExp}
   | SeCase
-    { lSeCase  :: l
-    , bodyExpresion :: SimpExp l
-    , alternatives :: [SimpAlt l]}
+    { bodyExpresion :: SimpExp
+    , alternatives :: [SimpAlt]}
   | SeMultiIf
-    { lSeMultiIf  :: l
-    , selectorAndVal :: [SelectorAndVal l] }
+    { selectorAndVal :: [SelectorAndVal] }
   | SeListComp
-    { lSeListComp  :: l
-    , bodyExpresion :: SimpExp l
-    , qualifyingExpresion ::[SimpQStmt l]} 
+    { bodyExpresion :: SimpExp
+    , qualifyingExpresion ::[SimpQStmt]} 
   deriving (Show, Eq)
 
-data SimpStmt l = SimpStmt l String deriving (Show, Eq)
+data SimpStmt = SimpStmt SrcRef String deriving (Show, Eq)
 
-data SelectorAndVal l = SelectorAndVal
-  { svSelector :: SimpExp l
-  , svVal :: SimpExp l
+-- instance WithReference SimpStmt where
+--   ref (SimpStmt s _) = s
+
+data SelectorAndVal = SelectorAndVal
+  { selectorAndValRef :: SrcRef
+  , svSelector :: SimpExp
+  , svVal :: SimpExp
   }
   deriving (Show, Eq)
 
-data SimpAlt l = SimpAlt
-  { saPat :: SimpPat l
-  , saVal :: SimpExp l
+-- instance WithReference SelectorAndVal where
+--   ref (SelectorAndVal s _ _) = s
+
+data SimpAlt = SimpAlt
+  { simpAltRef :: SrcRef
+  , saPat :: SimpPat
+  , saVal :: SimpExp
   }
   deriving (Show, Eq)
 
-data SimpDecl l =
+-- instance WithReference SimpAlt where
+--   ref (SimpAlt s _ _) = s
+
+data SimpDecl = SimpDecl {
+  simpDeclRef :: SrcRef
+  , declCore :: SimpDeclCore
+  }
+  deriving (Show, Eq)
+
+-- instance WithReference SimpDecl where
+--   ref (SimpDecl s _) = s
+  
+data SimpDeclCore = 
   -- These don't have decl lists, since only lets have decl lists
   SdPatBind
-    { lSdPatBind  :: l
-    , patternBind :: SimpPat l
-    , bindedExp :: SimpExp l}
+    { patternBind :: SimpPat
+    , bindedExp :: SimpExp}
   | SdTypeSig 
-    { lSdTypeSig  :: l
-    , typeSigNames :: [Exts.Name l]
-    , typeBody :: Exts.Type l}
+    { typeSigNames :: [Exts.Name Exts.SrcSpanInfo]
+    , typeBody :: Exts.Type Exts.SrcSpanInfo}
   -- TODO Add a visual representation of data declarations
   | SdCatchAll 
-    { declaration :: Exts.Decl l}
+    { declaration :: Exts.Decl Exts.SrcSpanInfo}
   deriving (Show, Eq)
 
-data SimpPat l =
+data SimpPat = SimpPat {
+  simpPatref :: SrcRef
+  , patCore :: SimpPatCore
+  }
+  deriving (Show, Eq)
+
+-- instance WithReference SimpPat where
+--   ref (SimpPat s _) = s
+
+data SimpPatCore =   
   SpVar 
-    { lSpVar  :: l
-    ,varName :: Exts.Name l}
+    { varName :: Exts.Name Exts.SrcSpanInfo}
   | SpLit 
-    { lSpLit  :: l
-    , litSign :: Exts.Sign l
-    , absValue :: Exts.Literal l}
+    { litSign :: Exts.Sign Exts.SrcSpanInfo
+    , absValue :: Exts.Literal Exts.SrcSpanInfo}
   | SpApp 
-    { lSpApp  :: l
-    , appliedCons :: Exts.QName l
-    , arguments :: [SimpPat l]}
+    { appliedCons :: Exts.QName Exts.SrcSpanInfo
+    , arguments :: [SimpPat]}
   | SpAsPat 
-    { lSpAsPat  :: l
-    , alias :: Exts.Name l
-    , aliasedPattern :: SimpPat l}
-  | SpWildCard l
+    { alias :: Exts.Name Exts.SrcSpanInfo
+    , aliasedPattern :: SimpPat}
+  | SpWildCard
   deriving (Show, Eq)
 
-data SimpQStmt l = 
+data SimpQStmt = SimpQStmt SrcRef SimpQStmtCore 
+  deriving (Show, Eq)
+
+-- instance WithReference SimpQStmt where
+--   ref (SimpQStmt s _) = s
+
+data SimpQStmtCore = 
   SqQual
-    { lSqQual :: l
-    , qualifier :: SimpExp l }
+    { qualifier :: SimpExp}
   | SqGen
-    { lSqGen :: l 
-    , valueGenerator :: SimpExp l
-    , itemPattern :: SimpPat l}
+    { valueGenerator :: SimpExp
+    , itemPattern :: SimpPat}
   | SqLet 
-    { lSqLet :: l
-    , declarationBinds :: [SimpDecl l]}
+    { declarationBinds :: [SimpDecl]}
   deriving (Show, Eq)
-  
--- Helper functions
 
-nameToQname :: Show l => l -> Exts.Name l -> Exts.QName l
+-- Helper functions
+srcRef :: Exts.SrcSpanInfo -> SrcRef
+srcRef = Exts.srcInfoSpan 
+
+srcSpanInfo :: SrcRef -> Exts.SrcSpanInfo
+srcSpanInfo span = Exts.infoSpan span []
+
+nameToQname :: Exts.SrcSpanInfo -> Exts.Name Exts.SrcSpanInfo -> Exts.QName Exts.SrcSpanInfo
 nameToQname l name = strToQName l $ nameToString name  
 
 strToQName :: l -> String -> Exts.QName l
@@ -167,50 +209,52 @@ qOpToExp :: Exts.QOp l -> Exts.Exp l
 qOpToExp (Exts.QVarOp l n) = Exts.Var l n
 qOpToExp (Exts.QConOp l n) = Exts.Con l n
 
-simpPatNameStr ::  Show l => SimpPat l -> String
-simpPatNameStr (SpVar _ n)     = nameToString n
-simpPatNameStr (SpLit _ sign lit) = showLiteral sign lit
-simpPatNameStr (SpApp _ qn _)  = qNameToString qn
-simpPatNameStr (SpAsPat _ n _) = nameToString n
-simpPatNameStr _ = error "unsupported pattern"
+simpPatNameStr :: SimpPatCore -> String
+simpPatNameStr simpPatCore = case simpPatCore of
+  SpVar n        -> nameToString n
+  SpLit sign lit -> showLiteral sign lit
+  SpApp qn _     -> qNameToString qn
+  SpAsPat n _    -> nameToString n
+  _              -> error "unsupported pattern"
 
-simpExpToRhs :: Show l => l -> SimpExp l -> Exts.Rhs l
+simpExpToRhs :: Exts.SrcSpanInfo -> SimpExp -> Exts.Rhs Exts.SrcSpanInfo
 simpExpToRhs l e = Exts.UnGuardedRhs l (simpExpToHsExp e)
     
 --
 
-hsPatToSimpPat :: Show a => Exts.Pat a -> SimpPat a
-hsPatToSimpPat p = case p of
-  Exts.PVar l n -> SpVar l n
-  Exts.PLit l sign lit -> SpLit l sign lit
-  Exts.PInfixApp l p1 qName p2 -> hsPatToSimpPat (Exts.PApp l qName [p1, p2])
-  Exts.PApp l name patts -> SpApp l name (fmap hsPatToSimpPat patts)
-  Exts.PTuple l _ patts -> SpApp
-                           l
-                           ((strToQName l . nTupleString . length) patts)
-                           (fmap hsPatToSimpPat patts)
-  Exts.PParen _ pat -> hsPatToSimpPat pat
-  Exts.PAsPat l name pat -> SpAsPat l name (hsPatToSimpPat pat)
-  Exts.PWildCard l -> SpWildCard l
-  Exts.PList l patts -> SpApp
-                        l
-                        ((strToQName l . nListString . length) patts)
-                        (fmap hsPatToSimpPat patts)
-  _ -> error $  "Unsupported syntax in hsPatToSimpPat: " <> show p
+hsPatToSimpPat :: Exts.Pat Exts.SrcSpanInfo -> SimpPat
+hsPatToSimpPat p = SimpPat (srcRef $ Exts.ann p) simpPatCore where
+  simpPatCore = case p of
+    Exts.PVar l n -> SpVar n
+    Exts.PLit l sign lit -> SpLit sign lit
+    Exts.PInfixApp l p1 qName p2 -> patCore $ hsPatToSimpPat (Exts.PApp l qName [p1, p2])
+    Exts.PApp l name patts -> SpApp name (fmap hsPatToSimpPat patts)
+    Exts.PTuple l _ patts -> SpApp
+                            ((strToQName l . nTupleString . length) patts)
+                            (fmap hsPatToSimpPat patts)
+    Exts.PParen l pat -> patCore $ hsPatToSimpPat pat
+    Exts.PAsPat l name pat -> SpAsPat name (hsPatToSimpPat pat)
+    Exts.PWildCard l -> SpWildCard
+    Exts.PList l patts -> SpApp
+                          ((strToQName l . nListString . length) patts)
+                          (fmap hsPatToSimpPat patts)
+    _ -> error $  "Unsupported syntax in hsPatToSimpPat: " <> show p
 
 -- BEGIN BEGIN BEGIN BEGIN BEGIN matchesToFunBind
-whereToLet :: Show a => a -> Exts.Rhs a -> Maybe (Exts.Binds a) -> SimpExp a
+whereToLet :: Exts.SrcSpanInfo -> Exts.Rhs Exts.SrcSpanInfo  -> Maybe (Exts.Binds Exts.SrcSpanInfo ) -> SimpExp
 whereToLet l rhs maybeBinds = val
   where
     rhsExp = hsRhsToExp rhs
     val = case maybeBinds of
       Nothing -> rhsExp
-      Just binds -> SeLet l (hsBindsToDecls binds) rhsExp
+      Just binds -> SimpExp s $ SeLet (hsBindsToDecls binds) rhsExp where
+        s = srcRef l
 
-matchToDeclWLambda :: Show a => Exts.Match a -> SimpDecl a
+matchToDeclWLambda :: Exts.Match Exts.SrcSpanInfo -> SimpDecl
 matchToDeclWLambda (Exts.Match l name patterns rhs maybeWhereBinds)
-  = SdPatBind l (SpVar l name) lambda where
-    lambda = SeLambda l
+  = SimpDecl s $ SdPatBind (SimpPat s $ SpVar name) lambda where
+    s = srcRef l
+    lambda = SimpExp s $ SeLambda
       (fmap hsPatToSimpPat patterns)
       (whereToLet l rhs maybeWhereBinds)
       (Just $ nameToString name)
@@ -226,13 +270,13 @@ matchToAlt (Exts.Match l _ mtaPats rhs binds)
       _ -> Exts.PTuple l Exts.Boxed mtaPats
 matchToAlt match = error $ "Unsupported syntax in matchToAlt: " <> show match
   
-matchesToFunBind :: Show a => a -> [Exts.Match a] -> Exts.Match a
+matchesToFunBind :: Exts.SrcSpanInfo -> [Exts.Match Exts.SrcSpanInfo] -> Exts.Match Exts.SrcSpanInfo
 matchesToFunBind l [] = error $ "Empty matches in matchesToFunBind."
 matchesToFunBind l [match] = match 
 matchesToFunBind l allMatches@(firstMatch : _) = multipleMatchesToCase l firstMatch allMatches
 
 -- TODO combine srcLoc
-multipleMatchesToCase :: Show a => a -> Exts.Match a -> [Exts.Match a] -> Exts.Match a
+multipleMatchesToCase :: Exts.SrcSpanInfo -> Exts.Match Exts.SrcSpanInfo -> [Exts.Match Exts.SrcSpanInfo] -> Exts.Match Exts.SrcSpanInfo
 multipleMatchesToCase srcLoc (Exts.Match _ funName pats _ _ ) allMatches
   = Exts.Match srcLoc funName casePats rhs Nothing where
     -- There is a special case in Icons.hs/makeLabelledPort to exclude " casevar"
@@ -248,40 +292,45 @@ multipleMatchesToCase srcLoc (Exts.Match _ funName pats _ _ ) allMatches
 multipleMatchesToCase l _ _ = error $ "Unsupported syntax in matchesToFunBind:" ++ show l
 -- END END END END END matchesToFunBind
 
-hsDeclToSimpDecl :: Show a => Exts.Decl a -> SimpDecl a
-hsDeclToSimpDecl decl = case decl of
-  Exts.TypeSig l names typeForNames -> SdTypeSig l names typeForNames
-  Exts.FunBind l matches -> matchToDeclWLambda $ matchesToFunBind l matches
-  Exts.PatBind l pat rhs maybeBinds -> SdPatBind l (hsPatToSimpPat pat) expr
-  -- TODO Add a visual representation of data declarations
-    where
-      expr = whereToLet l rhs maybeBinds
-  d -> SdCatchAll d
+hsDeclToSimpDecl :: Exts.Decl Exts.SrcSpanInfo -> SimpDecl
+hsDeclToSimpDecl decl = SimpDecl (srcRef $ Exts.ann decl)  simpDeclCore where
+  simpDeclCore = case decl of
+    Exts.TypeSig l names typeForNames -> SdTypeSig names typeForNames
+    Exts.FunBind l matches -> declCore $ matchToDeclWLambda $ matchesToFunBind l matches
+    Exts.PatBind l pat rhs maybeBinds -> SdPatBind (hsPatToSimpPat pat) expr
+    -- TODO Add a visual representation of data declarations
+      where expr = whereToLet l rhs maybeBinds
+    d -> SdCatchAll d
   
-hsBindsToDecls :: Show a => Exts.Binds a -> [SimpDecl a]
+hsBindsToDecls :: Exts.Binds Exts.SrcSpanInfo -> [SimpDecl]
 hsBindsToDecls binds = case binds of
   Exts.BDecls _ decls -> fmap hsDeclToSimpDecl decls
   _ -> error $ "Unsupported syntax in hsBindsToDecls: " ++ show binds
 
-simpDeclsToHsBinds :: Show a => a -> [SimpDecl a] -> Exts.Binds a
-simpDeclsToHsBinds l decls = Exts.BDecls l (fmap simpDeclToHsDecl decls)
+simpDeclsToHsBinds :: SrcRef -> [SimpDecl] -> Exts.Binds Exts.SrcSpanInfo
+simpDeclsToHsBinds s decls = Exts.BDecls l (fmap simpDeclToHsDecl decls)
+  where  l = srcSpanInfo s
 
-simpDeclToHsDecl :: Show a => SimpDecl a -> Exts.Decl a
-simpDeclToHsDecl decl = case decl of
-  SdPatBind l pat e
-    -> Exts.PatBind l (simpPatToHsPat pat) (simpExpToRhs l e) Nothing
-  SdTypeSig l names typeForNames -> Exts.TypeSig l names typeForNames
-  SdCatchAll d -> d
+simpDeclToHsDecl :: SimpDecl -> Exts.Decl Exts.SrcSpanInfo
+simpDeclToHsDecl (SimpDecl s decl) = hsDecl where
+  hsDecl = case decl of
+    SdPatBind pat e -> Exts.PatBind l (simpPatToHsPat pat) (simpExpToRhs l e) Nothing
+    SdTypeSig names typeForNames -> Exts.TypeSig l names typeForNames
+    SdCatchAll d -> d
+  l = srcSpanInfo s
+  
 
-simpPatToHsPat :: Show a => SimpPat a -> Exts.Pat a
-simpPatToHsPat pat = case pat of
-  SpVar l n -> Exts.PVar l n
-  SpLit l s lit -> Exts.PLit l s lit
-  SpApp l n pats -> Exts.PApp l n (fmap simpPatToHsPat pats)
-  SpAsPat l n p -> Exts.PAsPat l n (simpPatToHsPat p)
-  SpWildCard l -> Exts.PWildCard l
+simpPatToHsPat :: SimpPat -> Exts.Pat Exts.SrcSpanInfo
+simpPatToHsPat (SimpPat s pat) = hsPat where
+  hsPat = case pat of
+    SpVar n -> Exts.PVar l n
+    SpLit s lit -> Exts.PLit l s lit
+    SpApp n pats -> Exts.PApp l n (fmap simpPatToHsPat pats)
+    SpAsPat n p -> Exts.PAsPat l n (simpPatToHsPat p)
+    SpWildCard -> Exts.PWildCard l
+  l = srcSpanInfo s
 
-guardedRhsToSelectorAndVal :: Show a => Exts.GuardedRhs a -> SelectorAndVal a
+guardedRhsToSelectorAndVal :: Exts.GuardedRhs Exts.SrcSpanInfo -> SelectorAndVal
 guardedRhsToSelectorAndVal rhs = case rhs of
   Exts.GuardedRhs _ [s] valExp -> SelectorAndVal{svSelector=stmtToExp s
                                                 , svVal=hsExpToSimpExp valExp}
@@ -292,32 +341,39 @@ guardedRhsToSelectorAndVal rhs = case rhs of
       _ -> error
            $ "Unsupported syntax in stmtToExp: " ++ show stmt
 
-selAndValToGuardedRhs :: Show a => a -> SelectorAndVal a -> Exts.GuardedRhs a
-selAndValToGuardedRhs l selAndVal = Exts.GuardedRhs
+selAndValToGuardedRhs :: SrcRef -> SelectorAndVal -> Exts.GuardedRhs  Exts.SrcSpanInfo
+selAndValToGuardedRhs s selAndVal = Exts.GuardedRhs
   l
   [Exts.Qualifier l (simpExpToHsExp $ svSelector selAndVal)]
   (simpExpToHsExp $ svVal selAndVal)
+    where
+      l = srcSpanInfo s
 
-hsRhsToExp :: Show a => Exts.Rhs a -> SimpExp a
+
+hsRhsToExp :: Exts.Rhs Exts.SrcSpanInfo -> SimpExp
 hsRhsToExp rhs = case rhs of
   Exts.UnGuardedRhs _ e -> hsExpToSimpExp e
   Exts.GuardedRhss l rhss
-    -> SeMultiIf l (fmap guardedRhsToSelectorAndVal rhss)
+    -> SimpExp s $ SeMultiIf (fmap guardedRhsToSelectorAndVal rhss) where
+      s = srcRef l
 
-hsAltToSimpAlt :: Show a => Exts.Alt a -> SimpAlt a
+hsAltToSimpAlt :: Exts.Alt Exts.SrcSpanInfo -> SimpAlt
 hsAltToSimpAlt (Exts.Alt l pat rhs maybeBinds)
   = SimpAlt{saPat=hsPatToSimpPat pat, saVal=whereToLet l rhs maybeBinds}
 
-simpAltToHsAlt :: Show a => a -> SimpAlt a -> Exts.Alt a
-simpAltToHsAlt l (SimpAlt pat e)
-  = Exts.Alt l (simpPatToHsPat pat) (simpExpToRhs l e) Nothing
-
-ifToGuard :: a -> SimpExp a -> SimpExp a -> SimpExp a -> SimpExp a
-ifToGuard l e1 e2 e3
-  = SeMultiIf l [SelectorAndVal{svSelector=e1, svVal=e2}
-                , SelectorAndVal{svSelector=otherwiseExp, svVal=e3}]
+simpAltToHsAlt :: SrcRef -> SimpAlt -> Exts.Alt Exts.SrcSpanInfo
+simpAltToHsAlt s (SimpAlt ss pat e) = Exts.Alt l (simpPatToHsPat pat) (simpExpToRhs ll e) Nothing
   where
-    otherwiseExp = SeName l otherwiseExpStr
+    l = srcSpanInfo s
+    ll = srcSpanInfo ss
+
+ifToGuard :: SrcRef -> SimpExp -> SimpExp -> SimpExp -> SimpExp
+ifToGuard l e1 e2 e3 = SimpExp l 
+  $ SeMultiIf [ SelectorAndVal l e1 e2
+              , SelectorAndVal l otherwiseExp e3
+              ]
+  where
+    otherwiseExp = SimpExp l $ SeName otherwiseExpStr
 
 pattern FunctionCompositionStr :: String
 pattern FunctionCompositionStr = "."
@@ -328,15 +384,24 @@ pattern LowPriorityApplicationStr = "$"
 pattern InfixFmapStr :: String
 pattern InfixFmapStr = "<$>"
 
-simplifyExp :: SimpExp l -> SimpExp l
+simplifyExp :: SimpExp -> SimpExp
 simplifyExp e = case e of
   -- Reduce applications of function compositions (e.g. (f . g) x -> f (g x))
-  SeApp l2 (SeApp l1 (SeApp _ (SeName _ FunctionCompositionStr) f1) f2) arg
-    -> SeApp l1 f1 $ simplifyExp (SeApp l2 f2 arg)
-  SeApp l (SeApp _ (SeName _ LowPriorityApplicationStr) exp1) exp2
-    -> SeApp l exp1 exp2
-  SeApp l1 (SeName l2 InfixFmapStr) arg
-    -> SeApp l1 (SeName l2 actionOverParameterizedType) arg
+  SimpExp l1 (SeApp 
+    (SimpExp l2 (SeApp 
+      (SimpExp _  (SeApp 
+        (SimpExp _  (SeName FunctionCompositionStr))
+        f1))
+      f2))
+    arg)
+    -> SimpExp l1 (SeApp
+        f1 
+        (simplifyExp (SimpExp l2 (SeApp f2 arg)))
+      )
+  -- SimpExp l (SeApp (SimpExp _ (SeApp (SimpExp _ SeName LowPriorityApplicationStr) exp1)) exp2)
+  --   -> SimpExp l (SeApp exp1 exp2)
+  -- SimpExp l1 (SeApp (SimpExp l2 (SeName InfixFmapStr)) arg) ->
+  --   SimpExp l1 (SeApp (SimpExp l2 (SeName actionOverParameterizedType) arg))
   x -> x
 
 deListifyApp :: Show l => l -> Exts.Exp l -> [Exts.Exp l] -> Exts.Exp l
@@ -364,50 +429,51 @@ rewriteRightSection l op expr = Exts.Lambda l [tempPat] appExpr
 desugarDo :: Show l => [Exts.Stmt l] -> Exts.Exp l
 desugarDo stmts = case stmts of
   [Exts.Qualifier _ e] -> e
-  (Exts.Qualifier l e : stmtsTail)
-    -> Exts.App l (Exts.App l (makeVarExp l thenOperatorStr) e) (desugarDo stmtsTail)
-  (Exts.Generator l pat e : stmtsTail)
-    -> Exts.App l (Exts.App l (makeVarExp l bindOperatorStr) e)
-                  (Exts.Lambda l [pat] (desugarDo stmtsTail))
-  (Exts.LetStmt l binds : stmtsTail) -> Exts.Let l binds (desugarDo stmtsTail)
+  (Exts.Qualifier l e : stmtsTail)      -> Exts.App l 
+    (Exts.App l (makeVarExp l thenOperatorStr) e) 
+    (desugarDo stmtsTail)
+  (Exts.Generator l pat e : stmtsTail)  -> Exts.App l 
+    (Exts.App l (makeVarExp l bindOperatorStr) e)
+    (Exts.Lambda l [pat] (desugarDo stmtsTail))
+  (Exts.LetStmt l binds : stmtsTail)    -> Exts.Let l binds (desugarDo stmtsTail)
   _ -> error $ "Unsupported syntax in degugarDo: " <> show stmts
 
-desugarEnums :: Show l => l -> String -> [Exts.Exp l] -> SimpExp l
+desugarEnums :: Exts.SrcSpanInfo -> String -> [Exts.Exp Exts.SrcSpanInfo] -> SimpExp
 desugarEnums l funcName exprs = hsExpToSimpExp $ deListifyApp l
                                 (makeVarExp l funcName)
                                 exprs
 
-desugarListComp :: Show l => Exts.Stmt l ->  SimpQStmt l
-desugarListComp (Exts.Qualifier l e) = SqQual l (hsExpToSimpExp e)
-desugarListComp (Exts.Generator l pat e) = SqGen l (hsExpToSimpExp e) (hsPatToSimpPat pat)
-desugarListComp (Exts.LetStmt l binds) = SqLet l (hsBindsToDecls binds)
-desugarListComp _ = error "Unsupported syntax in hsQStmtsToSimpStmts'" 
+desugarListComp :: Exts.Stmt Exts.SrcSpanInfo ->  SimpQStmt
+desugarListComp qStmt = SimpQStmt (srcRef $ Exts.ann qStmt) simpQStmtCore where
+  simpQStmtCore = case qStmt of
+    (Exts.Qualifier l e)     -> SqQual (hsExpToSimpExp e)
+    (Exts.Generator l pat e) -> SqGen (hsExpToSimpExp e) (hsPatToSimpPat pat)
+    (Exts.LetStmt l binds)   -> SqLet (hsBindsToDecls binds)
+    _                        -> error "Unsupported syntax in hsQStmtsToSimpStmts'" 
                             
 -- http://hackage.haskell.org/package/haskell-src-exts-1.23.0/docs/Language-Haskell-Exts-Syntax.html#g:8
-hsExpToSimpExp :: Show a => Exts.Exp a -> SimpExp a
-hsExpToSimpExp x = {- --TODO fix -}simplifyExp $ case x of
-  Exts.Var l n -> SeName l (qNameToString n)
-  Exts.Con l n -> SeName l (qNameToString n)
-  Exts.Lit l n -> SeLit l n
+hsExpToSimpExp :: Exts.Exp Exts.SrcSpanInfo -> SimpExp
+hsExpToSimpExp x = simplifyExp $ case x of
+  Exts.Var l n -> SimpExp (srcRef l) $ SeName (qNameToString n)
+  Exts.Con l n -> SimpExp (srcRef l) $ SeName (qNameToString n)
+  Exts.Lit l n -> SimpExp (srcRef l) $ SeLit n
   Exts.InfixApp l e1 op e2 ->
     hsExpToSimpExp $ Exts.App l (Exts.App l (qOpToExp op) e1) e2
-  Exts.App l f arg -> SeApp l (hsExpToSimpExp f) (hsExpToSimpExp arg)
+  Exts.App l f arg -> SimpExp (srcRef l) $ SeApp (hsExpToSimpExp f) (hsExpToSimpExp arg)
   Exts.NegApp l e -> hsExpToSimpExp $ Exts.App l (makeVarExp l negateSymbolStr) e
-  Exts.Lambda l patterns e
-    -> SeLambda l (fmap hsPatToSimpPat patterns) (hsExpToSimpExp e) Nothing
-  Exts.Let l bs e -> SeLet l (hsBindsToDecls bs) (hsExpToSimpExp e)
-  Exts.If l e1 e2 e3
-    -> ifToGuard l (hsExpToSimpExp e1) (hsExpToSimpExp e2) (hsExpToSimpExp e3)
-  Exts.Case l e alts -> SeCase l (hsExpToSimpExp e) (fmap hsAltToSimpAlt alts)
-  Exts.Paren _ e -> hsExpToSimpExp e
+  Exts.Lambda l patterns e -> SimpExp (srcRef l) $ SeLambda (fmap hsPatToSimpPat patterns) (hsExpToSimpExp e) Nothing
+  Exts.Let l bs e ->  SimpExp (srcRef l) $ SeLet (hsBindsToDecls bs) (hsExpToSimpExp e)
+  Exts.If l e1 e2 e3 -> ifToGuard (srcRef l) (hsExpToSimpExp e1) (hsExpToSimpExp e2) (hsExpToSimpExp e3)
+  Exts.Case l e alts -> SimpExp (srcRef l) $ SeCase (hsExpToSimpExp e) (fmap hsAltToSimpAlt alts)
+  Exts.Paren l e -> hsExpToSimpExp e
   Exts.List l exprs -> hsExpToSimpExp $ deListifyApp
-                       l
-                       (makeVarExp l $ nListString $ length exprs)
-                       exprs
+                      l
+                      (makeVarExp l $ nListString $ length exprs)
+                      exprs
   Exts.Tuple l _ exprs -> hsExpToSimpExp $ deListifyApp
-                       l
-                       (makeVarExp l $ nTupleString $ length exprs)
-                       exprs
+                      l
+                      (makeVarExp l $ nTupleString $ length exprs)
+                      exprs
   Exts.TupleSection l _ mExprs -> hsExpToSimpExp $ rewriteTupleSection l mExprs
   Exts.LeftSection l expr op -> hsExpToSimpExp $ Exts.App l (qOpToExp op) expr
   Exts.RightSection l op expr -> hsExpToSimpExp $ rewriteRightSection l op expr
@@ -416,8 +482,8 @@ hsExpToSimpExp x = {- --TODO fix -}simplifyExp $ case x of
   Exts.EnumFromTo l e1 e2 -> desugarEnums l enumFromToStr [e1, e2]
   Exts.EnumFromThen l e1 e2 -> desugarEnums l enumFromThenStr [e1, e2]
   Exts.EnumFromThenTo l e1 e2 e3 -> desugarEnums l enumFromThenToStr [e1, e2, e3]
-  Exts.MultiIf l rhss -> SeMultiIf l (fmap guardedRhsToSelectorAndVal rhss)
-  Exts.ListComp l e1 qStmts -> SeListComp l (hsExpToSimpExp e1) ( desugarListComp <$> filterQStmts qStmts)
+  Exts.MultiIf l rhss -> SimpExp (srcRef l) $ SeMultiIf (fmap guardedRhsToSelectorAndVal rhss)
+  Exts.ListComp l e1 qStmts -> SimpExp (srcRef l) $ SeListComp (hsExpToSimpExp e1) (desugarListComp <$> filterQStmts qStmts)
   _ -> error $ "Unsupported syntax in hsExpToSimpExp: " ++ show x
   -- BDecls l [Decl l]	
   -- IPBinds l [IPBind l]
@@ -433,23 +499,25 @@ filterQStmts qStmts = [ x | (Exts.QualStmt _l x) <- qStmts]
 -- GroupUsing Exp	-- then group using exp
 -- GroupByUsing Exp Exp -- then group by exp using exp
 
-simpExpToHsExp :: Show a => SimpExp a -> Exts.Exp a
-simpExpToHsExp x = case x of
+simpExpToHsExp :: SimpExp -> Exts.Exp Exts.SrcSpanInfo
+simpExpToHsExp (SimpExp s x) = case x of
   -- TODO Sometimes SeName comes from Exts.Con
   --
   -- Put names in parens in case it's an operator
-  SeName l str  -> Exts.Paren l (Exts.Var l (strToQName l str))
+  SeName str  -> Exts.Paren l (Exts.Var l (strToQName l str))
   -- SeName l str -> (Exts.Var l (strToQName l str))
-  SeLit  l lit  -> Exts.Lit l lit
-  SeApp l e1 e2 -> Exts.App l (simpExpToHsExp e1) (simpExpToHsExp e2)
-  SeLambda l pats e _name ->
+  SeLit lit  -> Exts.Lit l lit
+  SeApp e1 e2 -> Exts.App l (simpExpToHsExp e1) (simpExpToHsExp e2)
+  SeLambda pats e _name ->
     Exts.Lambda l (fmap simpPatToHsPat pats) (simpExpToHsExp e)
-  SeLet l decls e -> Exts.Let l (simpDeclsToHsBinds l decls) (simpExpToHsExp e)
-  SeCase l e alts ->
-    Exts.Case l (simpExpToHsExp e) $ fmap (simpAltToHsAlt l) alts
-  SeMultiIf l selsAndVal ->
-    Exts.MultiIf l (fmap (selAndValToGuardedRhs l) selsAndVal)
-  SeListComp l e1 me2 -> error "TODO simpExpToHsExp SeListComp l e1 me2 " 
+  SeLet decls e -> Exts.Let l (simpDeclsToHsBinds s decls) (simpExpToHsExp e)
+  SeCase e alts ->
+    Exts.Case l (simpExpToHsExp e) $ fmap (simpAltToHsAlt s) alts
+  SeMultiIf selsAndVal ->
+    Exts.MultiIf l (fmap (selAndValToGuardedRhs s) selsAndVal)
+  SeListComp e1 me2 -> error "TODO simpExpToHsExp SeListComp l e1 me2 "
+  where 
+    l = srcSpanInfo s
 
 -- Parsing
 
@@ -466,7 +534,7 @@ customParseMode = Exts.defaultParseMode
 customParseDecl :: String -> Exts.Decl Exts.SrcSpanInfo
 customParseDecl = Exts.fromParseResult . Exts.parseDeclWithMode customParseMode
 
-stringToSimpDecl :: String -> SimpDecl Exts.SrcSpanInfo
+stringToSimpDecl :: String -> SimpDecl
 stringToSimpDecl = hsDeclToSimpDecl . customParseDecl
 
 formatString :: String -> Exts.Decl Exts.SrcSpanInfo

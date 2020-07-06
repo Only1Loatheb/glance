@@ -16,11 +16,13 @@ module PortConstants
   , resultPortsConst
   ) where
 
-import Types( Port(..),
-              SyntaxNode(..))
+import Types( Port(..)
+  , SyntaxNode(..)
+  , SyntaxNodeCore(..)
+  )
 
 isInputPort :: Port -> Bool
-isInputPort (Port portNo) = even portNo 
+isInputPort (Port portNo) = even portNo
 
 pattern InputPortConst :: Port
 pattern InputPortConst = Port 0
@@ -61,12 +63,13 @@ resultPort = const ResultPortConst
 
 argumentPorts :: SyntaxNode -> [Port]
 argumentPorts n = case n of
-  ApplyNode {} -> argPortsConst
-  PatternApplyNode {} -> resultPortsConst
-  FunctionValueNode {} -> resultPortsConst
-  CaseOrMultiIfNode {} -> mixedPorts
-  NameNode {} -> []
-  BindNameNode {} -> []
-  LiteralNode {} -> []
-  CaseResultNode {}-> []
-  ListCompNode {} -> argPortsConst
+  (SyntaxNode ApplyNode {} _) -> argPortsConst
+  (SyntaxNode PatternApplyNode {} _) -> resultPortsConst
+  (SyntaxNode FunctionValueNode {} _) -> resultPortsConst
+  (SyntaxNode CaseOrMultiIfNode {} _) -> mixedPorts
+  (SyntaxNode NameNode {} _) -> []
+  (SyntaxNode BindNameNode {} _) -> []
+  (SyntaxNode LiteralNode {} _) -> []
+  (SyntaxNode CaseResultNode {} _) -> []
+  (SyntaxNode ListCompNode {} _) -> argPortsConst
+  (SyntaxNode FunctionArgNode {} _) -> []

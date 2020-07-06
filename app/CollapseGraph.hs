@@ -23,6 +23,7 @@ import PortConstants(
   , isInputPort)
 import Types(
   SyntaxNode(..)
+  , SyntaxNodeCore(..)
   , IngSyntaxGraph
   , Edge(..)
   , CaseOrMultiIfTag(..)
@@ -80,7 +81,7 @@ syntaxNodeIsEmbeddable :: ParentType
                        -> Maybe Port
                        -> Maybe Port
                        -> Bool
-syntaxNodeIsEmbeddable parentType syntaxNode mParentPort mChildPort
+syntaxNodeIsEmbeddable parentType (SyntaxNode syntaxNode _) mParentPort mChildPort
   = case (parentType, syntaxNode) of
       (ApplyParent, ApplyNode {}) -> parentPortNotResult
       (ApplyParent, LiteralNode {}) -> parentPortNotResult
@@ -129,7 +130,7 @@ syntaxNodeIsEmbeddable parentType syntaxNode mParentPort mChildPort
     parentPortNotResult = not $ isResult mParentPort
 
 parentTypeForNode :: SyntaxNode -> ParentType
-parentTypeForNode n = case n of
+parentTypeForNode (SyntaxNode n _) = case n of
   ApplyNode {} -> ApplyParent
   CaseOrMultiIfNode CaseTag _ -> CaseParent
   CaseOrMultiIfNode MultiIfTag _ -> MultiIfParent
@@ -325,7 +326,7 @@ syntaxGraphToCollapsedGraph
   = collapseAnnotatedGraph . annotateGraph . syntaxGraphToFglGraph
   -- = annotateGraph . syntaxGraphToFglGraph
 
-translateDeclToCollapsedGraph :: Show l => Exts.Decl l -> AnnotatedGraph FGR.Gr
+translateDeclToCollapsedGraph :: Exts.Decl Exts.SrcSpanInfo -> AnnotatedGraph FGR.Gr
 translateDeclToCollapsedGraph
   = syntaxGraphToCollapsedGraph . translateDeclToSyntaxGraph . hsDeclToSimpDecl
 
@@ -336,8 +337,8 @@ translateStringToCollapsedGraphAndDecl s = (drawing, decl) where
   decl = customParseDecl s -- :: ParseResult Module
   drawing = translateDeclToCollapsedGraph decl
 
-translateModuleToCollapsedGraphs :: Show l =>
-  Exts.Module l -> [AnnotatedGraph FGR.Gr]
+translateModuleToCollapsedGraphs ::
+  Exts.Module Exts.SrcSpanInfo -> [AnnotatedGraph FGR.Gr]
 translateModuleToCollapsedGraphs (Exts.Module _ _ _ _ decls)
   = fmap translateDeclToCollapsedGraph decls
 translateModuleToCollapsedGraphs moduleSyntax

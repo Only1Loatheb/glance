@@ -11,14 +11,16 @@ module EdgeAngles(
 import Diagrams.Prelude hiding ((&), (#), Name)
 
 
-import Types  ( Icon(..)
-              , SpecialNum
-              , NodeName(..)
-              , Port(..)
-              , NamedIcon
-              , Labeled(..)
-              , IconInfo
-              )                         
+import Types  (
+  Icon(..)
+  , DiagramIcon(..) 
+  , SpecialNum
+  , NodeName(..)
+  , Port(..)
+  , NamedIcon
+  , Labeled(..)
+  , IconInfo
+  )                         
 import Icons(findIcon,findMaybeIconFromName,findMaybeIconsFromNames)
 
 import PortConstants(
@@ -97,7 +99,7 @@ getPortAngle = getPortAngleHelper False
 
 getPortAngleHelper :: SpecialNum n
   => Bool -> IconInfo -> Icon -> Port -> Maybe NodeName -> Angle n
-getPortAngleHelper embedded iconInfo icon port maybeNodeName = case icon of
+getPortAngleHelper embedded iconInfo (Icon icon _) port maybeNodeName = case icon of
   TextBoxIcon {} -> 1/4 @@ turn
   BindTextBoxIcon {} -> 1/4 @@ turn
   MultiIfIcon {} -> multiIfPortAngle port
