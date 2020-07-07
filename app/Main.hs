@@ -26,11 +26,12 @@ import           Types (
   ,SpecialQDiagram
   , SpecialBackend
   , DiaQuery
+  , ModuleGraphs
   )
 
 import IconToSymbolDiagram(ColorStyle(..), colorScheme, multilineComment)
 
-import ModuleToDiagram(getModuleGraphs, diagramFromModule)
+import ModuleToDiagram(getModuleGraphs, diagramFromModule, selectView)
 
 import ParseCmdLineArgs as CMD
 -- {-# ANN module "HLint: ignore Unnecessary hiding" #-}
@@ -65,37 +66,40 @@ renderFile (CMD.CmdLineOptions
   = do
   putStrLn $ "Translating file " ++ inputFilename ++ " into a Glance image."
   moduleGraphs <- getModuleGraphs inputFilename
-  moduleDiagram <- diagramFromModule moduleGraphs includeComments
-  let (moduleDiagramAligned, pointToDiaPoint, sizeSpec) = diagramForBlankCanvas moduleDiagram imageScale
   let blankCanvasOpts  = getBlankCanvasOpts portNumber
-
-  BC.blankCanvas blankCanvasOpts $ \ context -> loop context sizeSpec moduleDiagramAligned pointToDiaPoint
+  BC.blankCanvas blankCanvasOpts $ \ context -> loop context moduleGraphs includeComments imageScale
   -- customRenderSVG outputFilename (Dia.mkWidth imageWidth) moduleDiagram
   putStrLn $ "Successfully wrote " ++ outputFilename
 
 loop :: 
   BC.DeviceContext
-  -> Dia.SizeSpec Dia.V2 Double
-  -> Dia.QDiagram Canvas Dia.V2 Double DiaQuery
-  -> ((Double, Double) -> Dia.Point Dia.V2 Double)
+  -> ModuleGraphs
+  -> Bool
+  -> Double
   -> IO b
-loop context sizeSpec moduleDiagram pointToDiaPoint = do
-  let moduleDrawing = Dia.bg (backgroundC colorScheme) $ Dia.clearValue moduleDiagram
-  BC.send context $ Dia.renderDia CV.Canvas (CanvasOptions sizeSpec) moduleDrawing 
-
+loop context moduleGraphs includeComments imageScale = do
+  moduleDiagram <- diagramFromModule moduleGraphs includeComments
+  let (moduleDiagramAligned, pointToDiaPoint, sizeSpec) = diagramForBlankCanvas moduleDiagram imageScale
+  drawDiagram context sizeSpec moduleDiagramAligned
   event <- BC.wait context
   case BC.ePageXY event of
     -- if no mouse location, ignore, and redraw
-    Nothing -> loop context sizeSpec moduleDiagram pointToDiaPoint
+    Nothing -> loop context moduleGraphs includeComments imageScale
     Just point -> do
-      let
-        scaledPoint = pointToDiaPoint point
-        clicked = Dia.sample  moduleDiagram scaledPoint
+      let scaledPoint = pointToDiaPoint point
+      let clicked = Dia.sample moduleDiagram scaledPoint
       if not $ null clicked
-      then putStrLn $ showSrcInfo clicked
-      else pure ()
-      loop context sizeSpec moduleDiagram pointToDiaPoint
+      then do
+        let firstClickedValue = head clicked
+        -- putStrLn $ showSrcInfo firstClickedValue
+        let viewGraphs = selectView firstClickedValue moduleGraphs
+        loop context viewGraphs includeComments imageScale
+      else loop context moduleGraphs includeComments imageScale
 
+drawDiagram context sizeSpec moduleDiagram = do
+  BC.send context $ BC.clearRect (0,0,BC.width context, BC.height context)
+  let moduleDrawing = Dia.bg (backgroundC colorScheme) $ Dia.clearValue moduleDiagram
+  BC.send context $ Dia.renderDia CV.Canvas (CanvasOptions sizeSpec) moduleDrawing   
 
 translateFileMain :: IO ()
 translateFileMain = CMD.customExecParser CMD.parserPrefs  CMD.opts >>= renderFile

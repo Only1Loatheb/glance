@@ -61,7 +61,7 @@ simpleTests = [
   , "y = f $ g x"
   ]
 enumTest :: [String]
-enumTest = [ 
+enumTest = [
   "enumFrom = [1..]"
   ,"enumFromTo = [1..5]"
   ,"enumFromThen = [1,2..]"
@@ -78,7 +78,7 @@ dataDeclTests = [
   "data Foo"
   , "data Foo = Foo Int"
   ]
-  
+
 composeTests :: [String]
 composeTests = [
   "y = f (g x)",
@@ -397,12 +397,12 @@ otherInLambdaTest = [
 testDecls :: [String]
 testDecls = mconcat [
   simpleTests
-  , enumTest
+  , enumTest
   , composeTests
   , nestedTests
   , doTests
   , caseTests
-  , 
+  ,
   lambdaTests
   , guardTests
   , patternTests
@@ -449,7 +449,7 @@ visualTranslateTests :: (HasCallStack, SpecialBackend b Double)
 visualTranslateTests = do
   drawings <- traverse translateStringToDrawing testDecls
   let
-    textDrawings = fmap (\t -> alignL $ textBox t) testDecls
+    textDrawings = fmap (alignL . textBox) testDecls
     vCattedDrawings = vsep 1 $ zipWith (===) (fmap alignL drawings) textDrawings
   pure vCattedDrawings
 

@@ -23,7 +23,7 @@ import qualified Language.Haskell.Exts.SrcLoc as SrcLoc
 import qualified Diagrams.Prelude as Dia
 import Graphics.Svg.Attributes(bindAttr, AttrTag(..))
 import Data.Maybe(fromMaybe)
-import Data.Text as T(pack, filter, Text) 
+import Data.Text as T(pack, filter, Text)
 import Data.Char(isAlpha)
 import System.FilePath(takeBaseName)
 import qualified Data.Set as Set
@@ -40,7 +40,8 @@ import           Types (
   , Port
   , Named(..)
   , EdgeOption(..)
-  , DiaQuery(..)
+  , DiaQuery
+  , QueryValue(..)
   , SrcRef
   )
 
@@ -100,10 +101,10 @@ customRenderSVG outputFilename size = renderSVG' outputFilename svgOptions where
   svgOptions = SVGOptions size Nothing (mkPrefix outputFilename) attributes True
 
 queryValue :: (NamedIcon -> DiaQuery)
-queryValue (Named _ (Icon _ srcRef)) = [srcRef]
+queryValue (Named name (Icon _ srcRef)) = [QueryValue srcRef name]
 
-showSrcInfo :: DiaQuery -> String
-showSrcInfo (x:_) = SrcLoc.srcSpanFilename x 
-  ++ ":" ++ (show $ SrcLoc.srcSpanStartLine x)
-  ++ ":" ++ (show $ SrcLoc.srcSpanStartColumn x)
-showSrcInfo [] = error "Nothing is clicked"
+showSrcInfo :: QueryValue -> String
+showSrcInfo q = SrcLoc.srcSpanFilename srcRef
+  ++ ":" ++ show (SrcLoc.srcSpanStartLine srcRef)
+  ++ ":" ++ show (SrcLoc.srcSpanStartColumn srcRef) where
+    srcRef = nodeSrcRef q

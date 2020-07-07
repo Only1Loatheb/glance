@@ -3,6 +3,7 @@
 module ModuleToDiagram(
   diagramFromModule
   , getModuleGraphs
+  , selectView
   ) where
 -- import Prelude hiding (return)
 
@@ -17,6 +18,7 @@ import           Data.Maybe                     ( fromMaybe
 
 import qualified Language.Haskell.Exts as Exts
 import           Data.List( sortBy )
+import Data.List.Split as Split
 import           Data.Function( on )
 
 import IconToSymbolDiagram(ColorStyle(..), colorScheme, multilineComment)
@@ -27,7 +29,14 @@ import           Types  (
   , SpecialQDiagram
   , SpecialBackend
   , NamedIcon
+  , SrcRef(..)
+  , QueryValue(..)
+  , ModuleGraphs
   )
+
+import PartialView (neighborsSubgraph)
+
+-- moduleGraphs
 
 parseModule :: String
   -> IO (Exts.ParseResult (Exts.Module Exts.SrcSpanInfo, [Exts.Comment]))
@@ -48,7 +57,7 @@ moduleToSrcSpanStarts moduleSyntax
   = error $ "Unsupported syntax in moduleToSrcSpanStarts: "
     <> show moduleSyntax
 
--- getModuleGraphs :: String -> IO( _ )
+getModuleGraphs :: String -> IO(ModuleGraphs)
 getModuleGraphs inputFilename = do
   parseResult <- parseModule inputFilename
   let
@@ -82,8 +91,8 @@ commentToDiagram :: SpecialBackend b Double
 commentToDiagram (Exts.Comment _ srcSpan c) = (srcSpan, Dia.value mempty $ multilineComment  c)
 
 composeDiagrams :: SpecialBackend b Double
-  =>  [(Exts.SrcSpan, SpecialQDiagram b Double)]
-  ->   (SpecialQDiagram b Double)
+  => [(Exts.SrcSpan, SpecialQDiagram b Double)]
+  -> (SpecialQDiagram b Double)
 composeDiagrams diagrams = finalDiagram where
   sortedDiagarms = snd <$> sortBy (compare `on` fst) diagrams
   finalDiagram = composeDiagramsInModule sortedDiagarms
@@ -96,3 +105,30 @@ composeDiagramsInModule :: SpecialBackend b Double
   -> SpecialQDiagram b Double
 composeDiagramsInModule diagrams = finalDia where
   finalDia = Dia.vsep diagramSeparation diagrams
+
+selectView :: QueryValue -> ModuleGraphs -> ModuleGraphs
+selectView (QueryValue srcRef nodeName) (declSpansAndGraphs, comments) = ([selectedSpanAndGraph], nerbyComments) where
+  ((declSpan, graph), srcSpans) = selectGraph srcRef declSpansAndGraphs
+  nerbyComments = selectComments comments srcSpans
+  selectedSpanAndGraph = (declSpan, neighborsSubgraph nodeName graph)
+
+selectGraph srcRef declSpansAndGraphs = (declSpanAndGraph, (srcSpanBefore, srcSpanAfter)) where
+  declSpansAndGraphsChunks = Split.divvy chunkSize chunkOffset paddedDeclSpansAndGraphs where 
+    chunkSize = 3
+    chunkOffset = 1
+    paddedDeclSpansAndGraphs = headPadding : declSpansAndGraphs ++ [tailPadding] where
+      (headPadding, tailPadding) = getPadding paddedDeclSpansAndGraphs 
+    
+  selectedChunk = head $ filter ((srcRef <=) . fst . (flip (!!) 1)) declSpansAndGraphsChunks
+  [(srcSpanBefore,_), declSpanAndGraph, (srcSpanAfter,_)] = selectedChunk
+
+getPadding paddedDeclSpansAndGraphs = (headPadding, tailPadding) where
+  fileName = Exts.srcSpanFilename $ fst $ head paddedDeclSpansAndGraphs
+  paddingError = error "padding used as a graph"
+  headPadding = (srcRefBefere, paddingError) where
+    srcRefBefere = Exts.SrcSpan fileName 0 0 0 0
+  tailPadding = (srcRefAfter, paddingError) where
+    srcRefAfter = Exts.SrcSpan fileName maxBound maxBound maxBound maxBound
+
+selectComments comments (srcSpanBefore, srcSpanAfter) = nerbyComments where
+  nerbyComments = filter (\((Exts.Comment _ srcSpan _))-> srcSpan > srcSpanBefore && srcSpan < srcSpanAfter) comments

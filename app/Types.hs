@@ -33,16 +33,20 @@ module Types (
   , EmbedderSyntaxNode
   , TransformParams(..)
   , TransformableDia
-  , DiaQuery(..)
+  , DiaQuery
+  , QueryValue(..)
   , SyntaxNodeCore(..)
   , DiagramIcon(..)
   , SrcRef
+  , ModuleGraphs
+  , AnnotatedFGR
 ) where
 
 import Diagrams.Prelude(QDiagram, V2, Any, Renderable, Path, IsName)
 import Diagrams.TwoD.Text(Text)
 import Control.Applicative(Applicative(..))
 import qualified Data.Graph.Inductive as ING
+import qualified Data.Graph.Inductive.PatriciaTree as FGR
 import qualified Data.IntMap as IMap
 import qualified Data.Set as Set
 import Data.Typeable(Typeable)
@@ -212,5 +216,13 @@ data TransformParams n = TransformParams {
 -- by what angle it will be rotated.
 type TransformableDia b n = TransformParams n -> SpecialDiagram b n
 
-type DiaQuery = [SrcRef]
+data QueryValue = QueryValue {
+  nodeSrcRef :: SrcRef
+  , nodeName :: NodeName
+  } deriving (Show, Eq, Ord)
 
+type DiaQuery = [QueryValue]
+
+type AnnotatedFGR = AnnotatedGraph FGR.Gr
+
+type ModuleGraphs = ([(Exts.SrcSpan,AnnotatedFGR)],[Exts.Comment])
