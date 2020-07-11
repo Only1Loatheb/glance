@@ -4,6 +4,8 @@ module ModuleToDiagram(
   diagramFromModule
   , getModuleGraphs
   , selectView
+  -- for tests
+  , selectGraph
   ) where
 -- import Prelude hiding (return)
 
@@ -24,8 +26,8 @@ import           Data.Function( on )
 import IconToSymbolDiagram(ColorStyle(..), colorScheme, multilineComment)
 import Rendering(renderIngSyntaxGraph)
 import CollapseGraph(translateModuleToCollapsedGraphs)
-import           Types  ( 
-  SpecialDiagram  
+import           Types  (
+  SpecialDiagram
   , SpecialQDiagram
   , SpecialBackend
   , NamedIcon
@@ -78,8 +80,8 @@ diagramFromModule (declSpansAndGraphs, comments) includeComments = do
 
     spanAndcomments = fmap commentToDiagram comments
 
-    spanAndDiagrams = if includeComments 
-      then spanAndcomments ++ spanAndDeclarations 
+    spanAndDiagrams = if includeComments
+      then spanAndcomments ++ spanAndDeclarations
       else spanAndDeclarations
     moduleDiagram = composeDiagrams spanAndDiagrams
   --print comments
@@ -107,28 +109,35 @@ composeDiagramsInModule diagrams = finalDia where
   finalDia = Dia.vsep diagramSeparation diagrams
 
 selectView :: QueryValue -> ModuleGraphs -> ModuleGraphs
-selectView (QueryValue srcRef nodeName) (declSpansAndGraphs, comments) = ([selectedSpanAndGraph], nerbyComments) where
+selectView (QueryValue srcRef name) (declSpansAndGraphs, comments) = ([selectedSpanAndGraph], nerbyComments) where
   ((declSpan, graph), srcSpans) = selectGraph srcRef declSpansAndGraphs
   nerbyComments = selectComments comments srcSpans
-  selectedSpanAndGraph = (declSpan, neighborsSubgraph nodeName graph)
+  selectedSpanAndGraph = (declSpan, neighborsSubgraph name graph)
 
+selectGraph :: Exts.SrcSpan
+                 -> [(Exts.SrcSpan, b)]
+                 -> ((Exts.SrcSpan, b), (Exts.SrcSpan, Exts.SrcSpan))
 selectGraph srcRef declSpansAndGraphs = (declSpanAndGraph, (srcSpanBefore, srcSpanAfter)) where
-  declSpansAndGraphsChunks = Split.divvy chunkSize chunkOffset paddedDeclSpansAndGraphs where 
+  declSpansAndGraphsChunks = Split.divvy chunkSize chunkOffset paddedDeclSpansAndGraphs where
     chunkSize = 3
     chunkOffset = 1
     paddedDeclSpansAndGraphs = headPadding : declSpansAndGraphs ++ [tailPadding] where
-      (headPadding, tailPadding) = getPadding paddedDeclSpansAndGraphs 
-    
-  selectedChunk = head $ filter ((srcRef <=) . fst . (flip (!!) 1)) declSpansAndGraphsChunks
+      (headPadding, tailPadding) = getPadding declSpansAndGraphs
+  srcRefStart = Exts.srcSpanStart srcRef
+  selectedChunk = head $ filter ((srcRefStart <). Exts.srcSpanStart . fst . flip (!!) 2) declSpansAndGraphsChunks
   [(srcSpanBefore,_), declSpanAndGraph, (srcSpanAfter,_)] = selectedChunk
 
-getPadding paddedDeclSpansAndGraphs = (headPadding, tailPadding) where
-  fileName = Exts.srcSpanFilename $ fst $ head paddedDeclSpansAndGraphs
+getPadding :: [(Exts.SrcSpan, b1)]
+                -> ((Exts.SrcSpan, b2), (Exts.SrcSpan, b2))
+getPadding declSpansAndGraphs = (headPadding, tailPadding) where
+  fileName = Exts.srcSpanFilename $ fst $ head declSpansAndGraphs
   paddingError = error "padding used as a graph"
   headPadding = (srcRefBefere, paddingError) where
     srcRefBefere = Exts.SrcSpan fileName 0 0 0 0
   tailPadding = (srcRefAfter, paddingError) where
     srcRefAfter = Exts.SrcSpan fileName maxBound maxBound maxBound maxBound
 
+selectComments :: [Exts.Comment]
+                    -> (Exts.SrcSpan, Exts.SrcSpan) -> [Exts.Comment]
 selectComments comments (srcSpanBefore, srcSpanAfter) = nerbyComments where
   nerbyComments = filter (\((Exts.Comment _ srcSpan _))-> srcSpan > srcSpanBefore && srcSpan < srcSpanAfter) comments

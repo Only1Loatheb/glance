@@ -264,11 +264,11 @@ lambdaTests = [
 letTests :: [String]
 letTests = [
   "letInExpression = let a = x in a",
-  -- TODO fix. See UnitTests/letTests
+  -- TODO fix. See SyntaxGraphTests/letTests
   "y x = f x x",
   "y x1 = let x2 = f x1 in x2 x1",
 
-  -- TODO fix. See UnitTests/letTests
+  -- TODO fix. See SyntaxGraphTests/letTests
   "y = g $ f y",
   "y = let {a = f b; b = g a} in b",
 

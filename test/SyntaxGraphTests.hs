@@ -1,4 +1,4 @@
-module UnitTests(
+module SyntaxGraphTests(
   allUnitTests
   ) where
 
@@ -377,5 +377,5 @@ translateUnitTests = TestList [
 
 allUnitTests :: Test
 allUnitTests = TestList[
-  TestLabel "UnitTests.hs" translateUnitTests
+  TestLabel "SyntaxGraphTests.hs" translateUnitTests
   ]

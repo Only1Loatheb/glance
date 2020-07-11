@@ -10,10 +10,11 @@ import Test.HUnit
 import IconToSymbolDiagram(colorScheme, ColorStyle(..))
 import Util(customRenderSVG)
 
-import UnitTests(allUnitTests)
+import SyntaxGraphTests(allUnitTests)
 import VisualGraphAlgorithmTests(visualCollapseTests)
 import RenderingTests(renderTests)
 import VisualTests(visualTranslateTests)
+import ModuleToDiagramTests(moduleToDiagramTests)
 
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
@@ -37,4 +38,5 @@ main = do
   --  ING.prettyPrint singleApplyGraph
   renderDrawings drawingsAndNames
   _ <- runTestTT allUnitTests
+  _ <- runTestTT moduleToDiagramTests
   pure ()

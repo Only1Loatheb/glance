@@ -67,35 +67,43 @@ renderFile (CMD.CmdLineOptions
   putStrLn $ "Translating file " ++ inputFilename ++ " into a Glance image."
   moduleGraphs <- getModuleGraphs inputFilename
   let blankCanvasOpts  = getBlankCanvasOpts portNumber
-  BC.blankCanvas blankCanvasOpts $ \ context -> loop context moduleGraphs includeComments imageScale
+  BC.blankCanvas blankCanvasOpts $ \ context -> loop context moduleGraphs Nothing includeComments imageScale
   -- customRenderSVG outputFilename (Dia.mkWidth imageWidth) moduleDiagram
   putStrLn $ "Successfully wrote " ++ outputFilename
 
 loop :: 
   BC.DeviceContext
   -> ModuleGraphs
+  -> Maybe ModuleGraphs
   -> Bool
   -> Double
   -> IO b
-loop context moduleGraphs includeComments imageScale = do
-  moduleDiagram <- diagramFromModule moduleGraphs includeComments
+loop context moduleGraphs maybeViewGraphs includeComments imageScale = do
+  -- print maybeViewGraphs
+  let displayedGraphs = fromMaybe moduleGraphs maybeViewGraphs
+  moduleDiagram <- diagramFromModule displayedGraphs includeComments
   let (moduleDiagramAligned, pointToDiaPoint, sizeSpec) = diagramForBlankCanvas moduleDiagram imageScale
   drawDiagram context sizeSpec moduleDiagramAligned
   event <- BC.wait context
   case BC.ePageXY event of
     -- if no mouse location, ignore, and redraw
-    Nothing -> loop context moduleGraphs includeComments imageScale
+    Nothing -> loop context moduleGraphs Nothing includeComments imageScale
     Just point -> do
       let scaledPoint = pointToDiaPoint point
       let clicked = Dia.sample moduleDiagram scaledPoint
       if not $ null clicked
       then do
         let firstClickedValue = head clicked
-        -- putStrLn $ showSrcInfo firstClickedValue
-        let viewGraphs = selectView firstClickedValue moduleGraphs
-        loop context viewGraphs includeComments imageScale
-      else loop context moduleGraphs includeComments imageScale
+        -- print firstClickedValue
+        putStrLn $ showSrcInfo firstClickedValue
+        let viewGraphs = Just $ selectView firstClickedValue moduleGraphs
+        loop context moduleGraphs viewGraphs includeComments imageScale
+      else loop context moduleGraphs Nothing includeComments imageScale
 
+drawDiagram :: BC.DeviceContext
+                 -> Dia.SizeSpec Dia.V2 Double
+                 -> Dia.QDiagram Canvas Dia.V2 Double m
+                 -> IO ()
 drawDiagram context sizeSpec moduleDiagram = do
   BC.send context $ BC.clearRect (0,0,BC.width context, BC.height context)
   let moduleDrawing = Dia.bg (backgroundC colorScheme) $ Dia.clearValue moduleDiagram
