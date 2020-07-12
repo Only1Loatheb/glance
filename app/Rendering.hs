@@ -19,7 +19,7 @@ import Control.Arrow(first)
 import qualified Data.Graph.Inductive as ING
 import Data.Graph.Inductive.PatriciaTree (Gr) 
 import Data.List(find)
-import Data.Maybe(isNothing, mapMaybe)
+import           Data.Maybe
 import GHC.Stack(HasCallStack)
 
 --import qualified Data.GraphViz.Types
@@ -150,8 +150,9 @@ getDiagramWidthAndHeight dummyDiagram = (diaWidth, diaHeight) where
 renderIconGraph :: forall b. SpecialBackend b Double
   => String  -- ^ Debugging information
   -> Gr (NodeInfo NamedIcon) (EmbedInfo Edge)
+  -> Maybe (Gr (NodeInfo NamedIcon) (EmbedInfo Edge))
   -> IO (SpecialQDiagram b Double)
-renderIconGraph debugInfo fullGraphWithInfo = do
+renderIconGraph debugInfo fullGraphWithInfo maybeViewGraph = do
   layoutResult <- layoutGraph' layoutParams GVA.Dot parentGraph
   let
     iconAndPositions = Map.toList $  fst $ getGraph layoutResult
@@ -167,8 +168,8 @@ renderIconGraph debugInfo fullGraphWithInfo = do
     -- boxesDia = mconcat $ map (Dia.lc Dia.blue $ Dia.boundingRect . snd) iconAndBoudingRect
   pure  (Dia.atop queryRects ( placedRegions <> placedEdgesAndNodes)) -- <> placedRegions <> placedEdges)
   where
-    parentGraph
-      = ING.nmap niVal $ ING.labfilter (isNothing . niParent) fullGraphWithInfo
+    parentGraph = ING.nmap niVal $ ING.labfilter (isNothing . niParent) 
+      $ fromMaybe fullGraphWithInfo maybeViewGraph
     fullGraph = ING.nmap niVal fullGraphWithInfo
     iconInfo = IMap.fromList
                 $ first nodeNameToInt . namedToTuple . snd
@@ -204,15 +205,16 @@ renderDrawing :: SpecialBackend b Double
   -> Drawing
   -> IO (SpecialDiagram b Double)
 renderDrawing debugInfo drawing = do
-  diagram <- renderIconGraph debugInfo graph
+  diagram <- renderIconGraph debugInfo graph Nothing
   pure $ Dia.clearValue diagram
   where
     graph = ING.nmap (NodeInfo Nothing) . drawingToIconGraph $ drawing
 
 renderIngSyntaxGraph :: (HasCallStack, SpecialBackend b Double)
   => String 
-  -> AnnotatedGraph Gr 
+  -> (AnnotatedGraph Gr, Maybe (AnnotatedGraph Gr)) 
   -> IO (SpecialQDiagram b Double)
-renderIngSyntaxGraph debugInfo gr 
-  = renderIconGraph debugInfo graph where
-    graph = ING.nmap (fmap (fmap nodeToIcon)) gr
+renderIngSyntaxGraph debugInfo (fullGr, viweGr) 
+  = renderIconGraph debugInfo fullGraph viewGraph where
+    fullGraph = ING.nmap (fmap (fmap nodeToIcon)) fullGr
+    viewGraph = fmap (ING.nmap (fmap (fmap nodeToIcon))) viweGr

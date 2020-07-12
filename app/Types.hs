@@ -56,12 +56,16 @@ import qualified Language.Haskell.Exts as Exts
 newtype NodeName = NodeName Int deriving (Typeable, Eq, Ord, Show)
 instance IsName NodeName
 
-data Named a = Named {naName :: NodeName, naVal :: a}
+data Named a = Named {
+  naName :: NodeName
+  , naVal :: a}
   deriving (Show, Eq, Ord, Functor)
 
 type NamedIcon = Named Icon
 
-data Labeled a = Labeled {laValue :: a, laLabel :: String}
+data Labeled a = Labeled {
+  laValue :: a
+  , laLabel :: String}
   deriving (Show, Eq, Ord)
 
 instance Functor Labeled where
@@ -162,8 +166,10 @@ data EdgeOption =
 
 -- | An Edge has an name of the source icon, and its optional port number,
 -- and the name of the destination icon, and its optional port number.
-data Edge = Edge { edgeOption :: EdgeOption
-                 , edgeConnection :: Connection}
+data Edge = Edge { 
+  edgeOption :: EdgeOption
+  , edgeConnection :: Connection
+  }
   deriving (Show, Eq, Ord)
 
 -- | A drawing is a map from names to Icons, a list of edges,
@@ -193,7 +199,10 @@ data EmbedDirection =
   deriving (Show, Eq)
 
 -- A Nothing eiEmbedDir means the edge is not embedded.
-data EmbedInfo a = EmbedInfo {eiEmbedDir :: Maybe EmbedDirection, eiVal :: a}
+data EmbedInfo a = EmbedInfo {
+  eiEmbedDir :: Maybe EmbedDirection
+  , eiVal :: a
+  }
   deriving (Show, Eq, Functor)
 
 type AnnotatedGraph gr = gr (NodeInfo SgNamedNode) (EmbedInfo Edge)
@@ -225,4 +234,4 @@ type DiaQuery = [QueryValue]
 
 type AnnotatedFGR = AnnotatedGraph FGR.Gr
 
-type ModuleGraphs = ([(Exts.SrcSpan,AnnotatedFGR)],[Exts.Comment])
+type ModuleGraphs = ([(Exts.SrcSpan, (AnnotatedFGR, Maybe AnnotatedFGR))],[Exts.Comment])

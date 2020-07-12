@@ -14,10 +14,7 @@ module ModuleToDiagram(
 -- code.
 import qualified Diagrams.Prelude as Dia hiding ((#), (&))
 import qualified Data.Map as Map
-import           Data.Maybe                     ( fromMaybe
-                                                , listToMaybe
-                                                )
-
+import           Data.Maybe
 import qualified Language.Haskell.Exts as Exts
 import           Data.List( sortBy )
 import Data.List.Split as Split
@@ -66,7 +63,7 @@ getModuleGraphs inputFilename = do
     (parsedModule, comments) = Exts.fromParseResult parseResult
     declGraphs = translateModuleToCollapsedGraphs parsedModule
     declSpans = moduleToSrcSpanStarts parsedModule
-    declSpansAndGraphs = zip declSpans declGraphs
+    declSpansAndGraphs = zip declSpans $ zip declGraphs (repeat Nothing)
   pure (declSpansAndGraphs, comments)
 
 -- diagramFromModule :: SpecialBackend b Double =>
@@ -74,7 +71,7 @@ getModuleGraphs inputFilename = do
 diagramFromModule (declSpansAndGraphs, comments) includeComments = do
   let (declarationSpans, drawingsGraphs) = unzip declSpansAndGraphs
   --print drawingsGraphs
-  declarationDiagrams <- traverse (renderIngSyntaxGraph "") drawingsGraphs
+  declarationDiagrams <- traverse ( renderIngSyntaxGraph "" ) drawingsGraphs
   let
     spanAndDeclarations = zip declarationSpans declarationDiagrams
 
@@ -110,9 +107,9 @@ composeDiagramsInModule diagrams = finalDia where
 
 selectView :: QueryValue -> ModuleGraphs -> ModuleGraphs
 selectView (QueryValue srcRef name) (declSpansAndGraphs, comments) = ([selectedSpanAndGraph], nerbyComments) where
-  ((declSpan, graph), srcSpans) = selectGraph srcRef declSpansAndGraphs
+  ((declSpan, (graph,_)), srcSpans) = selectGraph srcRef declSpansAndGraphs
   nerbyComments = selectComments comments srcSpans
-  selectedSpanAndGraph = (declSpan, neighborsSubgraph name graph)
+  selectedSpanAndGraph = (declSpan, (graph, Just $ neighborsSubgraph name graph))
 
 selectGraph :: Exts.SrcSpan
                  -> [(Exts.SrcSpan, b)]
