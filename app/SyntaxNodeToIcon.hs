@@ -57,8 +57,8 @@ findArg :: Port -> (NodeName, Edge) -> Bool
 findArg currentPort
   (argName
   , Edge _ (NameAndPort fromName fromPort, NameAndPort toName toPort))
-  | argName == fromName = maybeBoolToBool $ fmap (== currentPort) toPort
-  | argName == toName = maybeBoolToBool $ fmap (== currentPort) fromPort
+  | argName == fromName = currentPort == toPort
+  | argName == toName = currentPort == fromPort
   | otherwise = False -- This case should never happen
 
 makeArg :: Set.Set (NodeName, Edge) -> Port -> Maybe NodeName

@@ -12,7 +12,6 @@ import Util(customRenderSVG)
 
 import SyntaxGraphTests(allUnitTests)
 import VisualGraphAlgorithmTests(visualCollapseTests)
-import RenderingTests(renderTests)
 import VisualTests(visualTranslateTests)
 import ModuleToDiagramTests(moduleToDiagramTests)
 
@@ -21,7 +20,6 @@ import ModuleToDiagramTests(moduleToDiagramTests)
 drawingsAndNames :: [(String, IO (Diagram B))]
 drawingsAndNames =
   [ ("visual-tests", visualTranslateTests)
-  , ("render-tests", renderTests)
   , ("collapse-tests", visualCollapseTests)
   ]
 

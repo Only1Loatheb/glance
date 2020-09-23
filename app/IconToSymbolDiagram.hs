@@ -313,9 +313,11 @@ iconToDiagram iconInfo (Icon icon _) = case icon of
 bindDiagram :: SpecialBackend b n =>
   String -> TransformableDia b n
 bindDiagram t transformParams = finalDia where
-  bindDia = nameDiagram (tpName transformParams) inputPortSymbol 
+  name = (tpName transformParams) 
+  bindDia = nameDiagram name inputPortSymbol 
   -- bindText = coloredTextBox (bindTextBoxTextC colorScheme) t
-  finalDia = bindDia -- === bindText
+  input = makeQualifiedPort InputPortConst name
+  finalDia = input === bindDia -- === bindText
 
 literalDiagram :: SpecialBackend b n =>
   String -> TransformableDia b n
@@ -620,7 +622,7 @@ getArrowBaseOpts (NameAndPort (NodeName nodeNum) mPort) maybePoints maybeAngles
   = shaftStyle %~ (lwG arrowLineWidth ) -- . lc shaftColor)
   $ headStyle %~ fc shaftColor
   $ getArrowOpts maybePoints maybeAngles iconTo where
-    Port portNum = fromMaybe (Port 0) mPort
+    Port portNum = mPort
     shaftColor = getShaftColor nodeNum portNum iconPair
 
 getShaftColor :: Int -> Int -> (Icon, Icon) -> Colour Double

@@ -121,11 +121,8 @@ connectMaybePorts
       (_, _) -> ((connectFunc arrowBaseOpts qPort0 qPort1) . (connectFunc arrowShadowOpts qPort0 qPort1)) origDia where
         (arrowBaseOpts,arrowShadowOpts) = getArrowsOpts iconInfo    graph   labeledEdge     pointFrom    pointTo
 
-getConnectFuncAndPorts  (NameAndPort name0 mPort1) (NameAndPort name1 mPort2) = helper (mPort1, mPort2) where
-      helper (Just port0, Just port1) = (connect', name0 .> port0, name1 .> port1)
-      helper (Nothing, Just port1) = (connectOutside', toName name0, name1 .> port1)
-      helper (Just port0, Nothing) = (connectOutside', name0 .> port0, toName name1)
-      helper (_, _) = (connectOutside', toName name0, toName name1)
+getConnectFuncAndPorts  (NameAndPort name0 port0) (NameAndPort name1 port1)
+  = (connect', name0 .> port0, name1 .> port1)
 
 getPositionOfNamed origDia n = case Dia.lookupName n origDia of
   --Nothing -> Dia.r2 (0, 0)--error "Name does not exist!"
@@ -167,10 +164,8 @@ shaftColor _ = Dia.white
 
 findPortAngles :: SpecialNum n
   => IconInfo -> NamedIcon -> NameAndPort -> Maybe (Angle n)
-findPortAngles iconInfo (Named nodeName nodeIcon) (NameAndPort diaName mPort)
-  = case mPort of
-      Nothing -> Nothing
-      Just port -> foundAngles where
-        mName = if nodeName == diaName then Nothing else Just diaName
-        foundAngles = Just $ getPortAngle iconInfo nodeIcon port mName
+findPortAngles iconInfo (Named nodeName nodeIcon) (NameAndPort diaName port)
+  = foundAngles where
+    mName = if nodeName == diaName then Nothing else Just diaName
+    foundAngles = Just $ getPortAngle iconInfo nodeIcon port mName
 -- End addEdges --

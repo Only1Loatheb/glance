@@ -154,7 +154,7 @@ data SyntaxNodeCore =
 newtype Port = Port Int deriving (Typeable, Eq, Ord, Show)
 instance IsName Port
 
-data NameAndPort = NameAndPort NodeName (Maybe Port) deriving (Show, Eq, Ord)
+data NameAndPort = NameAndPort NodeName Port deriving (Show, Eq, Ord)
 
 type Connection = (NameAndPort, NameAndPort)
 

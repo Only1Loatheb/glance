@@ -79,7 +79,6 @@ import Util(
   , makeNotConstraintEdge
   , makeInvisibleEdge
   , nameAndPort
-  , justName
   )
 import StringSymbols(defaultPatternNameStr)
 

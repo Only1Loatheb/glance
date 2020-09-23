@@ -110,7 +110,6 @@ test-suite glance-test
   Other-modules: EdgeAngles 
                , Icons
                , SyntaxGraphTests
-               , RenderingTests
                , VisualTests
                , VisualGraphAlgorithmTests
                , Rendering

@@ -2,12 +2,10 @@
 
 module Util (
   printSelf
-  , iconToPort
   , makeSimpleEdge
   , makeNotConstraintEdge
   , makeInvisibleEdge
   , nameAndPort
-  , justName
   , fromMaybeError
   , maybeBoolToBool
   , nodeNameToInt
@@ -56,14 +54,7 @@ makeInvisibleEdge :: Connection -> Edge
 makeInvisibleEdge = Edge DoNotDrawButConstraint
 
 nameAndPort :: NodeName -> Port -> NameAndPort
-nameAndPort n p = NameAndPort n (Just p)
-
-justName :: NodeName -> NameAndPort
-justName n = NameAndPort n Nothing
-
--- BEGIN Edge constructors --
-iconToPort :: NodeName -> NodeName -> Port -> Edge
-iconToPort a   c d = makeSimpleEdge (justName a, nameAndPort c d)
+nameAndPort n p = NameAndPort n p
 
 -- END Edge constructors --
 

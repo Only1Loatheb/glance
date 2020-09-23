@@ -34,6 +34,8 @@ import           PortConstants (
   , multiIfValuePorts
   , multiIfBoolPorts
   , resultPortsConst
+  , pattern ResultPortConst
+  , pattern InputPortConst
   , pattern PatternValuePortConst
   )
 
@@ -78,7 +80,6 @@ import Util(
   , makeNotConstraintEdge
   , makeInvisibleEdge
   , nameAndPort
-  , justName
   )
 import SyntaxGraph( 
     SyntaxGraph(..)
@@ -142,7 +143,7 @@ makeBox :: (String, SrcRef) -> State IDState (SyntaxGraph, NameAndPort)
 makeBox (str, s) = do
   name <- getUniqueName
   let graph = syntaxGraphFromNodes (Set.singleton (Named name (mkEmbedder (SyntaxNode (LiteralNode str) s))))
-  pure (graph, justName name)
+  pure (graph, nameAndPort name ResultPortConst)
 
 evalLit lit s = makeBox (showSignlessLit lit, s)
 
@@ -460,7 +461,7 @@ makeCaseResult resultIconName (rhsRef, caseValueNamedPort, srcRef) = case rhsRef
     where
       rhsNewIcons = Set.singleton (Named resultIconName (mkEmbedder $ SyntaxNode CaseResultNode srcRef))
       rhsNewEdges = Set.fromList [
-        makeSimpleEdge (rhsPort, justName resultIconName)
+        makeSimpleEdge (rhsPort, nameAndPort resultIconName ResultPortConst)
         , makeNotConstraintEdge ( nameAndPort resultIconName (Port 1), caseValueNamedPort)
         ]
 -- END END END END END evalCase
@@ -518,8 +519,9 @@ evalLambda srcRef context argPatterns expr functionName = do
 
 constraintLambdaArgAboveValue :: Reference -> NodeName -> NodeName -> [Edge]
 constraintLambdaArgAboveValue outputReference argNodeName lambdaName = -- case outputReference of 
-    {- Left _str -> -} [makeInvisibleEdge (justName argNodeName, justName lambdaName)]
-    -- _ -> []
+    [makeInvisibleEdge (nameAndPort argNodeName ResultPortConst,
+      nameAndPort lambdaName InputPortConst)]
+    
 
 isIdLambda ::  Bool -> [SimpPat] -> Maybe String -> Bool
 isIdLambda isOutputStraightFromInput argPatterns functionName
@@ -590,7 +592,7 @@ makePatternEdgeInLambda (GraphAndRef _ ref) lamPort = case ref of
   Left str -> Right (str, Right lamPort)
 
 patternValueInputPort :: NodeName -> NameAndPort
-patternValueInputPort name = NameAndPort name (Just PatternValuePortConst)
+patternValueInputPort name = NameAndPort name  PatternValuePortConst
 -- END END END END END evalLambda 
 
 makeApplyGraph ::
@@ -811,7 +813,7 @@ makeListCompGraph context listCompNode listCompNodeRef listCompItemGraphAndRef q
   qStmtGraphs = qualGraphs <> genGraphs
 
   listCompItemGraph = {-makeEdges context $-} combineExpresionsIsSource makeSimpleEdge
-    (listCompItemGraphAndRef, NameAndPort listCompName (Just (inputPort listCompNode)))
+    (listCompItemGraphAndRef, NameAndPort listCompName  (inputPort listCompNode))
 
   listCompNodeGraph = syntaxGraphFromNodes
     $ Set.singleton (Named listCompName (mkEmbedder listCompNode))
@@ -936,7 +938,7 @@ showTopLevelBind  l c pat@(SimpPat _ patCore) e = do
       let
         patName = simpPatNameStr patCore
         icons = Set.singleton (Named uniquePatName $ mkEmbedder (SyntaxNode (BindNameNode patName) l))
-        edges = Set.singleton (makeSimpleEdge (np, justName uniquePatName))
+        edges = Set.singleton (makeSimpleEdge (np, nameAndPort uniquePatName InputPortConst))
         bindGraph = syntaxGraphFromNodesEdges icons edges
       pure (bindGraph <> gr)
 

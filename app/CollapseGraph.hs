@@ -78,8 +78,8 @@ parentAndChild embedDirection
 -- | A syntaxNodeIsEmbeddable if it can be collapsed into another node
 syntaxNodeIsEmbeddable :: ParentType
                        -> SyntaxNode
-                       -> Maybe Port
-                       -> Maybe Port
+                       -> Port
+                       -> Port
                        -> Bool
 syntaxNodeIsEmbeddable parentType (SyntaxNode syntaxNode _) mParentPort mChildPort
   = case (parentType, syntaxNode) of
@@ -112,17 +112,16 @@ syntaxNodeIsEmbeddable parentType (SyntaxNode syntaxNode _) mParentPort mChildPo
       _ -> False
   where
     isInput mPort = case mPort of
-      Just InputPortConst -> True
+      InputPortConst -> True
       _ -> False
 
     isPatternValueInputPort = case mParentPort of
-      Just PatternValuePortConst -> True
+      PatternValuePortConst -> True
       _ -> False
 
     isResult mPort = case mPort of
-      Nothing -> True
-      Just ResultPortConst -> True
-      Just _ -> False
+      ResultPortConst -> True
+      _ -> False
 
     parentPortIsInput = isInput mParentPort
 
