@@ -600,28 +600,28 @@ lambdaRegionSymbol enclosedDiagarms (NodeName nameInt)
       $ lc regionLineColor (lwG defaultLineWidth contentsRect)
 
 getArrowShadowOpts :: (RealFloat n, Typeable n)
-  => (Maybe (Point V2 n),Maybe (Point V2 n))
+  => (Point V2 n, Point V2 n)
   -> (Maybe (Angle n), Maybe (Angle n))
   -> Icon
   -> ArrowOpts n
-getArrowShadowOpts maybePoints maybeAngles iconTo=
+getArrowShadowOpts points maybeAngles iconTo=
   shaftStyle %~ (lwG arrowShadowWidth .
                 lcA $ withOpacity shaftColor defaultShadowOpacity)
   $ headStyle %~ fc shaftColor
-  $ getArrowOpts maybePoints maybeAngles iconTo where
+  $ getArrowOpts points maybeAngles iconTo where
     shaftColor = backgroundC colorScheme
 
 getArrowBaseOpts :: (RealFloat n, Typeable n)
   => NameAndPort
-  -> (Maybe (Point V2 n),Maybe (Point V2 n))
+  -> (Point V2 n, Point V2 n)
   -> (Maybe (Angle n), Maybe (Angle n))
   -> (Icon, Icon)
   -> ArrowOpts n
-getArrowBaseOpts (NameAndPort (NodeName nodeNum) mPort) maybePoints maybeAngles 
+getArrowBaseOpts (NameAndPort (NodeName nodeNum) mPort) points maybeAngles 
   iconPair@(_, iconTo)
   = shaftStyle %~ (lwG arrowLineWidth ) -- . lc shaftColor)
   $ headStyle %~ fc shaftColor
-  $ getArrowOpts maybePoints maybeAngles iconTo where
+  $ getArrowOpts points maybeAngles iconTo where
     Port portNum = mPort
     shaftColor = getShaftColor nodeNum portNum iconPair
 
@@ -638,14 +638,12 @@ getShaftColor' edgeColors nodeNum portNum _ = shaftColor where
   shaftColor = edgeColors !! namePortHash
 
 getArrowOpts :: (RealFloat n, Typeable n)
-  => (Maybe (Point V2 n),Maybe (Point V2 n))
+  => (Point V2 n, Point V2 n)
   -> (Maybe (Angle n), Maybe (Angle n))
   -> Icon
   -> ArrowOpts n
-getArrowOpts (formMaybePoint, toMaybePoint) (anglesFrom,anglesTo) iconTo
+getArrowOpts (formPoint, toPoint) (anglesFrom,anglesTo) iconTo
   = arrowOptions where
-    formPoint = fromMaybe (p2 (0.0,0.0)) formMaybePoint
-    toPoint = fromMaybe (p2  (0.0,-1.0)) toMaybePoint
     arrowOptions =
       -- arrowHead .~ noHead
       arrowHead .~ getArrowHead iconTo

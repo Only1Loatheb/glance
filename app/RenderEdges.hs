@@ -1,7 +1,7 @@
 {-# LANGUAGE NoMonomorphismRestriction, FlexibleContexts, TypeFamilies, PartialTypeSignatures, ScopedTypeVariables #-}
 
 module RenderEdges(
-  addEdges
+  makeEdges
   , edgeGraphVizAttrs
   )where
 
@@ -17,7 +17,7 @@ import           Diagrams.Prelude               ( toName
                                                 , applyAll
                                                 , (.>)
                                                 , connectOutside'
-                                                , connect'
+                                                , arrowBetween'
                                                 , (*^)
                                                 )
 import Diagrams.TwoD.GraphViz(mkGraph, getGraph, layoutGraph')
@@ -70,27 +70,16 @@ edgeGraphVizAttrs (_nFrom, _nTo, (EmbedInfo _ (Edge DrawAndNotConstraint _))) = 
 edgeGraphVizAttrs (_nFrom, _nTo, (EmbedInfo _ (Edge DoNotDrawButConstraint _))) = [ GVA.MinLen 3 ]
 edgeGraphVizAttrs _ = []
 
--- | addEdges draws the edges underneath the nodes.
-addEdges :: (HasCallStack, SpecialBackend b n, ING.Graph gr) =>
+-- | makeEdges draws the edges underneath the nodes.
+makeEdges :: (HasCallStack, SpecialBackend b n, ING.Graph gr) =>
   String  -- ^ Debugging information
   -> IconInfo
   -> gr NamedIcon (EmbedInfo Edge)
   -> SpecialDiagram b n
   -> SpecialDiagram b n
-addEdges _debugInfo iconInfo graph = applyAll connections
-  where
-            connections = makeEdge  iconInfo graph <$> ING.labEdges graph
-
-makeEdge :: (ING.Graph gr,HasCallStack, SpecialBackend b n) 
-  => IconInfo
-  -> gr NamedIcon (EmbedInfo Edge)
-  -> ING.LEdge (EmbedInfo Edge)
-  -> SpecialDiagram b n
-  -> SpecialDiagram b n
--- makeEdge _ _ (_, _,(EmbedInfo _ (Edge DoNotDrawButConstraint _))) origDia
---   = origDia
-makeEdge iconInfo graph lEdge origDia
-  = connectMaybePorts iconInfo graph lEdge origDia
+makeEdges _debugInfo iconInfo graph
+  = mconcat $ map (connectMaybePorts  iconInfo graph) labledEdges
+    where labledEdges = ING.labEdges graph
 
 -- | Given an Edge, return a transformation on Diagrams that will draw a line.
 connectMaybePorts ::  (ING.Graph gr,SpecialBackend b n)
@@ -108,30 +97,34 @@ connectMaybePorts
       _edgeOptions
       (fromNamePort, toNamePort)))))
   origDia
-  = newDia where 
-    (connectFunc, qPort0, qPort1) = getConnectFuncAndPorts fromNamePort toNamePort
+  = let 
+      mPointFromAndPointTo  = getPoints origDia fromNamePort toNamePort
+    in case mPointFromAndPointTo of
+      (Nothing, _) -> mempty
+      (_, Nothing) -> mempty
+      (Just pointFrom, Just pointTo) -> makeArrowDiagram iconInfo (pointFrom,pointTo) graph labeledEdge
 
-    pointFrom  = getPositionOfNamed origDia qPort0
-    pointTo = getPositionOfNamed origDia qPort1
-
-    newDia = case (pointFrom, pointTo) of
-      (Nothing,Nothing) -> origDia
-      (Nothing,_) -> origDia
-      (_,Nothing) -> origDia
-      (_, _) -> ((connectFunc arrowBaseOpts qPort0 qPort1) . (connectFunc arrowShadowOpts qPort0 qPort1)) origDia where
-        (arrowBaseOpts,arrowShadowOpts) = getArrowsOpts iconInfo    graph   labeledEdge     pointFrom    pointTo
-
-getConnectFuncAndPorts  (NameAndPort name0 port0) (NameAndPort name1 port1)
-  = (connect', name0 .> port0, name1 .> port1)
+getPoints origDia (NameAndPort name0 port0) (NameAndPort name1 port1) = (pointFrom, pointTo) where
+  qPort0 = name0 .> port0
+  qPort1 = name1 .> port1
+  pointFrom  = getPositionOfNamed origDia qPort0
+  pointTo = getPositionOfNamed origDia qPort1
 
 getPositionOfNamed origDia n = case Dia.lookupName n origDia of
   --Nothing -> Dia.r2 (0, 0)--error "Name does not exist!"
   Nothing -> Nothing-- error $ "Name does not exist! name=" <> show n <> "\neInfo=" <> show eInfo
   Just subDia -> Just $ Dia.location subDia
 
+makeArrowDiagram iconInfo pointFromAndPointTo graph labeledEdge
+  = Dia.atop arrowShaft arrowShadow where 
+    (arrowBaseOpts, arrowShadowOpts) = getArrowsOpts iconInfo graph labeledEdge pointFromAndPointTo
+    arrowShaft = drawArrowFunc arrowBaseOpts pointFromAndPointTo
+    arrowShadow = drawArrowFunc arrowShadowOpts pointFromAndPointTo
 -- In order to give arrows a "shadow" effect, draw a thicker semi-transparent
 -- line shaft the same color as the background underneath the normal line
 -- shaft.
+
+drawArrowFunc arrowOpts (pointFrom, pointTo) = arrowBetween' arrowOpts pointFrom pointTo
 
 getArrowsOpts
   iconInfo
@@ -141,8 +134,7 @@ getArrowsOpts
     e@(Edge
       _
       (fromNamePort, toNamePort))))
-  pointFrom
-  pointTo
+  (pointFrom, pointTo)
   = (arrowBaseOpts, arrowShadowOpts) where
     node0NameAndPort@(Named _ iconFrom) = fromMaybeError
                 ("makeEdge: node0 is not in graph. node0: " ++ show node0)
@@ -168,4 +160,4 @@ findPortAngles iconInfo (Named nodeName nodeIcon) (NameAndPort diaName port)
   = foundAngles where
     mName = if nodeName == diaName then Nothing else Just diaName
     foundAngles = Just $ getPortAngle iconInfo nodeIcon port mName
--- End addEdges --
+-- End makeEdges --

@@ -55,7 +55,7 @@ import ClusterNodesBy (
   clusterNodesBy
   , ClusterT
   )
-import RenderEdges( addEdges, edgeGraphVizAttrs)
+import RenderEdges( makeEdges, edgeGraphVizAttrs)
 
 import NodePlacementMap (
   placeNode
@@ -161,12 +161,12 @@ renderIconGraph debugInfo fullGraphWithInfo maybeViewGraph = do
     placedNodes = mconcat $ fmap snd iconAndPlacedNodes
 
     placedRegions = Dia.value mempty $ drawLambdaRegions iconInfo iconAndPlacedNodes
-
-    placedEdgesAndNodes = Dia.value mempty $ addEdges debugInfo iconInfo parentGraph placedNodes
+    placedEdges = Dia.value mempty $ makeEdges debugInfo iconInfo parentGraph placedNodes
+    placedNodesAny = Dia.value mempty $ placedNodes
 
     queryRects = mconcat $ getQueryRects iconAndPlacedNodes
     -- boxesDia = mconcat $ map (Dia.lc Dia.blue $ Dia.boundingRect . snd) iconAndBoudingRect
-  pure  (Dia.atop queryRects ( placedRegions <> placedEdgesAndNodes)) -- <> placedRegions <> placedEdges)
+  pure  ( (Dia.atop placedNodesAny placedEdges )  <> queryRects <> placedRegions )
   where
     parentGraph = ING.nmap niVal $ ING.labfilter (isNothing . niParent) 
       $ fromMaybe fullGraphWithInfo maybeViewGraph
