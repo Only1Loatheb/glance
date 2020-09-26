@@ -130,7 +130,10 @@ type EmbedderSyntaxNode = Embedder SyntaxNode
 type SgNamedNode = Named EmbedderSyntaxNode
 
 -- TODO remove Ints from SyntaxNode data constructors.
-data SyntaxNode = SyntaxNode SyntaxNodeCore SrcRef 
+data SyntaxNode = SyntaxNode {
+  syntaxNodeCore :: SyntaxNodeCore
+  , srcRef :: SrcRef
+  } 
   deriving (Show, Eq, Ord)
 
 data SyntaxNodeCore = 
@@ -139,7 +142,7 @@ data SyntaxNodeCore =
   ApplyNode LikeApplyFlavor Int
   | PatternApplyNode String [Labeled (Maybe SgNamedNode)]
   | NameNode String -- Identifiers or symbols
-  | BindNameNode String -- for top level bindings
+  | BindNameNode String -- for top level bindings --TODO delete this
   | LiteralNode String -- Literal values like the string "Hello World"
   | FunctionArgNode
     [String]  -- Parameter labels

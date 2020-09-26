@@ -398,10 +398,18 @@ simplifyExp e = case e of
         f1 
         (simplifyExp (SimpExp l2 (SeApp f2 arg)))
       )
-  -- SimpExp l (SeApp (SimpExp _ (SeApp (SimpExp _ SeName LowPriorityApplicationStr) exp1)) exp2)
-  --   -> SimpExp l (SeApp exp1 exp2)
-  -- SimpExp l1 (SeApp (SimpExp l2 (SeName InfixFmapStr)) arg) ->
-  --   SimpExp l1 (SeApp (SimpExp l2 (SeName actionOverParameterizedType) arg))
+  SimpExp l (SeApp
+    (SimpExp _ (SeApp
+      (SimpExp _ (SeName LowPriorityApplicationStr))
+      exp1))
+    exp2)
+    -> SimpExp l (SeApp exp1 exp2)
+  SimpExp l1 (SeApp
+    (SimpExp l2 (SeName InfixFmapStr))
+    arg)
+    -> SimpExp l1 (SeApp 
+        (SimpExp l2 (SeName actionOverParameterizedType)) 
+      arg)
   x -> x
 
 deListifyApp :: Show l => l -> Exts.Exp l -> [Exts.Exp l] -> Exts.Exp l

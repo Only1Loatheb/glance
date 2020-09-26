@@ -131,6 +131,7 @@ test-suite glance-test
                , NodePlacementMap
                , PartialView
                , ModuleToDiagramTests
+               , SyntaxToGraphTests
 source-repository head
   type:     git
   location: https://github.com/rgleichman/glance

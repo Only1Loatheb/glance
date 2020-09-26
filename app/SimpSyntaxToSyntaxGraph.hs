@@ -1,9 +1,9 @@
 {-# LANGUAGE NoMonomorphismRestriction, TupleSections, PatternSynonyms #-}
 
 module SimpSyntaxToSyntaxGraph(
-  translateStringToSyntaxGraph,
-  translateDeclToSyntaxGraph,
-  customParseDecl
+  translateStringToSyntaxGraph
+  , translateDeclToSyntaxGraph
+  , customParseDecl
 ) where
 
 

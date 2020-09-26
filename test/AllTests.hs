@@ -14,6 +14,7 @@ import SyntaxGraphTests(allUnitTests)
 import VisualGraphAlgorithmTests(visualCollapseTests)
 import VisualTests(visualTranslateTests)
 import ModuleToDiagramTests(moduleToDiagramTests)
+import SyntaxToGraphTests(syntaxToGraphTests)
 
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
@@ -37,4 +38,5 @@ main = do
   renderDrawings drawingsAndNames
   _ <- runTestTT allUnitTests
   _ <- runTestTT moduleToDiagramTests
+  _ <- runTestTT syntaxToGraphTests
   pure ()
