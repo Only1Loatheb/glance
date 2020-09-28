@@ -68,7 +68,7 @@ getModuleGraphs inputFilename = do
 
 -- diagramFromModule :: SpecialBackend b Double =>
 --   String -> Bool -> IO (SpecialQDiagram b Double)
-diagramFromModule (declSpansAndGraphs, comments) includeComments = do
+diagramFromModule includeComments (declSpansAndGraphs, comments) = do
   let (declarationSpans, drawingsGraphs) = unzip declSpansAndGraphs
   --print drawingsGraphs
   declarationDiagrams <- traverse ( renderIngSyntaxGraph "" ) drawingsGraphs

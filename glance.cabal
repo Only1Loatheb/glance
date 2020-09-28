@@ -73,6 +73,7 @@ executable glance-exe
                , NodePlacementMap
                , PartialView
                , ParseCmdLineArgs
+               , FrontendBlankCanvas
 
 test-suite glance-test
   type:                exitcode-stdio-1.0
@@ -132,6 +133,7 @@ test-suite glance-test
                , PartialView
                , ModuleToDiagramTests
                , SyntaxToGraphTests
+               , FrontendBlankCanvas
 source-repository head
   type:     git
   location: https://github.com/rgleichman/glance
