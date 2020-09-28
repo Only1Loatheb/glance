@@ -72,8 +72,9 @@ executable glance-exe
                , RenderEdges
                , NodePlacementMap
                , PartialView
-               , ParseCmdLineArgs
+               , CmdLineArgs
                , FrontendBlankCanvas
+               , SVGrender
 
 test-suite glance-test
   type:                exitcode-stdio-1.0
@@ -134,6 +135,7 @@ test-suite glance-test
                , ModuleToDiagramTests
                , SyntaxToGraphTests
                , FrontendBlankCanvas
+               , SVGrender
 source-repository head
   type:     git
   location: https://github.com/rgleichman/glance

@@ -1,4 +1,4 @@
-module ParseCmdLineArgs(
+module CmdLineArgs(
   CmdLineOptions(..)
   , parserPrefs
   , opts
@@ -31,11 +31,12 @@ import           Options.Applicative (
 
 
 data CmdLineOptions = CmdLineOptions {
-  cmdInputFilename :: String,
-  cmdOutputFilename :: String,
-  cmdPortNumber :: Int,
-  cmdImageWidth :: Double,
-  cmdIncludeComments :: Bool
+  inputFilename :: String
+  , outputFilename :: String
+  , portNumber :: Int
+  , imageWidth :: Double
+  , doIncludeComments :: Bool
+  , isInteractive :: Bool
   }
 
 optionParser :: Parser CmdLineOptions
@@ -45,6 +46,7 @@ optionParser = CmdLineOptions
   <*> option auto (long "port" Dia.<> short 'p' Dia.<> value 3000 Dia.<> metavar "PORT_NUMBER" Dia.<> help "Go to http://localhost:PORT_NUMBER/")
   <*> option auto (long "scale" Dia.<> short 's' Dia.<> value 20 Dia.<> metavar "IMAGE_SCALE" Dia.<> help "Output image scale")
   <*> switch (long "comments" Dia.<> short 'c' Dia.<> help "Include comments between top level declarations.")
+  <*> switch (long "interactive" Dia.<> short 'i' Dia.<> help "Save to file or start interactive session")
   -- TODO add port option
   -- TODO add which function are detiled option
 

@@ -12,7 +12,8 @@ import Data.Maybe
 -- code.
 import qualified Diagrams.Prelude as Dia hiding ((#), (&))
 
-import Util(customRenderSVG, showSrcInfo)
+import SVGrender(customRenderSVG')
+
 
 import Types (
   SpecialDiagram
@@ -24,7 +25,7 @@ import Types (
 
 import ModuleToDiagram(getModuleGraphs, diagramFromModule, selectView)
 
-import ParseCmdLineArgs as CMD
+import CmdLineArgs as CMD
 
 import FrontendBlankCanvas( blankCanvasLoop )
 -- {-# ANN module "HLint: ignore Unnecessary hiding" #-}
@@ -40,18 +41,23 @@ prepareDiagram (CMD.CmdLineOptions
              outputFilename
              portNumber
              imageScale
-             includeComments)
+             doIncludeComments
+             isInteractive)
   = do
   putStrLn $ "Opening file " ++ inputFilename ++ " for visualisation."
   moduleGraphs <- getModuleGraphs inputFilename
-  let loopControl = (chooseFullOrView includeComments, sampleDiagram, createView)
-  blankCanvasLoop moduleGraphs portNumber loopControl imageScale
-  -- customRenderSVG outputFilename (Dia.mkWidth imageWidth) moduleDiagram
-  putStrLn $ "Exiting." ++ outputFilename
+  if isInteractive
+  then do
+    let loopControl = (chooseFullOrView doIncludeComments, sampleDiagram, createView)
+    blankCanvasLoop moduleGraphs portNumber loopControl imageScale
+  else do
+    diagram <- chooseFullOrView doIncludeComments moduleGraphs Nothing
+    customRenderSVG' outputFilename (Dia.mkWidth 500) diagram
+    putStrLn $ "Saving file: " ++ outputFilename
 
-chooseFullOrView includeComments moduleGraphs maybeViewGraphs = do
+chooseFullOrView doIncludeComments moduleGraphs maybeViewGraphs = do
   let displayedGraphs = fromMaybe moduleGraphs maybeViewGraphs
-  let diagramFromModule' = diagramFromModule includeComments
+  let diagramFromModule' = diagramFromModule doIncludeComments
   moduleDiagram <- diagramFromModule' displayedGraphs
   pure (moduleDiagram)
 

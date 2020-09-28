@@ -8,7 +8,7 @@ import GHC.Stack(HasCallStack)
 import Test.HUnit
 
 import IconToSymbolDiagram(colorScheme, ColorStyle(..))
-import Util(customRenderSVG)
+import SVGrender(customRenderSVG)
 
 import SyntaxGraphTests(allUnitTests)
 import VisualGraphAlgorithmTests(visualCollapseTests)
@@ -29,7 +29,7 @@ renderDrawings = mapM_ saveDrawing where
   saveDrawing (name, drawingMaker) = do
     dia <- drawingMaker
     -- TODO Replace string concatenation with proper path manipulation functions.
-    customRenderSVG ("test/test-output/" ++ name ++ ".svg") (mkWidth 700) (bgFrame 1 (backgroundC colorScheme) dia)
+    customRenderSVG ("test/test-output/" ++ name ++ ".svg") (mkWidth 700)  dia
 
 main :: HasCallStack => IO ()
 --main = print "Hello world"
