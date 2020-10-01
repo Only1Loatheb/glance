@@ -2,6 +2,7 @@
 {-# LANGUAGE MonoLocalBinds #-}
 module VisualTests(
   visualTranslateTests
+  , prettyShowSyntaxGraph
   ) where
 
 import Diagrams.Prelude hiding ((#), (&))

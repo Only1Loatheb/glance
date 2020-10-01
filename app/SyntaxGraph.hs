@@ -12,6 +12,7 @@ module SyntaxGraph(
   , combineExpressions
   , namesInPattern
   , lookupReference
+  , refToNamePort
   , deleteBindings
   , makeEdges
   -- , makeOutputEdgesAndSinks
@@ -37,7 +38,7 @@ module SyntaxGraph(
 
 import Control.Monad.State ( State, state )
 import Diagrams.Prelude((<>))
-import           Data.Either( partitionEithers)
+import           Data.Either( partitionEithers, fromRight)
 import           Data.Maybe(
   fromMaybe
   , mapMaybe
@@ -125,7 +126,10 @@ instance Monoid SyntaxGraph where
   mempty = SyntaxGraph Set.empty Set.empty Set.empty SMap.empty mempty
   mappend = (<>)
 
-data GraphAndRef = GraphAndRef SyntaxGraph Reference
+data GraphAndRef = GraphAndRef {
+  graph :: SyntaxGraph
+  , ref :: Reference
+  }
 
 lookupInEmbeddingMap :: NodeName -> IMap.IntMap NodeName -> NodeName
 lookupInEmbeddingMap origName eMap = lookupHelper origName where
@@ -272,6 +276,9 @@ lookupReference bindings originalRef = lookupReference' originalRef where
     ref = if refMayBeCausingCycle == originalRef 
       then originalRef
       else lookupReference' refMayBeCausingCycle
+
+refToNamePort :: Reference -> NameAndPort 
+refToNamePort = fromRight (error "Not nameAndPort")
 
 deleteBindings :: SyntaxGraph -> SyntaxGraph
 deleteBindings (SyntaxGraph a b c _ e) = SyntaxGraph a b c SMap.empty e

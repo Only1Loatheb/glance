@@ -4,6 +4,9 @@ module SimpSyntaxToSyntaxGraph(
   translateStringToSyntaxGraph
   , translateDeclToSyntaxGraph
   , customParseDecl
+  -- for tests 
+  , makeBox
+  , evalExp
 ) where
 
 

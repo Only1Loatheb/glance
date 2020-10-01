@@ -71,8 +71,6 @@ import StringSymbols(
 data SimpExp = SimpExp SrcRef SimpExpCore
   deriving (Show, Eq)
 
--- instance WithReference SimpExp where
---   ref (SimpExp s _) = s
 
 data SimpExpCore =
   SeName 
@@ -101,18 +99,12 @@ data SimpExpCore =
 
 data SimpStmt = SimpStmt SrcRef String deriving (Show, Eq)
 
--- instance WithReference SimpStmt where
---   ref (SimpStmt s _) = s
-
 data SelectorAndVal = SelectorAndVal
   { selectorAndValRef :: SrcRef
   , svSelector :: SimpExp
   , svVal :: SimpExp
   }
   deriving (Show, Eq)
-
--- instance WithReference SelectorAndVal where
---   ref (SelectorAndVal s _ _) = s
 
 data SimpAlt = SimpAlt
   { simpAltRef :: SrcRef
@@ -121,8 +113,6 @@ data SimpAlt = SimpAlt
   }
   deriving (Show, Eq)
 
--- instance WithReference SimpAlt where
---   ref (SimpAlt s _ _) = s
 
 data SimpDecl = SimpDecl {
   simpDeclRef :: SrcRef
@@ -130,8 +120,6 @@ data SimpDecl = SimpDecl {
   }
   deriving (Show, Eq)
 
--- instance WithReference SimpDecl where
---   ref (SimpDecl s _) = s
   
 data SimpDeclCore = 
   -- These don't have decl lists, since only lets have decl lists
@@ -152,9 +140,6 @@ data SimpPat = SimpPat {
   }
   deriving (Show, Eq)
 
--- instance WithReference SimpPat where
---   ref (SimpPat s _) = s
-
 data SimpPatCore =   
   SpVar 
     { varName :: Exts.Name Exts.SrcSpanInfo}
@@ -172,9 +157,6 @@ data SimpPatCore =
 
 data SimpQStmt = SimpQStmt SrcRef SimpQStmtCore 
   deriving (Show, Eq)
-
--- instance WithReference SimpQStmt where
---   ref (SimpQStmt s _) = s
 
 data SimpQStmtCore = 
   SqQual
