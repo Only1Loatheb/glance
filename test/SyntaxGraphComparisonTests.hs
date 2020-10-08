@@ -1,5 +1,5 @@
-module SyntaxGraphTests(
-  allUnitTests
+module SyntaxGraphComparisonTests(
+  syntaxGraphComparisonTests
   ) where
 
 import Test.HUnit
@@ -375,7 +375,7 @@ translateUnitTests = TestList [
   -- TestLabel "listcompTests" listcompTests
   ]
 
-allUnitTests :: Test
-allUnitTests = TestList[
-  TestLabel "SyntaxGraphTests.hs" translateUnitTests
+syntaxGraphComparisonTests :: Test
+syntaxGraphComparisonTests = TestList[
+  TestLabel "SyntaxGraphComparisonTests.hs" translateUnitTests
   ]

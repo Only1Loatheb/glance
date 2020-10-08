@@ -7,14 +7,14 @@ import Diagrams.Prelude hiding ((#), (&))
 import GHC.Stack(HasCallStack)
 import Test.HUnit
 
-import IconToSymbolDiagram(colorScheme, ColorStyle(..))
 import SVGrender(customRenderSVG)
 
-import SyntaxGraphTests(allUnitTests)
-import VisualGraphAlgorithmTests(visualCollapseTests)
 import VisualTests(visualTranslateTests)
+import VisualGraphAlgorithmTests(visualCollapseTests)
+
+import SyntaxGraphComparisonTests(syntaxGraphComparisonTests)
+import SyntaxGraphDirectTests(syntaxGraphDirectTests)
 import ModuleToDiagramTests(moduleToDiagramTests)
-import SyntaxToGraphTests(syntaxToGraphTests)
 
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
@@ -36,7 +36,7 @@ main :: HasCallStack => IO ()
 main = do
   --  ING.prettyPrint singleApplyGraph
   renderDrawings drawingsAndNames
-  _ <- runTestTT allUnitTests
+  _ <- runTestTT syntaxGraphDirectTests
+  _ <- runTestTT syntaxGraphComparisonTests
   _ <- runTestTT moduleToDiagramTests
-  _ <- runTestTT syntaxToGraphTests
   pure ()

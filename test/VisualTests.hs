@@ -6,18 +6,20 @@ module VisualTests(
   ) where
 
 import Diagrams.Prelude hiding ((#), (&))
-
 import qualified Data.Graph.Inductive.Graph as ING
 import Data.List(intercalate)
 import GHC.Stack(HasCallStack)
-
-import Types(SpecialDiagram, SpecialBackend, NodeName(..),TransformParams(..))
-import CollapseGraph(translateStringToCollapsedGraphAndDecl, syntaxGraphToFglGraph)
-import SimpSyntaxToSyntaxGraph(translateStringToSyntaxGraph)
-import SyntaxGraph( SyntaxGraph(..))
-import Rendering(renderIngSyntaxGraph)
 import qualified Data.Set as Set
 import qualified Data.StringMap as SMap
+
+import Types(SpecialDiagram, SpecialBackend, NodeName(..),TransformParams(..))
+
+import HsSyntaxToSimpSyntax(stringToSimpDecl)
+import SyntaxGraph( SyntaxGraph(..))
+import SimpSyntaxToSyntaxGraph(translateStringToSyntaxGraph)
+import CollapseGraph(translateStringToCollapsedGraphAndDecl, syntaxGraphToFglGraph)
+import IconToSymbolDiagram(nameDiagram)
+import Rendering(renderIngSyntaxGraph)
 
 import Types(Icon(..), SpecialDiagram, SpecialBackend, SpecialNum
             , NodeName(..), Port(..), LikeApplyFlavor(..)
@@ -27,7 +29,6 @@ import Types(Icon(..), SpecialDiagram, SpecialBackend, SpecialNum
             ,CaseOrMultiIfTag(..))
 
 import TextBox(coloredTextBox)
-import IconToSymbolDiagram(nameDiagram)
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
 prettyShowList :: Show a => [a] -> String
@@ -265,11 +266,11 @@ lambdaTests = [
 letTests :: [String]
 letTests = [
   "letInExpression = let a = x in a",
-  -- TODO fix. See SyntaxGraphTests/letTests
+  -- TODO fix. See SyntaxGraphComparisonTests/letTests
   "y x = f x x",
   "y x1 = let x2 = f x1 in x2 x1",
 
-  -- TODO fix. See SyntaxGraphTests/letTests
+  -- TODO fix. See SyntaxGraphComparisonTests/letTests
   "y = g $ f y",
   "y = let {a = f b; b = g a} in b",
 
@@ -428,17 +429,21 @@ translateStringToDrawing :: SpecialBackend b Double =>
 translateStringToDrawing s = do
   putStrLn $ "Translating string: " ++ s
   let
+    simpDecl = stringToSimpDecl s
     (collapsedGraph, decl) = translateStringToCollapsedGraphAndDecl s
     syntaxGraph = translateStringToSyntaxGraph s
     fglGraph = syntaxGraphToFglGraph syntaxGraph
   let
     printAction = do
-      print $ "extsDecl = " ++ show decl
-      putStr "\nSyntax Graph:\n"
-      putStrLn $ prettyShowSyntaxGraph syntaxGraph
-      putStr "\nFGL Graph:\n"
+      putStrLn "Exts.Decl:"
+      print decl
+      putStrLn "SimpDecl:"
+      print simpDecl
+      putStrLn "SyntaxGraph:"
+      print {- prettyShowSyntaxGraph-} syntaxGraph
+      putStrLn "FGL Graph:"
       ING.prettyPrint fglGraph
-      putStr "\nCollapsed Graph:\n"
+      putStrLn "Collapsed Graph:"
       ING.prettyPrint collapsedGraph
       putStr "\n\n"
   if False then printAction else pure ()  -- Supress unused printAction warning

@@ -111,7 +111,7 @@ test-suite glance-test
   default-language:    Haskell2010
   Other-modules: EdgeAngles 
                , Icons
-               , SyntaxGraphTests
+               , SyntaxGraphComparisonTests
                , VisualTests
                , VisualGraphAlgorithmTests
                , Rendering
@@ -133,7 +133,7 @@ test-suite glance-test
                , NodePlacementMap
                , PartialView
                , ModuleToDiagramTests
-               , SyntaxToGraphTests
+               , SyntaxGraphDirectTests
                , FrontendBlankCanvas
                , SVGrender
 source-repository head

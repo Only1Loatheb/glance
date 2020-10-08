@@ -112,7 +112,7 @@ getPoints origDia (NameAndPort name0 port0) (NameAndPort name1 port1) = (pointFr
 
 getPositionOfNamed origDia n = case Dia.lookupName n origDia of
   --Nothing -> Dia.r2 (0, 0)--error "Name does not exist!"
-  Nothing -> Nothing-- error $ "Name does not exist! name=" <> show n <> "\neInfo=" <> show eInfo
+  Nothing -> Nothing -- error $ "Name does not exist! name=" <> show n -- <> "\neInfo=" <> show eInfo
   Just subDia -> Just $ Dia.location subDia
 
 makeArrowDiagram iconInfo pointFromAndPointTo graph labeledEdge
@@ -146,8 +146,8 @@ getArrowsOpts
     angleFrom = findPortAngles iconInfo node0NameAndPort fromNamePort
     angleTo = findPortAngles iconInfo node1NameAndPort toNamePort
 
-    arrowBaseOpts' = getArrowBaseOpts fromNamePort (pointFrom, pointTo)  (angleFrom, angleTo) (iconFrom, iconTo)
-    arrowBaseOpts = Dia.shaftStyle Dia.%~ ( Dia.lc (shaftColor e))  $ arrowBaseOpts'
+    arrowBaseOpts{-'-} = getArrowBaseOpts fromNamePort (pointFrom, pointTo)  (angleFrom, angleTo) (iconFrom, iconTo)
+    -- arrowBaseOpts = Dia.shaftStyle Dia.%~ ( Dia.lc (shaftColor e))  $ arrowBaseOpts'
     arrowShadowOpts = getArrowShadowOpts (pointFrom, pointTo)  (angleFrom, angleTo) iconTo
 
 shaftColor (Edge DrawAndNotConstraint _) = Dia.red

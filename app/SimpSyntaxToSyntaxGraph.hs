@@ -7,6 +7,7 @@ module SimpSyntaxToSyntaxGraph(
   -- for tests 
   , makeBox
   , evalExp
+  , evalDecl
 ) where
 
 

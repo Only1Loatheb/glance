@@ -118,7 +118,7 @@ inputSymbol :: SpecialBackend b n => SpecialDiagram b n
 inputSymbol = lw none $ fc lineColorValue $ circle (symbolSize * 0.5)
 
 valueSymbol ::SpecialBackend b n => SpecialDiagram b n
-valueSymbol = fc color $ lw none $ rotateBy (1/2) $ eqTriangle (5/4 * symbolSize) where -- cant be to big to fit in diagrams
+valueSymbol = fc color $ lw none $ rotateBy (1/2) $ eqTriangle (5/4 * symbolSize) where -- don't set it to be to big so it fits in diagrams
   color = caseRhsC colorScheme
 
 multiIfVarSymbol :: SpecialBackend b n
@@ -314,8 +314,8 @@ bindDiagram :: SpecialBackend b n =>
   String -> TransformableDia b n
 bindDiagram t transformParams = finalDia where
   name = (tpName transformParams) 
-  bindDia = nameDiagram name inputPortSymbol 
-  -- bindText = coloredTextBox (bindTextBoxTextC colorScheme) t
+  bindDia = nameDiagram name inputPortSymbol
+
   input = makeQualifiedPort InputPortConst name
   finalDia = input === bindDia -- === bindText
 
@@ -323,7 +323,7 @@ literalDiagram :: SpecialBackend b n =>
   String -> TransformableDia b n
 literalDiagram t transformParams = finalDia where
   finalDia = bindText === outputDia
-  outputDia =  nameDiagram (tpName transformParams) memptyWithPosition
+  outputDia = makeResultDiagram (tpName transformParams)
   bindText = coloredTextBox (textBoxTextC colorScheme) t
 
 makeInputDiagram :: SpecialBackend b n
@@ -619,7 +619,7 @@ getArrowBaseOpts :: (RealFloat n, Typeable n)
   -> ArrowOpts n
 getArrowBaseOpts (NameAndPort (NodeName nodeNum) mPort) points maybeAngles 
   iconPair@(_, iconTo)
-  = shaftStyle %~ (lwG arrowLineWidth ) -- . lc shaftColor)
+  = shaftStyle %~ (lwG arrowLineWidth {- )-- -} . lc shaftColor) 
   $ headStyle %~ fc shaftColor
   $ getArrowOpts points maybeAngles iconTo where
     Port portNum = mPort
