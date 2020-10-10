@@ -2,6 +2,7 @@
 
 module Util (
   printSelf
+  , printSelfM
   , makeSimpleEdge
   , makeNotConstraintEdge
   , makeInvisibleEdge
@@ -55,6 +56,9 @@ fromMaybeError s = fromMaybe (error s)
 
 printSelf :: (Show a) => a -> a
 printSelf a = Debug.Trace.trace (show a ++ "\n\n") a
+
+-- printSelf :: (Show a) => a -> a
+printSelfM a = Debug.Trace.traceM (show a ++ "\n\n")
 
 -- | (Just True) = True, Nothing = False
 maybeBoolToBool :: Maybe Bool -> Bool

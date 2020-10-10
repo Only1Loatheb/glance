@@ -100,7 +100,7 @@ getPortAngle = getPortAngleHelper False
 getPortAngleHelper :: SpecialNum n
   => Bool -> IconInfo -> Icon -> Port -> Maybe NodeName -> Angle n
 getPortAngleHelper embedded iconInfo (Icon icon _) port maybeNodeName = case icon of
-  TextBoxIcon {} -> 1/4 @@ turn
+  TextBoxIcon {} -> 3/4 @@ turn
   BindTextBoxIcon {} -> 1/4 @@ turn
   MultiIfIcon {} -> multiIfPortAngle port
   CaseIcon {} -> multiIfPortAngle port

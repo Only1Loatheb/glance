@@ -314,8 +314,7 @@ simpPatToHsPat (SimpPat s pat) = hsPat where
 
 guardedRhsToSelectorAndVal :: Exts.GuardedRhs Exts.SrcSpanInfo -> SelectorAndVal
 guardedRhsToSelectorAndVal rhs = case rhs of
-  Exts.GuardedRhs _ [s] valExp -> SelectorAndVal{svSelector=stmtToExp s
-                                                , svVal=hsExpToSimpExp valExp}
+  Exts.GuardedRhs l [s] valExp -> SelectorAndVal (srcRef l) (stmtToExp s) (hsExpToSimpExp valExp)
   _ -> error $ "Unsupported syntax in guardedRhsToSelectorAndVal: " ++ show rhs
   where
     stmtToExp stmt = case stmt of
@@ -341,7 +340,7 @@ hsRhsToExp rhs = case rhs of
 
 hsAltToSimpAlt :: Exts.Alt Exts.SrcSpanInfo -> SimpAlt
 hsAltToSimpAlt (Exts.Alt l pat rhs maybeBinds)
-  = SimpAlt{saPat=hsPatToSimpPat pat, saVal=whereToLet l rhs maybeBinds}
+  = SimpAlt (srcRef l) (hsPatToSimpPat pat) (whereToLet l rhs maybeBinds)
 
 simpAltToHsAlt :: SrcRef -> SimpAlt -> Exts.Alt Exts.SrcSpanInfo
 simpAltToHsAlt s (SimpAlt ss pat e) = Exts.Alt l (simpPatToHsPat pat) (simpExpToRhs ll e) Nothing

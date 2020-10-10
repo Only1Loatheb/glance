@@ -171,12 +171,12 @@ listTests = [
 
 caseTests :: [String]
 caseTests = [
-  "y = case x of {0 -> 1; 2 -> 3}",
-  "y = case f x of {0 -> 1; 2 -> 3}",
-  "y = case x of {Foo a -> a}",
-  "y = case x of {Foo a -> f a; Bar a -> f a}",
-  "y = case x of {F x -> x; G x -> x}",
-  "y = case x of {F -> 0; G -> 1}"
+  "y = case x of {0 -> 1; 2 -> 3}"
+  , "y = case f x of {0 -> 1; 2 -> 3}"
+  , "y = case x of {Foo a -> a}"
+  , "y = case x of {Foo a -> f a; Bar a -> f a}"
+  , "y = case x of {F x -> x; G x -> x}"
+  , "y = case x of {F -> 0; G -> 1}"
   -- ,
   -- "z = case x of {0 -> 1; y -> y}",
   -- "y x = case f x of {0 -> x; Foo x -> x}"
@@ -353,11 +353,12 @@ otherInLambdaTest = [
   ,"lambdaWLetDescription = \\a1 a2 -> let x = a1 in  v1 + x"
   ,"lambdaWLetBoth = \\a1 a2 -> let x = a1 in  a2 + x"
   ,"lambdaWListComp = \\xs -> [x | x <- xs] "
-  ,"lambdaWCaceCondAndValue = \\a1 a2 a3-> case a1 of a2 -> a3"
-  ,"lambdaWCaceUnused = \\a1 a2 -> case v1 of v2 -> v3"
-  ,"lambdaWCaceMixed = \\a1 a2 -> case a1 of \n\
-  \  c1 -> v1\n\
-  \  a2 -> v2"
+  ,"lambdaWCaseCondAndValue = \\a1 a2 a3-> case a1 of a2 -> a3"
+  ,"lambdaWCaseUnused = \\a1 a2 -> case v1 of v2 -> v3"
+  -- not supported
+  -- , "lambdaWCaseMixed = \\a1 a2 -> case a1 of \n\ 
+  -- \  a2 -> v1\n\
+  -- \  c1 -> v2"
   ,
   "y = lambdaWGuardsValue v1 v2 where \n\
   \  lambdaWGuardsValue = \\ aa1 aa2->\n\
@@ -440,13 +441,13 @@ translateStringToDrawing s = do
       putStrLn "SimpDecl:"
       print simpDecl
       putStrLn "SyntaxGraph:"
-      print {- prettyShowSyntaxGraph-} syntaxGraph
+      putStr $ prettyShowSyntaxGraph syntaxGraph
       putStrLn "FGL Graph:"
       ING.prettyPrint fglGraph
       putStrLn "Collapsed Graph:"
       ING.prettyPrint collapsedGraph
       putStr "\n\n"
-  if False then printAction else pure ()  -- Supress unused printAction warning
+  if True then printAction else pure ()  -- Supress unused printAction warning
   declarationDiagrams <- renderIngSyntaxGraph s (collapsedGraph, Nothing)
   pure $ clearValue declarationDiagrams
 
