@@ -21,6 +21,7 @@ import Types (
   , SpecialBackend
   , DiaQuery
   , ModuleGraphs
+  , QueryValue(..)
   )
 
 import ModuleToDiagram(getModuleGraphs, diagramFromModule, selectView)
@@ -28,6 +29,9 @@ import ModuleToDiagram(getModuleGraphs, diagramFromModule, selectView)
 import CmdLineArgs as CMD
 
 import FrontendBlankCanvas( blankCanvasLoop )
+
+import SrcRefToSourceCode (srcRefToSourceCode) 
+
 -- {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 main :: IO ()
 main = passCmdArgs
@@ -48,21 +52,25 @@ prepareDiagram (CMD.CmdLineOptions
   moduleGraphs <- getModuleGraphs inputFilename
   if isInteractive
   then do
-    let loopControl = (chooseFullOrView doIncludeComments, sampleDiagram, createView)
+    source <- readFile inputFilename
+    let getCodeFragment = srcRefToSourceCode source
+    let createView' = createView getCodeFragment
+    let loopControl = (chooseFullOrView doIncludeComments, sampleDiagram, createView')
     blankCanvasLoop moduleGraphs portNumber loopControl imageScale
   else do
     diagram <- chooseFullOrView doIncludeComments moduleGraphs Nothing
     customRenderSVG' outputFilename (Dia.mkWidth 500) diagram
     putStrLn $ "Saving file: " ++ outputFilename
 
-chooseFullOrView doIncludeComments moduleGraphs maybeViewGraphs = do
-  let displayedGraphs = fromMaybe moduleGraphs maybeViewGraphs
+chooseFullOrView doIncludeComments moduleGraphs maybeView = do
+  let displayedView = fromMaybe (moduleGraphs,"") maybeView
   let diagramFromModule' = diagramFromModule doIncludeComments
-  moduleDiagram <- diagramFromModule' displayedGraphs
+  moduleDiagram <- diagramFromModule' displayedView
   pure (moduleDiagram)
 
 sampleDiagram = Dia.sample
 
-createView clicked moduleGraphs = viewGraphs where
+createView getCodeFragment clicked moduleGraphs = Just (viewGraphs, codeString) where
   firstClickedValue = head clicked
-  viewGraphs = Just $ selectView firstClickedValue moduleGraphs
+  codeString = (getCodeFragment . nodeSrcRef ) firstClickedValue
+  viewGraphs = selectView firstClickedValue moduleGraphs

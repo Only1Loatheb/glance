@@ -59,12 +59,12 @@ blankCanvasLoop moduleGraphs portNumber loopControl imageScale = do
 --   -> IO b
 loop 
   context 
-  (moduleGraphs, maybeViewGraphs) 
+  (moduleGraphs, maybeView) 
   loopControl@(chooseFullOrView, sampleDiagram, createView) 
   imageScale
   = do
-  moduleDiagram <- chooseFullOrView moduleGraphs maybeViewGraphs
-  -- print maybeViewGraphs
+  moduleDiagram <- chooseFullOrView moduleGraphs maybeView
+  -- print maybeView
   let (moduleDiagramAligned, pointToDiaPoint, sizeSpec) = diagramForBlankCanvas moduleDiagram imageScale
   bcDrawDiagram context sizeSpec moduleDiagramAligned
   event <- BC.wait context
@@ -76,6 +76,6 @@ loop
       let clicked = sampleDiagram moduleDiagram scaledPoint
       if not $ null clicked
       then do
-        let viewGraphs = createView clicked moduleGraphs
-        loop context (moduleGraphs, viewGraphs) loopControl imageScale
+        let view = createView clicked moduleGraphs
+        loop context (moduleGraphs, view) loopControl imageScale
       else loop context (moduleGraphs, Nothing) loopControl imageScale

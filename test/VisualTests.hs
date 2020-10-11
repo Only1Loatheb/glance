@@ -447,7 +447,7 @@ translateStringToDrawing s = do
       putStrLn "Collapsed Graph:"
       ING.prettyPrint collapsedGraph
       putStr "\n\n"
-  if True then printAction else pure ()  -- Supress unused printAction warning
+  if False then printAction else pure ()  -- Supress unused printAction warning
   declarationDiagrams <- renderIngSyntaxGraph s (collapsedGraph, Nothing)
   pure $ clearValue declarationDiagrams
 

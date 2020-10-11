@@ -75,6 +75,7 @@ executable glance-exe
                , CmdLineArgs
                , FrontendBlankCanvas
                , SVGrender
+               , SrcRefToSourceCode
 
 test-suite glance-test
   type:                exitcode-stdio-1.0
@@ -136,6 +137,7 @@ test-suite glance-test
                , SyntaxGraphDirectTests
                , FrontendBlankCanvas
                , SVGrender
+               , SrcRefToSourceCode
 source-repository head
   type:     git
   location: https://github.com/rgleichman/glance

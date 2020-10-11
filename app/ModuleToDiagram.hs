@@ -68,7 +68,7 @@ getModuleGraphs inputFilename = do
 
 -- diagramFromModule :: SpecialBackend b Double =>
 --   String -> Bool -> IO (SpecialQDiagram b Double)
-diagramFromModule includeComments (declSpansAndGraphs, comments) = do
+diagramFromModule includeComments ((declSpansAndGraphs, comments), codeString) = do
   let (declarationSpans, drawingsGraphs) = unzip declSpansAndGraphs
   --print drawingsGraphs
   declarationDiagrams <- traverse ( renderIngSyntaxGraph "" ) drawingsGraphs
@@ -82,7 +82,7 @@ diagramFromModule includeComments (declSpansAndGraphs, comments) = do
       else spanAndDeclarations
     moduleDiagram = composeDiagrams spanAndDiagrams
   --print comments
-  pure moduleDiagram
+  pure (moduleDiagram Dia.=== (Dia.value mempty $ multilineComment codeString) )
 
 commentToDiagram :: SpecialBackend b Double
   => Exts.Comment
