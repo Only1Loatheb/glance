@@ -20,7 +20,12 @@ import           Data.List( sortBy )
 import Data.List.Split as Split
 import           Data.Function( on )
 
-import IconToSymbolDiagram(ColorStyle(..), colorScheme, multilineComment)
+import IconToSymbolDiagram(
+  ColorStyle(..)
+  , colorScheme
+  , multilineComment
+  , sourceCodeDiagram
+  )
 import Rendering(renderIngSyntaxGraph)
 import CollapseGraph(translateModuleToCollapsedGraphs)
 import           Types  (
@@ -82,7 +87,8 @@ diagramFromModule includeComments ((declSpansAndGraphs, comments), codeString) =
       else spanAndDeclarations
     moduleDiagram = composeDiagrams spanAndDiagrams
   --print comments
-  pure (moduleDiagram Dia.=== (Dia.value mempty $ multilineComment codeString) )
+  let sourceCodeDia = Dia.value mempty $ sourceCodeDiagram codeString
+  pure (moduleDiagram Dia.===  sourceCodeDia)
 
 commentToDiagram :: SpecialBackend b Double
   => Exts.Comment

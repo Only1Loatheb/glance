@@ -14,6 +14,7 @@ module IconToSymbolDiagram
   , getArrowBaseOpts
   , lambdaRegionToDiagram
   , nameDiagram
+  , sourceCodeDiagram
   )
 where
 
@@ -137,7 +138,7 @@ inNoteFrame borderColor diagram
   = centerXY diagram <> coloredFrame where
   
     boxHeight = height diagram
-    boxWidth = width diagram
+    boxWidth = 2 * width diagram
     cornerSize = letterHeight / 2
     notCornerHeight = boxHeight - cornerSize 
     frameWidth = boxWidth + 2 * cornerSize
@@ -156,6 +157,10 @@ inNoteFrame borderColor diagram
     decisionFrame = centerXY $ strokeLoop $  closeLine $ fromOffsets offsets
   
     coloredFrame = lwG (defaultLineWidth/2) $  lc borderColor decisionFrame
+
+sourceCodeDiagram s = diagram where
+  diagram = inNoteFrame (textBoxTextC colorScheme) 
+    $ multilineComment s
 
 lambdaBodySymbol :: SpecialBackend b n
   => String
