@@ -32,6 +32,8 @@ import FrontendBlankCanvas( blankCanvasLoop )
 
 import SrcRefToSourceCode (srcRefToSourceCode) 
 
+import Util(showSrcInfo)
+
 -- {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 main :: IO ()
 main = passCmdArgs
@@ -54,23 +56,31 @@ prepareDiagram (CMD.CmdLineOptions
   then do
     source <- readFile inputFilename
     let getCodeFragment = srcRefToSourceCode source
-    let createView' = createView getCodeFragment
-    let loopControl = (chooseFullOrView doIncludeComments, sampleDiagram, createView')
+    let chooseFullOrView' = chooseFullOrView doIncludeComments getCodeFragment
+    let loopControl = (chooseFullOrView', sampleDiagram, createView)
     blankCanvasLoop moduleGraphs portNumber loopControl imageScale
   else do
-    diagram <- chooseFullOrView doIncludeComments moduleGraphs Nothing
+    diagram <- diagramFromModule doIncludeComments moduleGraphs Nothing
     customRenderSVG' outputFilename (Dia.mkWidth 500) diagram
     putStrLn $ "Saving file: " ++ outputFilename
 
-chooseFullOrView doIncludeComments moduleGraphs maybeView = do
-  let displayedView = fromMaybe (moduleGraphs,"") maybeView
+chooseFullOrView doIncludeComments getCodeFragment moduleGraphs maybeView = do
   let diagramFromModule' = diagramFromModule doIncludeComments
-  moduleDiagram <- diagramFromModule' displayedView
-  pure (moduleDiagram)
+  case maybeView of 
+    Just (view, srcRef) -> do 
+      let codeString = getCodeFragment srcRef
+      putStrLn $ showSrcInfo srcRef
+      moduleDiagram <- diagramFromModule' view (Just codeString)
+      pure (moduleDiagram)
+    _ -> do
+      moduleDiagram <- diagramFromModule' moduleGraphs Nothing
+      pure (moduleDiagram)
+
+
 
 sampleDiagram = Dia.sample
 
-createView getCodeFragment clicked moduleGraphs = Just (viewGraphs, codeString) where
+createView clicked moduleGraphs = Just (viewGraphs, codeRef) where
   firstClickedValue = head clicked
-  codeString = (getCodeFragment . nodeSrcRef ) firstClickedValue
+  codeRef =  nodeSrcRef firstClickedValue
   viewGraphs = selectView firstClickedValue moduleGraphs

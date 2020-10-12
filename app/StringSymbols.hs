@@ -35,6 +35,7 @@ module StringSymbols
   , isTempLabel
   , getTempVarLabel
   , getFuncDefLabel
+  , sourceCodeDiagramLabel
   ) where
 
 import qualified Language.Haskell.Exts as Exts
@@ -157,6 +158,9 @@ actionOverParameterizedType = "fmap"
 
 patternSubscribedValueStr :: String
 patternSubscribedValueStr = "@"
+
+sourceCodeDiagramLabel :: String
+sourceCodeDiagramLabel = "Source code:\n"
 
 nameToString :: Exts.Name l -> String
 nameToString (Exts.Ident _ s) = s

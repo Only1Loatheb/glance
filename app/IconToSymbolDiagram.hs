@@ -49,6 +49,7 @@ import StringSymbols(
   ifConditionConst
   , isTempLabel
   , patternSubscribedValueStr
+  , sourceCodeDiagramLabel
   )
 
 import DrawingColors(colorScheme, ColorStyle(..))
@@ -138,7 +139,7 @@ inNoteFrame borderColor diagram
   = centerXY diagram <> coloredFrame where
   
     boxHeight = height diagram
-    boxWidth = 2 * width diagram
+    boxWidth = width diagram
     cornerSize = letterHeight / 2
     notCornerHeight = boxHeight - cornerSize 
     frameWidth = boxWidth + 2 * cornerSize
@@ -158,9 +159,13 @@ inNoteFrame borderColor diagram
   
     coloredFrame = lwG (defaultLineWidth/2) $  lc borderColor decisionFrame
 
-sourceCodeDiagram s = diagram where
-  diagram = inNoteFrame (textBoxTextC colorScheme) 
-    $ multilineComment s
+sourceCodeDiagram :: SpecialBackend b n
+  => String -> SpecialDiagram b n
+sourceCodeDiagram s = label === sourceCode  ||| padding where
+  sourceCode = multilineComment s
+  label = multilineComment sourceCodeDiagramLabel
+  padding = strut $ 10 * unitX  
+
 
 lambdaBodySymbol :: SpecialBackend b n
   => String

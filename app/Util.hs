@@ -76,8 +76,7 @@ tupleToNamed (x, y) = Named x y
 queryValue :: (NamedIcon -> DiaQuery)
 queryValue (Named name (Icon _ srcRef)) = [QueryValue srcRef name]
 
-showSrcInfo :: QueryValue -> String
-showSrcInfo q = SrcLoc.srcSpanFilename srcRef
+showSrcInfo :: SrcRef -> String
+showSrcInfo srcRef = SrcLoc.srcSpanFilename srcRef
   ++ ":" ++ show (SrcLoc.srcSpanStartLine srcRef)
-  ++ ":" ++ show (SrcLoc.srcSpanStartColumn srcRef) where
-    srcRef = nodeSrcRef q
+  ++ ":" ++ show (SrcLoc.srcSpanStartColumn srcRef)

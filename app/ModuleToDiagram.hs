@@ -71,9 +71,9 @@ getModuleGraphs inputFilename = do
     declSpansAndGraphs = zip declSpans $ zip declGraphs (repeat Nothing)
   pure (declSpansAndGraphs, comments)
 
--- diagramFromModule :: SpecialBackend b Double =>
---   String -> Bool -> IO (SpecialQDiagram b Double)
-diagramFromModule includeComments ((declSpansAndGraphs, comments), codeString) = do
+diagramFromModule :: SpecialBackend b Double =>
+  Bool -> ModuleGraphs -> Maybe String -> IO(SpecialQDiagram b Double)
+diagramFromModule includeComments (declSpansAndGraphs, comments) maybeCodeString = do
   let (declarationSpans, drawingsGraphs) = unzip declSpansAndGraphs
   --print drawingsGraphs
   declarationDiagrams <- traverse ( renderIngSyntaxGraph "" ) drawingsGraphs
@@ -87,8 +87,16 @@ diagramFromModule includeComments ((declSpansAndGraphs, comments), codeString) =
       else spanAndDeclarations
     moduleDiagram = composeDiagrams spanAndDiagrams
   --print comments
-  let sourceCodeDia = Dia.value mempty $ sourceCodeDiagram codeString
-  pure (moduleDiagram Dia.===  sourceCodeDia)
+  addSourceCodeDiagram moduleDiagram maybeCodeString
+
+
+addSourceCodeDiagram moduleDiagram maybeCodeString = do
+  case maybeCodeString of
+    (Just codeString) -> do
+      let sourceCodeDia = Dia.value mempty $ sourceCodeDiagram codeString
+      pure (moduleDiagram Dia.===  sourceCodeDia)
+    _ -> do
+      pure (moduleDiagram)
 
 commentToDiagram :: SpecialBackend b Double
   => Exts.Comment
