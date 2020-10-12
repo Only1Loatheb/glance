@@ -13,7 +13,7 @@ character = 'a'
 {- string = "a" -}
 string = "a"
 {- list = [1,2,3,4] where
-  [,,,] is describes list -}
+  [,,,] describes list -}
 list = [1,2,3,4]
 {- listWithOneElement = [1] -}
 listWithOneElement = [1]

@@ -73,7 +73,7 @@ loop
     Nothing -> loop context (moduleGraphs, Nothing) loopControl imageScale
     Just point -> do
       let scaledPoint = pointToDiaPoint point
-      let clicked = sampleDiagram moduleDiagram scaledPoint
+      let clicked = sampleDiagram moduleDiagramAligned scaledPoint
       if not $ null clicked
       then do
         let view = createView clicked moduleGraphs

@@ -135,7 +135,8 @@ selectGraph srcRef declSpansAndGraphs = (declSpanAndGraph, (srcSpanBefore, srcSp
     paddedDeclSpansAndGraphs = headPadding : declSpansAndGraphs ++ [tailPadding] where
       (headPadding, tailPadding) = getPadding declSpansAndGraphs
   srcRefStart = Exts.srcSpanStart srcRef
-  selectedChunk = head $ filter ((srcRefStart <). Exts.srcSpanStart . fst . flip (!!) 2) declSpansAndGraphsChunks
+  selectedChunk = head $ filter (filterF . Exts.srcSpanStart . fst . flip (!!) 2) declSpansAndGraphsChunks
+  filterF = \ x -> x > srcRefStart
   [(srcSpanBefore,_), declSpanAndGraph, (srcSpanAfter,_)] = selectedChunk
 
 getPadding :: [(Exts.SrcSpan, b1)]
