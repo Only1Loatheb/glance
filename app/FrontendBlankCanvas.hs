@@ -14,8 +14,10 @@ import Types (
   SpecialDiagram
   ,SpecialQDiagram
   , SpecialBackend
-  , DiaQuery
+  , DiaQuery(..)
   , ModuleGraphs
+  , SrcRef
+  , ViewGraphs
   )
 
 import IconToSymbolDiagram(ColorStyle(..), colorScheme, multilineComment)
@@ -52,11 +54,16 @@ blankCanvasLoop moduleGraphs portNumber loopControl imageScale = do
   let blankCanvasOpts  = getBlankCanvasOpts portNumber
   BC.blankCanvas blankCanvasOpts $ \ context -> loop context (moduleGraphs, Nothing) loopControl imageScale
 
--- loop ::
---   BC.DeviceContext
---   -> (ModuleGraphs, Maybe ModuleGraphs)
---   -> Double
---   -> IO b
+loop ::
+  BC.DeviceContext
+  -> (ModuleGraphs, Maybe (ViewGraphs, SrcRef))
+  -> (
+    ModuleGraphs -> Maybe (ViewGraphs,SrcRef) -> IO (SpecialQDiagram Canvas Double),
+    SpecialQDiagram Canvas Double -> Dia.Point Dia.V2 Double -> DiaQuery,
+    DiaQuery -> ModuleGraphs -> Maybe (ViewGraphs, SrcRef)
+  )
+  -> Double
+  -> IO b
 loop 
   context 
   (moduleGraphs, maybeView) 

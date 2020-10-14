@@ -150,9 +150,9 @@ getDiagramWidthAndHeight dummyDiagram = (diaWidth, diaHeight) where
 renderIconGraph :: forall b. SpecialBackend b Double
   => String  -- ^ Debugging information
   -> Gr (NodeInfo NamedIcon) (EmbedInfo Edge)
-  -> Maybe (Gr (NodeInfo NamedIcon) (EmbedInfo Edge))
+  -> Gr (NodeInfo NamedIcon) (EmbedInfo Edge)
   -> IO (SpecialQDiagram b Double)
-renderIconGraph debugInfo fullGraphWithInfo maybeViewGraph = do
+renderIconGraph debugInfo fullGraphWithInfo viewGraph = do
   layoutResult <- layoutGraph' layoutParams GVA.Dot parentGraph
   let
     iconAndPositions = Map.toList $  fst $ getGraph layoutResult
@@ -168,8 +168,7 @@ renderIconGraph debugInfo fullGraphWithInfo maybeViewGraph = do
     -- boxesDia = mconcat $ map (Dia.lc Dia.blue $ Dia.boundingRect . snd) iconAndBoudingRect
   pure  ( (Dia.atop placedNodesAny placedEdges )  <> queryRects <> placedRegions )
   where
-    parentGraph = ING.nmap niVal $ ING.labfilter (isNothing . niParent) 
-      $ fromMaybe fullGraphWithInfo maybeViewGraph
+    parentGraph = ING.nmap niVal $ ING.labfilter (isNothing . niParent) viewGraph
     fullGraph = ING.nmap niVal fullGraphWithInfo
     iconInfo = IMap.fromList
                 $ first nodeNameToInt . namedToTuple . snd
@@ -205,16 +204,16 @@ renderDrawing :: SpecialBackend b Double
   -> Drawing
   -> IO (SpecialDiagram b Double)
 renderDrawing debugInfo drawing = do
-  diagram <- renderIconGraph debugInfo graph Nothing
+  diagram <- renderIconGraph debugInfo graph graph
   pure $ Dia.clearValue diagram
   where
     graph = ING.nmap (NodeInfo Nothing) . drawingToIconGraph $ drawing
 
 renderIngSyntaxGraph :: (HasCallStack, SpecialBackend b Double)
   => String 
-  -> (AnnotatedGraph Gr, Maybe (AnnotatedGraph Gr)) 
+  -> (AnnotatedGraph Gr, AnnotatedGraph Gr) 
   -> IO (SpecialQDiagram b Double)
 renderIngSyntaxGraph debugInfo (fullGr, viweGr) 
   = renderIconGraph debugInfo fullGraph viewGraph where
     fullGraph = ING.nmap (fmap (fmap nodeToIcon)) fullGr
-    viewGraph = fmap (ING.nmap (fmap (fmap nodeToIcon))) viweGr
+    viewGraph = ING.nmap (fmap (fmap nodeToIcon)) viweGr

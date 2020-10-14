@@ -4,6 +4,8 @@ module ModuleToDiagram(
   diagramFromModule
   , getModuleGraphs
   , selectView
+  , staticDiagramFromModule
+  , moduleGraphsToViewGraphs
   -- for tests
   , selectGraph
   ) where
@@ -36,6 +38,7 @@ import           Types  (
   , SrcRef(..)
   , QueryValue(..)
   , ModuleGraphs
+  , ViewGraphs
   )
 
 import PartialView (neighborsSubgraph)
@@ -68,11 +71,11 @@ getModuleGraphs inputFilename = do
     (parsedModule, comments) = Exts.fromParseResult parseResult
     declGraphs = translateModuleToCollapsedGraphs parsedModule
     declSpans = moduleToSrcSpanStarts parsedModule
-    declSpansAndGraphs = zip declSpans $ zip declGraphs (repeat Nothing)
+    declSpansAndGraphs = zip declSpans declGraphs
   pure (declSpansAndGraphs, comments)
 
 diagramFromModule :: SpecialBackend b Double =>
-  Bool -> ModuleGraphs -> Maybe String -> IO(SpecialQDiagram b Double)
+  Bool -> ViewGraphs -> Maybe String -> IO(SpecialQDiagram b Double)
 diagramFromModule includeComments (declSpansAndGraphs, comments) maybeCodeString = do
   let (declarationSpans, drawingsGraphs) = unzip declSpansAndGraphs
   --print drawingsGraphs
@@ -89,6 +92,10 @@ diagramFromModule includeComments (declSpansAndGraphs, comments) maybeCodeString
   --print comments
   addSourceCodeDiagram moduleDiagram maybeCodeString
 
+staticDiagramFromModule :: SpecialBackend b Double =>
+  Bool -> ModuleGraphs -> IO(SpecialQDiagram b Double)
+staticDiagramFromModule includeComments moduleGraphs 
+  = diagramFromModule includeComments (moduleGraphsToViewGraphs moduleGraphs) Nothing
 
 addSourceCodeDiagram moduleDiagram maybeCodeString = do
   case maybeCodeString of
@@ -119,15 +126,15 @@ composeDiagramsInModule :: SpecialBackend b Double
 composeDiagramsInModule diagrams = finalDia where
   finalDia = Dia.vsep diagramSeparation diagrams
 
-selectView :: QueryValue -> ModuleGraphs -> ModuleGraphs
+selectView :: QueryValue -> ModuleGraphs -> ViewGraphs
 selectView (QueryValue srcRef name) (declSpansAndGraphs, comments) = ([selectedSpanAndGraph], nerbyComments) where
-  ((declSpan, (graph,_)), srcSpans) = selectGraph srcRef declSpansAndGraphs
+  ((declSpan, graph), srcSpans) = selectGraph srcRef declSpansAndGraphs
   nerbyComments = selectComments comments srcSpans
-  selectedSpanAndGraph = (declSpan, (graph, Just $ neighborsSubgraph name graph))
+  selectedSpanAndGraph = (declSpan, (graph, neighborsSubgraph name graph))
 
 selectGraph :: Exts.SrcSpan
-                 -> [(Exts.SrcSpan, b)]
-                 -> ((Exts.SrcSpan, b), (Exts.SrcSpan, Exts.SrcSpan))
+  -> [(Exts.SrcSpan, b)]
+  -> ((Exts.SrcSpan, b), (Exts.SrcSpan, Exts.SrcSpan))
 selectGraph srcRef declSpansAndGraphs = (declSpanAndGraph, (srcSpanBefore, srcSpanAfter)) where
   declSpansAndGraphsChunks = Split.divvy chunkSize chunkOffset paddedDeclSpansAndGraphs where
     chunkSize = 3
@@ -153,3 +160,7 @@ selectComments :: [Exts.Comment]
                     -> (Exts.SrcSpan, Exts.SrcSpan) -> [Exts.Comment]
 selectComments comments (srcSpanBefore, srcSpanAfter) = nerbyComments where
   nerbyComments = filter (\((Exts.Comment _ srcSpan _))-> srcSpan > srcSpanBefore && srcSpan < srcSpanAfter) comments
+
+moduleGraphsToViewGraphs :: ModuleGraphs -> ViewGraphs
+moduleGraphsToViewGraphs (moduleGraphs, comments) = (map moduleGraphToView moduleGraphs, comments) where
+  moduleGraphToView (srcRef,graph) = (srcRef,(graph, graph)) 

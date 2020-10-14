@@ -40,6 +40,8 @@ module Types (
   , SrcRef
   , ModuleGraphs
   , AnnotatedFGR
+  , SourceCode
+  , ViewGraphs
 ) where
 
 import Diagrams.Prelude(QDiagram, V2, Any, Renderable, Path, IsName)
@@ -237,4 +239,7 @@ type DiaQuery = [QueryValue]
 
 type AnnotatedFGR = AnnotatedGraph FGR.Gr
 
-type ModuleGraphs = ([(Exts.SrcSpan, (AnnotatedFGR, Maybe AnnotatedFGR))],[Exts.Comment])
+type SourceCode = String
+
+type ModuleGraphs = ([(Exts.SrcSpan, AnnotatedFGR)],[Exts.Comment])
+type ViewGraphs = ([(Exts.SrcSpan, (AnnotatedFGR, AnnotatedFGR))],[Exts.Comment])

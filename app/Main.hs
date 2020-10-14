@@ -19,12 +19,21 @@ import Types (
   SpecialDiagram
   ,SpecialQDiagram
   , SpecialBackend
-  , DiaQuery
+  , DiaQuery(..)
   , ModuleGraphs
   , QueryValue(..)
+  , SourceCode
+  , SrcRef
+  , ViewGraphs
   )
 
-import ModuleToDiagram(getModuleGraphs, diagramFromModule, selectView)
+import ModuleToDiagram(
+  getModuleGraphs
+  , diagramFromModule
+  , selectView
+  , staticDiagramFromModule
+  , moduleGraphsToViewGraphs
+  )
 
 import CmdLineArgs as CMD
 
@@ -60,27 +69,34 @@ prepareDiagram (CMD.CmdLineOptions
     let loopControl = (chooseFullOrView', sampleDiagram, createView)
     blankCanvasLoop moduleGraphs portNumber loopControl imageScale
   else do
-    diagram <- diagramFromModule doIncludeComments moduleGraphs Nothing
+    diagram <- staticDiagramFromModule doIncludeComments moduleGraphs
     customRenderSVG' outputFilename (Dia.mkWidth 500) diagram
     putStrLn $ "Saving file: " ++ outputFilename
 
+chooseFullOrView :: SpecialBackend b Double =>
+  Bool -> (SrcRef -> SourceCode) -> ModuleGraphs -> Maybe (ViewGraphs, SrcRef) -> IO (SpecialQDiagram b Double)
 chooseFullOrView doIncludeComments getCodeFragment moduleGraphs maybeView = do
   let diagramFromModule' = diagramFromModule doIncludeComments
   case maybeView of 
-    Just (view, srcRef) -> do 
+    Just (viewGraphs, srcRef) -> do 
       let codeString = getCodeFragment srcRef
       putStrLn $ showSrcInfo srcRef
-      moduleDiagram <- diagramFromModule' view (Just codeString)
+      let 
+      moduleDiagram <- diagramFromModule' viewGraphs (Just codeString)
       pure (moduleDiagram)
     _ -> do
-      moduleDiagram <- diagramFromModule' moduleGraphs Nothing
+      moduleDiagram <- diagramFromModule' (moduleGraphsToViewGraphs moduleGraphs) Nothing-- (createOverview moduleGraphs) Nothing
       pure (moduleDiagram)
 
 
-
+sampleDiagram :: SpecialBackend b Double =>
+  SpecialQDiagram b Double -> Dia.Point Dia.V2 Double -> DiaQuery
 sampleDiagram = Dia.sample
 
-createView clicked moduleGraphs = Just (viewGraphs, codeRef) where
+createView :: DiaQuery -> ModuleGraphs -> Maybe (ViewGraphs, SrcRef)
+createView clicked moduleGraphs = Just (viewGraphs, srcRef) where
   firstClickedValue = head clicked
-  codeRef =  nodeSrcRef firstClickedValue
+  srcRef =  nodeSrcRef firstClickedValue
   viewGraphs = selectView firstClickedValue moduleGraphs
+
+-- createOverview moduleGraphs = 
