@@ -18,6 +18,9 @@ import Types (
   , ModuleGraphs
   , SrcRef
   , ViewGraphs
+  , CreateView
+  , SourceCode
+  , View
   )
 
 import IconToSymbolDiagram(ColorStyle(..), colorScheme, multilineComment)
@@ -50,39 +53,41 @@ bcDrawDiagram context sizeSpec moduleDiagram = do
   let moduleDrawing = Dia.bg (backgroundC colorScheme) $ Dia.clearValue moduleDiagram
   BC.send context $ Dia.renderDia CV.Canvas (CanvasOptions sizeSpec) moduleDrawing   
   
-blankCanvasLoop moduleGraphs portNumber loopControl imageScale = do
+blankCanvasLoop moduleDiagram portNumber loopControl imageScale = do
   let blankCanvasOpts  = getBlankCanvasOpts portNumber
-  BC.blankCanvas blankCanvasOpts $ \ context -> loop context (moduleGraphs, Nothing) loopControl imageScale
+  BC.blankCanvas blankCanvasOpts $ \ context -> loop context (moduleDiagram, (Nothing, Nothing)) loopControl imageScale
 
 loop ::
   BC.DeviceContext
-  -> (ModuleGraphs, Maybe (ViewGraphs, SrcRef))
+  -> (SpecialQDiagram Canvas Double, View)
   -> (
-    ModuleGraphs -> Maybe (ViewGraphs,SrcRef) -> IO (SpecialQDiagram Canvas Double),
-    SpecialQDiagram Canvas Double -> Dia.Point Dia.V2 Double -> DiaQuery,
-    DiaQuery -> ModuleGraphs -> Maybe (ViewGraphs, SrcRef)
+    SpecialQDiagram Canvas Double -> View -> IO (SpecialQDiagram Canvas Double)
+    , SpecialQDiagram Canvas Double -> Dia.Point Dia.V2 Double -> DiaQuery
+    , CreateView
+    , (View -> View)
   )
   -> Double
   -> IO b
 loop 
   context 
-  (moduleGraphs, maybeView) 
-  loopControl@(chooseFullOrView, sampleDiagram, createView) 
+  (moduleDiagram, view) 
+  loopControl@(chooseFullOrView, sampleDiagram, progressView, withdrawView) 
   imageScale
   = do
-  moduleDiagram <- chooseFullOrView moduleGraphs maybeView
-  -- print maybeView
-  let (moduleDiagramAligned, pointToDiaPoint, sizeSpec) = diagramForBlankCanvas moduleDiagram imageScale
+  diagram <- chooseFullOrView moduleDiagram view
+  -- print view
+  let (moduleDiagramAligned, pointToDiaPoint, sizeSpec) = diagramForBlankCanvas diagram imageScale
   bcDrawDiagram context sizeSpec moduleDiagramAligned
   event <- BC.wait context
   case BC.ePageXY event of
     -- if no mouse location, ignore, and redraw
-    Nothing -> loop context (moduleGraphs, Nothing) loopControl imageScale
+    Nothing -> loop context (moduleDiagram, withdrawView view) loopControl imageScale
     Just point -> do
       let scaledPoint = pointToDiaPoint point
       let clicked = sampleDiagram moduleDiagramAligned scaledPoint
-      if not $ null clicked
-      then do
-        let view = createView clicked moduleGraphs
-        loop context (moduleGraphs, view) loopControl imageScale
-      else loop context (moduleGraphs, Nothing) loopControl imageScale
+      let 
+        newView = if not $ null clicked 
+          then progressView clicked view 
+          else withdrawView view
+      putStrLn $ show newView
+      loop context (moduleDiagram, newView) loopControl imageScale

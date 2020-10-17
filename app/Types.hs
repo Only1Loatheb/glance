@@ -34,14 +34,18 @@ module Types (
   , TransformParams(..)
   , TransformableDia
   , DiaQuery
-  , QueryValue(..)
+  , NodeQueryValue(..)
+  , DeclQueryValue(..)
   , SyntaxNodeCore(..)
   , DiagramIcon(..)
   , SrcRef
   , ModuleGraphs
-  , AnnotatedFGR
+  , AnnotatedFGR(..)
   , SourceCode
   , ViewGraphs
+  , QueryValue(..)
+  , View(..)
+  , CreateView
 ) where
 
 import Diagrams.Prelude(QDiagram, V2, Any, Renderable, Path, IsName)
@@ -230,10 +234,20 @@ data TransformParams n = TransformParams {
 -- by what angle it will be rotated.
 type TransformableDia b n = TransformParams n -> SpecialDiagram b n
 
-data QueryValue = QueryValue {
-  nodeSrcRef :: SrcRef
-  , nodeName :: NodeName
+data NodeQueryValue = NodeQueryValue {
+  nodeName :: NodeName
   } deriving (Show, Eq, Ord)
+
+data DeclQueryValue = DeclQueryValue {
+  declGraph :: AnnotatedFGR
+  , commentsBefore :: [Exts.Comment]
+  , commentsAfter :: [Exts.Comment]
+  } deriving (Show)
+
+data QueryValue = 
+  NodeQv SrcRef NodeQueryValue
+  | DeclQv SrcRef DeclQueryValue 
+  deriving (Show)
 
 type DiaQuery = [QueryValue]
 
@@ -241,5 +255,8 @@ type AnnotatedFGR = AnnotatedGraph FGR.Gr
 
 type SourceCode = String
 
-type ModuleGraphs = ([(Exts.SrcSpan, AnnotatedFGR)],[Exts.Comment])
-type ViewGraphs = ([(Exts.SrcSpan, (AnnotatedFGR, AnnotatedFGR))],[Exts.Comment])
+type View = (Maybe DeclQueryValue, Maybe NodeQueryValue)
+type CreateView = DiaQuery -> View -> View
+-- to del
+type ModuleGraphs = ([(SrcRef, AnnotatedFGR)],[Exts.Comment])
+type ViewGraphs = ([(SrcRef, (AnnotatedFGR, AnnotatedFGR))],[Exts.Comment])

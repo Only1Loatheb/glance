@@ -14,7 +14,6 @@ import VisualGraphAlgorithmTests(visualCollapseTests)
 
 import SyntaxGraphComparisonTests(syntaxGraphComparisonTests)
 import SyntaxGraphDirectTests(syntaxGraphDirectTests)
-import ModuleToDiagramTests(moduleToDiagramTests)
 
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
@@ -38,5 +37,4 @@ main = do
   renderDrawings drawingsAndNames
   _ <- runTestTT syntaxGraphDirectTests
   _ <- runTestTT syntaxGraphComparisonTests
-  _ <- runTestTT moduleToDiagramTests
   pure ()

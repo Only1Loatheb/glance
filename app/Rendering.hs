@@ -48,6 +48,7 @@ import           Types (
   , Named(..)
   , TransformParams(..)
   , SpecialQDiagram
+  , AnnotatedFGR(..)
   )
 
 import Util(nodeNameToInt, fromMaybeError, namedToTuple)
@@ -211,7 +212,7 @@ renderDrawing debugInfo drawing = do
 
 renderIngSyntaxGraph :: (HasCallStack, SpecialBackend b Double)
   => String 
-  -> (AnnotatedGraph Gr, AnnotatedGraph Gr) 
+  -> (AnnotatedFGR, AnnotatedFGR) 
   -> IO (SpecialQDiagram b Double)
 renderIngSyntaxGraph debugInfo (fullGr, viweGr) 
   = renderIconGraph debugInfo fullGraph viewGraph where

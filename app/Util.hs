@@ -12,7 +12,6 @@ module Util (
   , nodeNameToInt
   , namedToTuple
   , tupleToNamed
-  , queryValue
   , showSrcInfo
   ) where
 
@@ -32,7 +31,7 @@ import           Types (
   , Named(..)
   , EdgeOption(..)
   , DiaQuery
-  , QueryValue(..)
+  , NodeQueryValue(..)
   , SrcRef
   )
 
@@ -72,9 +71,6 @@ namedToTuple (Named x y) = (x, y)
 
 tupleToNamed :: (NodeName, a) -> Named a
 tupleToNamed (x, y) = Named x y
-
-queryValue :: (NamedIcon -> DiaQuery)
-queryValue (Named name (Icon _ srcRef)) = [QueryValue srcRef name]
 
 showSrcInfo :: SrcRef -> String
 showSrcInfo srcRef = SrcLoc.srcSpanFilename srcRef

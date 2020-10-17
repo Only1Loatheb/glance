@@ -24,7 +24,7 @@ import           Types (
   , Named(..)
   , EdgeOption(..)
   , DiaQuery
-  , QueryValue(..)
+  , NodeQueryValue(..)
   , SrcRef
   )
 

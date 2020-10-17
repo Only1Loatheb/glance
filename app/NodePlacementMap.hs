@@ -14,17 +14,18 @@ import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
   , Drawing(..), NameAndPort(..)
   , SpecialDiagram, SpecialBackend, SpecialNum, NodeName(..)
   , SpecialQDiagram
-  , NamedIcon, Icon(..), NodeInfo(..), IconInfo
+  , NamedIcon(..), Icon(..), NodeInfo(..), IconInfo
   , Named(..)
   , TransformParams(..)
   , EdgeOption(..)
+  , QueryValue(..)
+  , DiaQuery(..)
+  , NodeQueryValue(..)
   )
 
 import TextBox(transparentAlpha)
 
 import IconToSymbolDiagram  ( iconToDiagram)
-
-import Util(queryValue)
 
 -- CONSTANT
 graphvizScaleFactor :: (Fractional a) => a
@@ -51,7 +52,7 @@ getDiaPosition layoutPosition = graphvizScaleFactor Dia.*^ layoutPosition
 
 
 boundingBoxPadding :: Double
-boundingBoxPadding = 2
+boundingBoxPadding = 0.5
 
 getQueryRects :: SpecialBackend b Double
   =>[(NamedIcon, SpecialDiagram b Double)]
@@ -62,3 +63,6 @@ getQueryRects iconAndPlacedNodes
       box = Dia.value (queryValue icon) 
         $ Dia.opacity transparentAlpha $  Dia.boundingRect
         $ Dia.frame boundingBoxPadding diagram]
+
+queryValue :: (NamedIcon -> DiaQuery)
+queryValue (Named name (Icon _ srcRef)) = [NodeQv srcRef $ NodeQueryValue name]

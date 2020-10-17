@@ -67,7 +67,7 @@ executable glance-exe
                , HsSyntaxToSimpSyntax
                , PortConstants
                , SyntaxGraph
-               , ModuleToDiagram
+               , ModuleToGraphs
                , ClusterNodesBy
                , RenderEdges
                , NodePlacementMap
@@ -76,6 +76,7 @@ executable glance-exe
                , FrontendBlankCanvas
                , SVGrender
                , SrcRefToSourceCode
+               , ModuleGraphsToDiagram
 
 test-suite glance-test
   type:                exitcode-stdio-1.0
@@ -128,16 +129,16 @@ test-suite glance-test
                , HsSyntaxToSimpSyntax
                , PortConstants
                , SyntaxGraph
-               , ModuleToDiagram
+               , ModuleToGraphs
                , ClusterNodesBy
                , RenderEdges
                , NodePlacementMap
                , PartialView
-               , ModuleToDiagramTests
                , SyntaxGraphDirectTests
                , FrontendBlankCanvas
                , SVGrender
                , SrcRefToSourceCode
+               , ModuleGraphsToDiagram
 source-repository head
   type:     git
   location: https://github.com/rgleichman/glance
