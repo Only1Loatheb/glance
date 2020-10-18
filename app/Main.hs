@@ -69,8 +69,8 @@ prepareDiagram (CMD.CmdLineOptions
   if isInteractive
   then do
     source <- readFile inputFilename
-    let moduleDiagram = diagramFromModule doIncludeComments moduleGraphs
     let getCodeFragment = srcRefToSourceCode source
+    let moduleDiagram = diagramFromModule getCodeFragment doIncludeComments moduleGraphs
     let selectViewWithSourceCode' = selectViewWithSourceCode getCodeFragment
     let loopControl = (selectViewWithSourceCode', sampleDiagram, progressView, withdrawView)
     blankCanvasLoop moduleDiagram portNumber loopControl imageScale

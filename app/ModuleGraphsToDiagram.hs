@@ -49,19 +49,19 @@ import PartialView (neighborsSubgraph)
 import TextBox (multilineComment)
 -- before loop
 diagramFromModule :: SpecialBackend b Double =>
-  Bool -> ModuleGraphs -> SpecialQDiagram b Double
-diagramFromModule includeComments (declSpansAndGraphs, comments) = moduleDiagram where
+  (SrcRef -> SourceCode) -> Bool -> ModuleGraphs -> SpecialQDiagram b Double
+diagramFromModule getCodeFragment includeComments (declSpansAndGraphs, comments) = moduleDiagram where
   selectedComments = selectComments includeComments comments
-  moduleDiagram = getModuleDiagram declSpansAndGraphs selectedComments
+  moduleDiagram = getModuleDiagram getCodeFragment declSpansAndGraphs selectedComments
 
 selectComments :: Bool -> [Exts.Comment] -> [Exts.Comment]
 selectComments includeComments comments = if includeComments then comments else []
 
 getModuleDiagram :: SpecialBackend b Double
-  => [(SrcRef, AnnotatedFGR)] -> [Exts.Comment] -> SpecialQDiagram b Double
-getModuleDiagram declSpansAndGraphs selectedComments = diagram where
+  => (SrcRef -> SourceCode) -> [(SrcRef, AnnotatedFGR)] -> [Exts.Comment] -> SpecialQDiagram b Double
+getModuleDiagram getCodeFragment declSpansAndGraphs selectedComments = diagram where
   chunks = getDeclChunks declSpansAndGraphs
-  diagram = placeDiagrams $ map (declIconDiagram selectedComments) chunks 
+  diagram = placeDiagrams $ map (declIconDiagram getCodeFragment selectedComments) chunks 
 
 diagramSeparation :: Fractional p => p
 diagramSeparation = 1.0
@@ -73,9 +73,9 @@ placeDiagrams diagrams = finalDia where
   finalDia = Dia.vsep diagramSeparation diagrams
 
 -- declIconDiagram :: [Exts.Comment] -> [(Exts.SrcSpan, b)] SpecialQDiagram b Double
-declIconDiagram comments [(srcRefBefore,_),(srcRef, graph), (srcRefAfter,_)] = diagram where
+declIconDiagram getCodeFragment comments [(srcRefBefore,_),(srcRef, graph), (srcRefAfter,_)] = diagram where
   diagram = Dia.value queryValue
-    $ multilineComment $ show srcRef
+    $ ( multilineComment . head . lines . getCodeFragment) srcRef
   queryValue = [DeclQv $ DeclQueryValue srcRef graph commentsBefore commentsAfter]
   commentsBefore = filterComments comments (srcRefBefore, srcRef)
   commentsAfter = filterComments comments (srcRef, srcRefAfter)
