@@ -65,4 +65,4 @@ getQueryRects iconAndPlacedNodes
         $ Dia.frame boundingBoxPadding diagram]
 
 queryValue :: (NamedIcon -> DiaQuery)
-queryValue (Named name (Icon _ srcRef)) = [NodeQv srcRef $ NodeQueryValue name]
+queryValue (Named name (Icon _ srcRef)) = [NodeQv $ NodeQueryValue srcRef name]

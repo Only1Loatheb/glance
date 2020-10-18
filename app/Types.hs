@@ -235,18 +235,20 @@ data TransformParams n = TransformParams {
 type TransformableDia b n = TransformParams n -> SpecialDiagram b n
 
 data NodeQueryValue = NodeQueryValue {
-  nodeName :: NodeName
+  nodeSrcRef :: SrcRef
+  , nodeName :: NodeName
   } deriving (Show, Eq, Ord)
 
 data DeclQueryValue = DeclQueryValue {
-  declGraph :: AnnotatedFGR
+  declSrcRef :: SrcRef
+  , declGraph :: AnnotatedFGR
   , commentsBefore :: [Exts.Comment]
   , commentsAfter :: [Exts.Comment]
   } deriving (Show)
 
 data QueryValue = 
-  NodeQv SrcRef NodeQueryValue
-  | DeclQv SrcRef DeclQueryValue 
+  NodeQv NodeQueryValue
+  | DeclQv DeclQueryValue 
   deriving (Show)
 
 type DiaQuery = [QueryValue]

@@ -5,6 +5,7 @@ module ModuleGraphsToDiagram(
   , staticDiagramFromModule
   , declDiagram
   , nodeDiagram
+  , addSourceCodeDiagram
   ) where
 -- import Prelude hiding (return)
 
@@ -40,6 +41,7 @@ import           Types  (
   , DeclQueryValue(..)
   , NodeQueryValue(..)
   , AnnotatedFGR(..)
+  , SourceCode
   )
 
 import PartialView (neighborsSubgraph)
@@ -57,36 +59,63 @@ selectComments includeComments comments = if includeComments then comments else 
 
 getModuleDiagram :: SpecialBackend b Double
   => [(SrcRef, AnnotatedFGR)] -> [Exts.Comment] -> SpecialQDiagram b Double
-getModuleDiagram declSpansAndGraphs selectedComments =
-  composeDiagramsInModule 
-    $ map (declIconDiagram selectedComments) declSpansAndGraphs
+getModuleDiagram declSpansAndGraphs selectedComments = diagram where
+  chunks = getDeclChunks declSpansAndGraphs
+  diagram = placeDiagrams $ map (declIconDiagram selectedComments) chunks 
 
 diagramSeparation :: Fractional p => p
 diagramSeparation = 1.0
 
-composeDiagramsInModule :: SpecialBackend b Double
+placeDiagrams :: SpecialBackend b Double
   => [SpecialQDiagram b Double]
   -> SpecialQDiagram b Double
-composeDiagramsInModule diagrams = finalDia where
+placeDiagrams diagrams = finalDia where
   finalDia = Dia.vsep diagramSeparation diagrams
 
-declIconDiagram comments (span, graph) = diagram where
+-- declIconDiagram :: [Exts.Comment] -> [(Exts.SrcSpan, b)] SpecialQDiagram b Double
+declIconDiagram comments [(srcRefBefore,_),(srcRef, graph), (srcRefAfter,_)] = diagram where
   diagram = Dia.value queryValue
-    $ multilineComment $ show span
-  queryValue = [DeclQv span $ DeclQueryValue graph comments []]
+    $ multilineComment $ show srcRef
+  queryValue = [DeclQv $ DeclQueryValue srcRef graph commentsBefore commentsAfter]
+  commentsBefore = filterComments comments (srcRefBefore, srcRef)
+  commentsAfter = filterComments comments (srcRef, srcRefAfter)
+
+getDeclChunks :: [(Exts.SrcSpan, b)]
+  -> [[(Exts.SrcSpan, b)]]
+getDeclChunks declSpansAndGraphs 
+  = Split.divvy chunkSize chunkOffset paddedDeclSpansAndGraphs where
+    chunkSize = 3
+    chunkOffset = 1
+    paddedDeclSpansAndGraphs = headPadding : declSpansAndGraphs ++ [tailPadding] where
+      (headPadding, tailPadding) = getPadding declSpansAndGraphs
+
+getPadding :: [(Exts.SrcSpan, b1)]
+                -> ((Exts.SrcSpan, b2), (Exts.SrcSpan, b2))
+getPadding declSpansAndGraphs = (headPadding, tailPadding) where
+  fileName = Exts.srcSpanFilename $ fst $ head declSpansAndGraphs
+  paddingError = error "padding used as a graph"
+  headPadding = (srcRefBefere, paddingError) where
+    srcRefBefere = Exts.SrcSpan fileName 0 0 0 0
+  tailPadding = (srcRefAfter, paddingError) where
+    srcRefAfter = Exts.SrcSpan fileName maxBound maxBound maxBound maxBound
+
+filterComments :: [Exts.Comment]
+                    -> (Exts.SrcSpan, Exts.SrcSpan) -> [Exts.Comment]
+filterComments comments (srcSpanBefore, srcSpanAfter) = nerbyComments where
+  nerbyComments = filter (\((Exts.Comment _ srcSpan _))-> srcSpan > srcSpanBefore && srcSpan < srcSpanAfter) comments
 
 -- in loop 
-declDiagram declQV@(DeclQueryValue declGraph commentsBefore commentsAfter) = do
+declDiagram declQV@(DeclQueryValue _ declGraph commentsBefore commentsAfter) = do
   let (topComments, bottomComments) = viewDiagramBase declQV
   declDia <- renderIngSyntaxGraph "" (declGraph, declGraph)
   let diagram = topComments Dia.===  (Dia.alignL declDia) Dia.=== bottomComments
   pure (diagram)
 
-viewDiagramBase (DeclQueryValue _ commentsBefore commentsAfter) = (topComments, bottomComments) where
-  topComments = composeDiagramsInModule $ map commentToDiagram commentsBefore
-  bottomComments = composeDiagramsInModule $ map commentToDiagram commentsAfter
+viewDiagramBase (DeclQueryValue _ _ commentsBefore commentsAfter) = (topComments, bottomComments) where
+  topComments = placeDiagrams $ map commentToDiagram commentsBefore
+  bottomComments = placeDiagrams $ map commentToDiagram commentsAfter
 
-nodeDiagram declQV@(DeclQueryValue declGraph commentsBefore commentsAfter) (NodeQueryValue name) = do
+nodeDiagram declQV@(DeclQueryValue _ declGraph commentsBefore commentsAfter) (NodeQueryValue _ name) = do
   let (topComments, bottomComments) = viewDiagramBase declQV
   let viewGraph = neighborsSubgraph name declGraph
   nodeDia <- renderIngSyntaxGraph "" (declGraph, viewGraph)
@@ -121,7 +150,7 @@ composeDiagrams :: SpecialBackend b Double
   -> (SpecialQDiagram b Double)
 composeDiagrams diagrams = finalDiagram where
   sortedDiagarms = snd <$> sortBy (compare `on` fst) diagrams
-  finalDiagram = composeDiagramsInModule sortedDiagarms
+  finalDiagram = placeDiagrams sortedDiagarms
 
 commentToSpanAndDiagram :: SpecialBackend b Double
   => Exts.Comment
@@ -130,3 +159,11 @@ commentToSpanAndDiagram (Exts.Comment _ srcSpan c) = (srcSpan, Dia.value mempty 
 
 moduleGraphsToViewGraphs :: AnnotatedFGR -> (AnnotatedFGR, AnnotatedFGR)
 moduleGraphsToViewGraphs graph = (graph, graph) 
+
+-- addSourceCodeDiagram :: SpecialBackend b Double
+--   => SpecialQDiagram b Double
+--   -> SourceCode
+--   -> SpecialQDiagram b Double
+addSourceCodeDiagram diagram codeString = diagramWithsourceCode where
+  sourceCodeDia = Dia.value mempty $ sourceCodeDiagram codeString
+  diagramWithsourceCode = (diagram Dia.===  sourceCodeDia)

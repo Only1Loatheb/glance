@@ -13,6 +13,8 @@ module Util (
   , namedToTuple
   , tupleToNamed
   , showSrcInfo
+  , hasSrcRef
+  , getSrcRef
   ) where
 
 import qualified Language.Haskell.Exts.SrcLoc as SrcLoc
@@ -32,7 +34,9 @@ import           Types (
   , EdgeOption(..)
   , DiaQuery
   , NodeQueryValue(..)
+  , DeclQueryValue(..)
   , SrcRef
+  , View
   )
 
 
@@ -76,3 +80,14 @@ showSrcInfo :: SrcRef -> String
 showSrcInfo srcRef = SrcLoc.srcSpanFilename srcRef
   ++ ":" ++ show (SrcLoc.srcSpanStartLine srcRef)
   ++ ":" ++ show (SrcLoc.srcSpanStartColumn srcRef)
+
+hasSrcRef :: View -> Bool
+hasSrcRef (Nothing, Nothing) = False
+hasSrcRef _ = True
+
+getSrcRef :: View -> SrcRef
+getSrcRef (_, Just nodeQV) = srcRef where
+  srcRef = nodeSrcRef nodeQV
+getSrcRef (Just declQV, _) = srcRef where
+  srcRef = declSrcRef declQV
+getSrcRef _ = error "No source in View"

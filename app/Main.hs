@@ -34,9 +34,10 @@ import ModuleToGraphs(getModuleGraphs)
 
 import ModuleGraphsToDiagram(
   diagramFromModule
-  ,staticDiagramFromModule
+  , staticDiagramFromModule
   , declDiagram
   , nodeDiagram
+  , addSourceCodeDiagram
   )
 
 import CmdLineArgs as CMD
@@ -45,7 +46,7 @@ import FrontendBlankCanvas( blankCanvasLoop )
 
 import SrcRefToSourceCode (srcRefToSourceCode) 
 
-import Util(showSrcInfo)
+import Util(showSrcInfo, hasSrcRef, getSrcRef)
 
 -- {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 main :: IO ()
@@ -70,40 +71,39 @@ prepareDiagram (CMD.CmdLineOptions
     source <- readFile inputFilename
     let moduleDiagram = diagramFromModule doIncludeComments moduleGraphs
     let getCodeFragment = srcRefToSourceCode source
-    let chooseFullOrView' = chooseFullOrView getCodeFragment
-    let loopControl = (chooseFullOrView', sampleDiagram, progressView, withdrawView)
+    let selectViewWithSourceCode' = selectViewWithSourceCode getCodeFragment
+    let loopControl = (selectViewWithSourceCode', sampleDiagram, progressView, withdrawView)
     blankCanvasLoop moduleDiagram portNumber loopControl imageScale
   else do
     diagram <- staticDiagramFromModule doIncludeComments moduleGraphs
     customRenderSVG' outputFilename (Dia.mkWidth 500) diagram
     putStrLn $ "Saving file: " ++ outputFilename
 
-chooseFullOrView :: SpecialBackend b Double =>
-  (SrcRef -> SourceCode) -> SpecialQDiagram b Double -> View -> IO (SpecialQDiagram b Double)
-chooseFullOrView getCodeFragment moduleDiagram (maybeDeclQV, maybeNodeQV) = do
+selectViewWithSourceCode :: SpecialBackend b Double =>
+  (SrcRef -> SourceCode) -> SpecialQDiagram b Double -> View -> IO(SpecialQDiagram b Double)
+selectViewWithSourceCode getCodeFragment moduleDiagram view = do
+  diagram <- selectView moduleDiagram view
+  if hasSrcRef view
+  then do
+    let srcRef = getSrcRef view
+    putStrLn $ showSrcInfo srcRef
+    let diagramWithSourceCode = addSourceCodeDiagram diagram $ getCodeFragment srcRef
+    pure (diagramWithSourceCode)
+  else pure(diagram) 
+
+
+selectView :: SpecialBackend b Double => SpecialQDiagram b Double -> View -> IO (SpecialQDiagram b Double)
+selectView moduleDiagram (maybeDeclQV, maybeNodeQV) = do
   case maybeDeclQV of
     Nothing -> pure(moduleDiagram)
     Just declQueryValue -> do
       case maybeNodeQV of
         Nothing -> declDiagram declQueryValue
         Just nodeQueryValue -> nodeDiagram declQueryValue nodeQueryValue
-  -- case maybeView of 
-  --   Just (viewGraphs, srcRef) -> do 
-  --     let codeString = getCodeFragment srcRef
-  --     putStrLn $ showSrcInfo srcRef
-  --     let 
-  --     moduleDiagram <- diagramFromModule' viewGraphs (Just codeString)
-  --     pure (moduleDiagram)
-  --   _ -> do
-  --     moduleDiagram <- diagramFromModule' (moduleGraphsToViewGraphs moduleGraphs) Nothing-- (createOverview moduleGraphs) Nothing
-  --     pure (moduleDiagram)
-
 
 sampleDiagram :: SpecialBackend b Double =>
   SpecialQDiagram b Double -> Dia.Point Dia.V2 Double -> DiaQuery
 sampleDiagram = Dia.sample
-
--- createView :: DiaQuery -> ModuleGraphs -> Maybe (ViewGraphs, SrcRef)
 
 progressView :: CreateView
 progressView [] _ = error "got empty DiaQuery"
@@ -111,14 +111,14 @@ progressView _ (Nothing, Just _) = error "got incorrect view"
 
 progressView (clicked:_) (Nothing, _ ) = case clicked of
   NodeQv {}         -> (Nothing, Nothing)
-  (DeclQv _ declQV) -> (Just declQV, Nothing)
+  (DeclQv declQV) -> (Just declQV, Nothing)
 
 progressView (clicked:_) (oldDeclQV@(Just _), _ ) = case clicked of
-  (NodeQv _ nodeQV) -> (oldDeclQV, Just nodeQV)
-  (DeclQv _ declQV) -> (Just declQV, Nothing)
-
+  (NodeQv nodeQV) -> (oldDeclQV, Just nodeQV)
+  (DeclQv declQV) -> (Just declQV, Nothing)
 progressView _ _ = error "progressView"
 
 withdrawView :: View -> View
 withdrawView (oldDeclQV@(Just {}), Just _) = (oldDeclQV, Nothing)
 withdrawView _ = (Nothing, Nothing)
+

@@ -71,10 +71,10 @@ loop ::
 loop 
   context 
   (moduleDiagram, view) 
-  loopControl@(chooseFullOrView, sampleDiagram, progressView, withdrawView) 
+  loopControl@(selectViewWithSourceCode, sampleDiagram, progressView, withdrawView) 
   imageScale
   = do
-  diagram <- chooseFullOrView moduleDiagram view
+  diagram <- selectViewWithSourceCode moduleDiagram view
   -- print view
   let (moduleDiagramAligned, pointToDiaPoint, sizeSpec) = diagramForBlankCanvas diagram imageScale
   bcDrawDiagram context sizeSpec moduleDiagramAligned
@@ -89,5 +89,4 @@ loop
         newView = if not $ null clicked 
           then progressView clicked view 
           else withdrawView view
-      putStrLn $ show newView
       loop context (moduleDiagram, newView) loopControl imageScale
