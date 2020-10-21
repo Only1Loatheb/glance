@@ -55,7 +55,6 @@ import Util(
 
 data ParentType = ApplyParent
                 | CaseParent
-                | MultiIfParent
                 | LambdaParent
                 | PatternApplyParent
                 | NotAParent
@@ -101,11 +100,7 @@ syntaxNodeIsEmbeddable parentType (SyntaxNode syntaxNode _) mParentPort mChildPo
       (CaseParent, PatternApplyNode {})
         -> parentPortNotResult && parentPortNotInput
       (CaseParent, CaseResultNode {}) -> True
-      (CaseParent, CaseOrMultiIfNode {}) -> True
-
-      (MultiIfParent, LiteralNode {}) -> parentPortNotResult
-      (MultiIfParent, ApplyNode {})
-        -> parentPortNotResult && parentPortNotInput
+      
       (PatternApplyParent, _) 
         -> isPatternValueInputPort && isResult mChildPort
 
@@ -131,8 +126,7 @@ syntaxNodeIsEmbeddable parentType (SyntaxNode syntaxNode _) mParentPort mChildPo
 parentTypeForNode :: SyntaxNode -> ParentType
 parentTypeForNode (SyntaxNode n _) = case n of
   ApplyNode {} -> ApplyParent
-  CaseOrMultiIfNode CaseTag _ -> CaseParent
-  CaseOrMultiIfNode MultiIfTag _ -> MultiIfParent
+  CaseOrMultiIfNode {} -> CaseParent
   FunctionValueNode {} -> LambdaParent
   PatternApplyNode {} -> PatternApplyParent
   _ -> NotAParent

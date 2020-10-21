@@ -509,7 +509,7 @@ evalLambda srcRef context argPatterns expr functionName = do
     lambdaEdges = (constraintEdgeList ++ argPatternEdges')
 
     lambdaArgGraph = makeLambdaArgGraph lambdaEdges newBinds' (argNodeName,argNode)
-    lambdaIconAndOutputGraph = makeLambdaOutputGraph (lambdaName ,lambdaNode) [lambdaValueLink]
+    lambdaIconAndOutputGraph = makeLambdaOutputGraph (lambdaName ,lambdaNode) [lambdaValueLink] lambdaLabel
 
     asBindGraph = mconcat $ zipWith asBindGraphZipper (fmap snd argPatternValsWithAsNames) lambdaPorts
 
@@ -566,11 +566,14 @@ makeLambdaArgumentNode argPatternValsWithAsNames srcRef = node where
 
 
 makeLambdaOutputGraph :: (NodeName, SyntaxNode)
-                           -> [Either Edge (SMap.Key, Reference)] -> SyntaxGraph
-makeLambdaOutputGraph  (lambdaName ,lambdaNode) lambdaValueLink = graph where
+  -> [Either Edge (SMap.Key, Reference)]
+  -> String
+  -> SyntaxGraph
+makeLambdaOutputGraph  (lambdaName ,lambdaNode) lambdaValueLink functionName = graph where
   (valueEdges', valueBinds') = partitionEithers lambdaValueLink
   valueEdges = Set.fromList valueEdges'
-  valueBinds = SMap.fromList valueBinds'
+  bindForRecursion = (functionName, (Right $ nameAndPort lambdaName ResultPortConst))
+  valueBinds = SMap.fromList (bindForRecursion : valueBinds')
   lambdaIconSet = Set.singleton (Named lambdaName (mkEmbedder lambdaNode))
   graph = SyntaxGraph lambdaIconSet valueEdges mempty valueBinds mempty
 

@@ -50,7 +50,7 @@ colorOnBlackScheme = ColorStyle {
   patternTextC = cyan,
   bindTextBoxC = reddishOrange,
   bindTextBoxTextC = lightGreen,
-  edgeListC = [white, lime, reddishOrange, lightPurple, yellow, lightBlue],
+  edgeListC = [white, reddishOrange, lightPurple, yellow, lightBlue],
   nestingC = cycle [red, reddishOrange, yellow]
 }
   where

@@ -287,8 +287,12 @@ choosePortDiagram str portAndSymbol portSymbolAndLabel
 -- before)
 
 -- | Make an identity TransformableDia
-identDiaFunc :: SpecialNum n => SpecialDiagram b n -> TransformableDia b n
-identDiaFunc dia transformParams = nameDiagram (tpName transformParams) dia
+caseResultDiagram :: SpecialBackend b n => TransformableDia b n
+caseResultDiagram transformParams = finalDia where
+  name = tpName transformParams
+  caseResultDia = nameDiagram name memptyWithPosition
+  output = makeQualifiedPort ResultPortConst name
+  finalDia = caseResultDia === output
 
 iconToDiagram :: SpecialBackend b n
   => IconInfo
@@ -299,7 +303,7 @@ iconToDiagram iconInfo (Icon icon _) = case icon of
   BindTextBoxIcon s -> bindDiagram s
   MultiIfIcon n -> nestedMultiIfDia iconInfo (replicate (1 + (2 * n)) Nothing) MultiIfTag
   CaseIcon n -> nestedCaseDia iconInfo (replicate (1 + (2 * n)) Nothing) CaseTag
-  CaseResultIcon -> identDiaFunc resultPortSymbol
+  CaseResultIcon -> caseResultDiagram
   FunctionArgIcon argumentNames -> functionArgDia argumentNames
   FunctionDefIcon funcName _ _-> functionDefDia funcName 
   NestedApply flavor headIcon args
@@ -322,12 +326,12 @@ iconToDiagram iconInfo (Icon icon _) = case icon of
 
 bindDiagram :: SpecialBackend b n =>
   String -> TransformableDia b n
-bindDiagram t transformParams = finalDia where
-  name = (tpName transformParams) 
-  bindDia = nameDiagram name inputPortSymbol
+bindDiagram _bindName transformParams = finalDia where
+  name = tpName transformParams
+  bindDia = nameDiagram name memptyWithPosition
 
   input = makeQualifiedPort InputPortConst name
-  finalDia = input === bindDia -- === bindText
+  finalDia = input === bindDia
 
 literalDiagram :: SpecialBackend b n =>
   String -> TransformableDia b n
