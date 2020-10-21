@@ -212,33 +212,6 @@ compositionToList e = case e of
 
 -- BEGIN evaluateAppExpression
 
--- | Given two expressions f and x, where f is applied to x,
--- return the nesting depth if (f x) is rendered with
--- the (normal apply icon, compose apply icon)
-applyComposeScoreHelper :: SimpExp -> SimpExp -> (Int, Int)
-applyComposeScoreHelper exp1 exp2 = (appScore, compScore) where
-  (e1App, e1Comp) = applyComposeScore exp1
-  (e2App, e2Comp) = applyComposeScore exp2
-
-  leftApp = min e1App (1 + e1Comp)
-  rightApp = 1 + min e2App e2Comp
-
-  appScore = max leftApp rightApp
-
-  leftComp = 1 + min e1App e1Comp
-  rightComp = min (1 + e2App) e2Comp
-
-  compScore = max leftComp rightComp
-
-
--- TODO Consider putting this logic in a separate "simplifyExpression" function.
--- | Returns the amount of nesting if the App is converted to
--- (applyNode, composeNode)
-applyComposeScore :: SimpExp -> (Int, Int)
-applyComposeScore e = case e of
-  SimpExp _ (SeApp  exp1 exp2) -> applyComposeScoreHelper exp1 exp2
-  _ -> (0, 0)
-
 -- TODO add test for this function
 -- | Given an App expression, return
 -- (function, list of arguments)
@@ -270,12 +243,8 @@ evalApp c expr = case expr of
       _))
     _))
     -> evalFunctionComposition c l (compositionToList expr)
-  _ -> if appScore <= compScore
-    then evalFunExpAndArgs c ApplyNodeFlavor (appExpToFuncArgs expr)
-    else evalFunExpAndArgs c ComposeNodeFlavor (appExpToArgFuncs expr)
-    where
-      (appScore, compScore) = applyComposeScore expr
-
+  _ -> evalFunExpAndArgs c ApplyNodeFlavor (appExpToFuncArgs expr)
+    
 -- END evaluateAppExpression
 
 -- BEGIN evalGeneralLet
