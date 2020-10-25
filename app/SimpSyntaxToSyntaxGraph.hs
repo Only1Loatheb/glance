@@ -24,6 +24,7 @@ import           Data.Maybe                     ( catMaybes
                                                 , mapMaybe
                                                 , maybeToList
                                                 , isNothing
+                                                , isJust
                                                 )
 import qualified Language.Haskell.Exts as Exts
 import qualified Language.Haskell.Exts.Pretty as PExts
@@ -41,6 +42,9 @@ import           PortConstants (
   , pattern ResultPortConst
   , pattern InputPortConst
   , pattern PatternValuePortConst
+  , listFromPort
+  , listThenPort
+  , listToPort
   )
 
 import HsSyntaxToSimpSyntax(
@@ -84,6 +88,7 @@ import Util(
   , makeNotConstraintEdge
   , makeInvisibleEdge
   , nameAndPort
+  , fmapMaybeM
   )
 import SyntaxGraph( 
     SyntaxGraph(..)
@@ -167,6 +172,7 @@ evalExp c simpExp@(SimpExp l x) = case x of
   SeCase expr alts -> grNamePortToGrRef <$> evalCase c expr alts
   SeMultiIf selectorsAndVals -> grNamePortToGrRef <$> evalMultiIf c selectorsAndVals l
   SeListComp e eList -> evalListComp c l e eList
+  SeListGen from mThen mTo -> grNamePortToGrRef <$> evalListGen c l from mThen mTo
 
 -- BEGIN apply and compose helper functions
 
@@ -466,7 +472,7 @@ evalLambda srcRef context argPatterns expr functionName = do
     argNode = makeLambdaArgumentNode argPatternValsWithAsNames srcRef
     lambdaNode = makeLambdaNode nodesGraph {- was combinedGraph -} lambdaLabel [lambdaName, argNodeName] srcRef
     lambdaPorts = map (nameAndPort argNodeName) $ argumentPorts lambdaNode
-    lambdaValueLink =  makeValueEdgeInLambda outputReference (nameAndPort lambdaName (inputPort lambdaNode))
+    lambdaValueLink =  makeEitherEdgeOrSgBind outputReference (nameAndPort lambdaName (inputPort lambdaNode))
   -- (valueGraph,outputNameAndPort) <- getValueGraphAndNamedPort outputReference
 
     -- lambdaValueEdge = makeSimpleEdge (outputNameAndPort,)
@@ -556,8 +562,8 @@ makeLambdaArgGraph argPatternEdgesList binds (argNodeName, argNode) = graph wher
   graph = SyntaxGraph lambdaIconSet argPatternEdges mempty bindsSet mempty
 
 -- lambda
-makeValueEdgeInLambda :: Reference -> NameAndPort -> Either Edge SgBind
-makeValueEdgeInLambda ref lamPort = case ref of
+makeEitherEdgeOrSgBind :: Reference -> NameAndPort -> Either Edge SgBind
+makeEitherEdgeOrSgBind ref lamPort = case ref of
   Right np -> Left $ makeSimpleEdge (np, lamPort)
   Left str -> Right (str, Right lamPort)
 
@@ -722,9 +728,28 @@ makePatternResult
   = fmap (\(graph, namePort) -> (GraphAndRef graph (Right namePort), Nothing))
 
 -- END END END END END evalPattern
+evalListGen :: EvalContext -> SrcRef -> SimpExp -> Maybe SimpExp -> Maybe SimpExp -> State IDState (SyntaxGraph, NameAndPort)
+evalListGen c l from mThen mTo = do
+  listGenName <- getUniqueName
+  fromGraphAndRef <- evalExp c from
+  maybeThenGraphAndRef <- fmapMaybeM (evalExp c) mThen
+  maybeToGraphAndRef <- fmapMaybeM (evalExp c) mTo
+  let 
+    listGenNode = SyntaxNode (ListGenNode (isJust mThen) (isJust mTo)) l 
+    edgesGraph = makeListGenEdges listGenName fromGraphAndRef maybeThenGraphAndRef maybeToGraphAndRef
+    resultNameAndPort = nameAndPort listGenName (resultPort listGenNode)
+    listGenNodeGraph = syntaxGraphFromNodes (Set.singleton (Named listGenName (mkEmbedder listGenNode)))
+    thenToGraphs = mconcat $ catMaybes [(fmap graph maybeThenGraphAndRef), (fmap graph maybeToGraphAndRef)]
+    finalGraph = makeEdges makeSimpleEdge $ listGenNodeGraph <> edgesGraph <> graph fromGraphAndRef <> thenToGraphs
+  pure (finalGraph, resultNameAndPort)
+
+makeListGenEdges :: NodeName -> GraphAndRef -> Maybe GraphAndRef -> Maybe GraphAndRef -> SyntaxGraph
+makeListGenEdges listGenName (GraphAndRef _ refFrom) maybeThenGraphAndRef maybeToGraphAndRef = mconcat $ edgeFrom : edgeThen ++ edgeTo where
+  edgeFrom = edgeForRefPortIsNotSource makeSimpleEdge refFrom (nameAndPort listGenName listFromPort)
+  edgeThen = maybeToList $ fmap ((flip (edgeForRefPortIsNotSource makeSimpleEdge)) (nameAndPort listGenName listThenPort)) (fmap ref maybeThenGraphAndRef)
+  edgeTo = maybeToList $ fmap ((flip (edgeForRefPortIsNotSource makeSimpleEdge)) (nameAndPort listGenName listToPort)) (fmap ref maybeToGraphAndRef) 
 
 -- BEGIN BEGIN BEGIN BEGIN BEGIN list comp
-
 -- valus form ListCompNode are connected to item constructor
 -- TODO reconsider PORT architecture choise to identfy arguments
 -- TODO improve connection to guard expresion

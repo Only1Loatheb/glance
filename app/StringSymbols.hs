@@ -9,10 +9,8 @@ module StringSymbols
   , unboxedTupleConstructorStr
   , otherwiseExpStr
   , negateSymbolStr
-  , enumFromStr
-  , enumFromToStr
-  , enumFromThenStr
-  , enumFromThenToStr
+  , enumThenStr
+  , enumToStr
   , thenOperatorStr
   , bindOperatorStr
   , listCompositionPlaceholderStr
@@ -96,17 +94,11 @@ otherwiseExpStr = "otherwise"
 negateSymbolStr :: String
 negateSymbolStr = "negate"
 
-enumFromStr :: String
-enumFromStr = "enumFrom"
+enumThenStr :: String
+enumThenStr = ","
 
-enumFromToStr :: String
-enumFromToStr = "enumFromTo"
-
-enumFromThenStr :: String
-enumFromThenStr = "enumFromThen"
-
-enumFromThenToStr :: String
-enumFromThenToStr = "enumFromThenTo"
+enumToStr :: String
+enumToStr = ".."
 
 thenOperatorStr :: String
 thenOperatorStr = ">>"

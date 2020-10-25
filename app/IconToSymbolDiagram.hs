@@ -22,7 +22,7 @@ import Diagrams.Prelude hiding ((&), (#), Name)
 import Diagrams.TwoD.Combinators(strutR2)
 import qualified Diagrams.TwoD.Path.Boolean as B
 
-import Data.Maybe(fromMaybe)
+import Data.Maybe(fromMaybe, isNothing)
 import Data.Either(partitionEithers)
 import Data.Typeable(Typeable)
 
@@ -44,12 +44,17 @@ import PortConstants(
   , isInputPort
   , mixedPorts
   , pattern PatternValuePortConst
+  , listFromPort
+  , listThenPort
+  , listToPort
   )
 import StringSymbols(
   ifConditionConst
   , isTempLabel
   , patternSubscribedValueStr
   , sourceCodeDiagramLabel
+  , enumThenStr
+  , enumToStr
   )
 
 import DrawingColors(colorScheme, ColorStyle(..))
@@ -71,6 +76,9 @@ import Types(
   , TransformableDia
   , CaseOrMultiIfTag(..)
   , SpecialQDiagram 
+  , Edge(..)
+  , EdgeOption(..)
+  , Connection
   )
 
 {-# ANN module "HLint: ignore Use record patterns" #-}
@@ -323,6 +331,7 @@ iconToDiagram iconInfo (Icon icon _) = case icon of
                             (findMaybeIconsFromNames iconInfo args)
                             MultiIfTag
   ListCompIcon {} -> listCompDiagram iconInfo (nestingC colorScheme) Nothing (replicate (1 + 7) Nothing) --(findMaybeIconsFromNames iconInfo args) -- listCompDiagram
+  ListGenIcon from mThen mTo -> listGenDiagram iconInfo from mThen mTo
 
 bindDiagram :: SpecialBackend b n =>
   String -> TransformableDia b n
@@ -475,6 +484,34 @@ listCompDiagram
       functionDiagramInBox = inFrame transformedName borderColor boxWidth (height transformedName)
 
       finalDia = vcat [ argsDiagram,functionDiagramInBox, resultDiagram]
+
+leftBracket = alignB $ coloredTextBox (listC colorScheme) "["
+rightBracket = alignB $ coloredTextBox (listC colorScheme) "]"
+coma = alignB $ coloredTextBox (listC colorScheme) ","
+dots = alignB $ coloredTextBox (listC colorScheme) ".."
+
+listGenDiagram :: SpecialBackend b n
+  => IconInfo
+  -> (Maybe NodeName)
+  -> (Maybe (Maybe NodeName))
+  -> (Maybe (Maybe NodeName))
+  -> TransformableDia b n
+listGenDiagram iconInfo fromName maybeThenName maybeToName transformParams = finalDia where
+  name = tpName transformParams
+
+  fromDia = alignB $ makeAppInnerIcon iconInfo transformParams False listFromPort (pure  (findMaybeIconFromName iconInfo fromName))
+  thenDia = case maybeThenName of
+    Nothing -> mempty
+    Just thenName -> coma ||| (alignB $ makeAppInnerIcon iconInfo transformParams False listThenPort (pure  (findMaybeIconFromName iconInfo thenName)))
+  toDia = case maybeToName of
+    Nothing -> mempty
+    Just toName -> dots ||| (alignB $ makeAppInnerIcon iconInfo transformParams False listToPort (pure  (findMaybeIconFromName iconInfo toName)))
+  
+  dotsIfNotTo = if isNothing maybeToName then  dots else mempty  
+
+  listDia = centerX $ hcat [leftBracket, fromDia, thenDia, dotsIfNotTo, toDia, rightBracket]
+  resultDia = centerX $ makeResultDiagram name
+  finalDia = listDia === resultDia
 
 nestedApplyDia :: SpecialBackend b n
   => IconInfo
@@ -633,7 +670,7 @@ getArrowBaseOpts :: (RealFloat n, Typeable n)
   -> ArrowOpts n
 getArrowBaseOpts (NameAndPort (NodeName nodeNum) mPort) points maybeAngles 
   iconPair@(_, iconTo)
-  = shaftStyle %~ (lwG arrowLineWidth {- )-- -} . lc shaftColor) 
+  = shaftStyle %~ (lwG arrowLineWidth {-- )-- -} . lc shaftColor) 
   $ headStyle %~ fc shaftColor
   $ getArrowOpts points maybeAngles iconTo where
     Port portNum = mPort

@@ -14,6 +14,9 @@ module PortConstants
   , argPortsConst
   , mixedPorts
   , resultPortsConst
+  , listFromPort
+  , listThenPort
+  , listToPort
   ) where
 
 import Types( Port(..)
@@ -32,6 +35,15 @@ pattern ResultPortConst = Port 1
 
 pattern PatternValuePortConst :: Port
 pattern PatternValuePortConst = Port 2
+
+listFromPort :: Port
+listFromPort = Port 2
+
+listThenPort :: Port
+listThenPort = Port 4
+
+listToPort :: Port
+listToPort = Port 6
 
 argPortsConst :: [Port]
 argPortsConst = fmap Port [2,4..]
@@ -67,9 +79,5 @@ argumentPorts n = case n of
   (SyntaxNode PatternApplyNode {} _) -> resultPortsConst
   (SyntaxNode FunctionValueNode {} _) -> resultPortsConst
   (SyntaxNode CaseOrMultiIfNode {} _) -> mixedPorts
-  (SyntaxNode NameNode {} _) -> []
-  (SyntaxNode BindNameNode {} _) -> []
-  (SyntaxNode LiteralNode {} _) -> []
-  (SyntaxNode CaseResultNode {} _) -> []
   (SyntaxNode ListCompNode {} _) -> argPortsConst
-  (SyntaxNode FunctionArgNode {} _) -> []
+  _ -> error "Node don't have argument ports. PortConstants argumentPorts"

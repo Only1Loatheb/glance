@@ -11,6 +11,9 @@ import           PortConstants(
   inputPort
   , argumentPorts
   , pattern PatternValuePortConst
+  , listFromPort
+  , listThenPort
+  , listToPort
   )
 import           Types(
   Labeled(..)
@@ -44,6 +47,7 @@ nodeToIcon (Embedder embeddedNodes (SyntaxNode node src)) = case node of
   CaseResultNode                    -> Icon (CaseResultIcon) src
   (CaseOrMultiIfNode tag x)         -> nestedCaseOrMultiIfNodeToIcon tag x embeddedNodes src
   (ListCompNode)                    -> Icon ListCompIcon src -- TODO actualy embede nodes
+  (ListGenNode hasThen hasTo)       -> listGenNodeToIcon embeddedNodes hasThen hasTo src
 
 -- listCompIcon embeddedNodes =  
 --   ListCompIcon argList
@@ -128,4 +132,15 @@ nestedPatternNodeToIcon str children args src = Icon (
     icon = pure $ Just (Named (NodeName (-1)) (Icon (TextBoxIcon str) src))
     asigendValueName = makeArg args PatternValuePortConst
 
+listGenNodeToIcon ::
+  Set.Set (NodeName, Edge)
+  -> Bool
+  -> Bool
+  -> SrcRef
+  -> Icon
+listGenNodeToIcon args hasThen hasTo src = Icon diagramIcon src where
+  diagramIcon = ListGenIcon 
+    (makeArg args listFromPort)
+    (if hasThen then Just (makeArg args listThenPort) else Nothing)
+    (if hasTo then Just (makeArg args listToPort) else Nothing)
 

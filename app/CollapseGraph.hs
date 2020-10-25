@@ -57,6 +57,7 @@ data ParentType = ApplyParent
                 | CaseParent
                 | LambdaParent
                 | PatternApplyParent
+                | ListGenParent
                 | NotAParent
   deriving (Eq, Show)
 
@@ -84,6 +85,10 @@ syntaxNodeIsEmbeddable parentType (SyntaxNode syntaxNode _) mParentPort mChildPo
   = case (parentType, syntaxNode) of
       (ApplyParent, ApplyNode {}) -> parentPortNotResult
       (ApplyParent, LiteralNode {}) -> parentPortNotResult
+
+      (ListGenParent, ApplyNode {}) -> parentPortNotResult
+      (ListGenParent, LiteralNode {}) -> parentPortNotResult
+
       -- (ApplyParent, FunctionValueNode {})
       --   -> parentPortNotResult && isResult mChildPort
 
@@ -129,6 +134,7 @@ parentTypeForNode (SyntaxNode n _) = case n of
   CaseOrMultiIfNode {} -> CaseParent
   FunctionValueNode {} -> LambdaParent
   PatternApplyNode {} -> PatternApplyParent
+  ListGenNode {} -> ListGenParent
   _ -> NotAParent
 
 lookupSyntaxNode :: ING.Graph gr =>

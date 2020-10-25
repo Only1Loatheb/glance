@@ -15,6 +15,7 @@ module Util (
   , showSrcInfo
   , hasSrcRef
   , getSrcRef
+  , fmapMaybeM
   ) where
 
 import qualified Language.Haskell.Exts.SrcLoc as SrcLoc
@@ -91,3 +92,7 @@ getSrcRef (_, Just nodeQV) = srcRef where
 getSrcRef (Just declQV, _) = srcRef where
   srcRef = declSrcRef declQV
 getSrcRef _ = error "No source in View"
+
+fmapMaybeM :: (Monad m) => (a -> m b) -> Maybe a -> m (Maybe b)
+fmapMaybeM _ Nothing  = return Nothing
+fmapMaybeM f (Just x) = f x >>= (return . Just)

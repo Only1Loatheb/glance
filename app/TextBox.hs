@@ -37,7 +37,7 @@ textBoxHeightFactor :: (Fractional a) => a
 textBoxHeightFactor = 1.4
 
 sidePadding :: Fractional a => a
-sidePadding = letterWidth * 1.0
+sidePadding = letterWidth * 0.0
 
 textFont :: String
 textFont = "monospace"

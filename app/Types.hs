@@ -114,6 +114,10 @@ data DiagramIcon =
   | NestedCaseIcon [Maybe NodeName]
   | NestedMultiIfIcon [Maybe NodeName]
   | ListCompIcon
+  | ListGenIcon 
+    (Maybe NodeName) --from
+    (Maybe (Maybe NodeName)) -- maybe then
+    (Maybe (Maybe NodeName)) -- maybe to
   deriving (Show, Eq, Ord)
 
 data LikeApplyFlavor = ApplyNodeFlavor | ComposeNodeFlavor
@@ -158,6 +162,9 @@ data SyntaxNodeCore =
   | CaseResultNode
   | CaseOrMultiIfNode CaseOrMultiIfTag Int
   | ListCompNode
+  | ListGenNode
+    Bool -- has then
+    Bool -- has to 
   deriving (Show, Eq, Ord)
 
 newtype Port = Port Int deriving (Typeable, Eq, Ord, Show)
