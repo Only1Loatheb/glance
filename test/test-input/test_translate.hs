@@ -90,8 +90,8 @@ getArrowOpts :: (RealFloat n, Typeable n) => (EdgeEnd, EdgeEnd) -> ArrowOpts n
 getArrowOpts (t, h) = arrowOptions
   where
     ap1ArgTexture = solid (backgroundC colorScheme)
-    ap1ArgStyle = lwG defaultLineWidth . lc (apply1C colorScheme)
-    ap1ResultTexture = solid (apply1C colorScheme)
+    ap1ArgStyle = lwG defaultLineWidth . lc (textBoxTextC colorScheme)
+    ap1ResultTexture = solid (textBoxTextC colorScheme)
 
     lookupTail EndNone = id
     lookupTail EndAp1Arg = (arrowTail .~ dart')
@@ -105,7 +105,7 @@ getArrowOpts (t, h) = arrowOptions
       with & arrowHead .~ noHead
       & arrowTail .~ noTail
       & lengths .~ global 0.75
-      & (shaftStyle %~ ((lwG defaultLineWidth) . lc (lineC colorScheme)))
+      & (shaftStyle %~ ((lwG defaultLineWidth) . lc (textBoxTextC colorScheme)))
       & lookupTail t & lookupHead h
 
 connectMaybePorts ::

@@ -112,9 +112,6 @@ arrowLineWidth = defaultLineWidth
 arrowShadowWidth :: Fractional a => a
 arrowShadowWidth = 1.9 * arrowLineWidth
 
--- COLORS --
-lineColorValue :: Colour Double
-lineColorValue = lineC colorScheme
 
 -- BEGIN diagram basic symbols --
 inputPortSymbol :: SpecialBackend b n => SpecialDiagram b n
@@ -123,18 +120,15 @@ inputPortSymbol = memptyWithPosition
 resultPortSymbol :: SpecialBackend b n
   => SpecialDiagram b n
 resultPortSymbol = memptyWithPosition -- valueSymbol
-  
-inputSymbol :: SpecialBackend b n => SpecialDiagram b n
-inputSymbol = lw none $ fc lineColorValue $ circle (symbolSize * 0.5)
 
 valueSymbol ::SpecialBackend b n => SpecialDiagram b n
 valueSymbol = fc color $ lw none $ rotateBy (1/2) $ eqTriangle (5/4 * symbolSize) where -- don't set it to be to big so it fits in diagrams
   color = caseRhsC colorScheme
 
-multiIfVarSymbol :: SpecialBackend b n
+caseVarSymbol :: SpecialBackend b n
   => Colour Double
   ->  SpecialDiagram b n
-multiIfVarSymbol color = alignB coloredSymbol  where
+caseVarSymbol color = alignB coloredSymbol  where
     symbol = vrule (2 * symbolSize)
     coloredSymbol
       = lwG defaultLineWidth $ lc color (strokeLine symbol)
@@ -181,13 +175,6 @@ lambdaBodySymbol :: SpecialBackend b n
 lambdaBodySymbol label = if isTempLabel label
   then mempty
   else coloredTextBox (textBoxTextC colorScheme) label
-
-
-
-
-inMultiIfDecisionFrame :: SpecialBackend b n
-  => SpecialDiagram b n -> SpecialDiagram b n
-inMultiIfDecisionFrame = inDecisionFrame (boolC colorScheme)
 
 inCaseDecisionFrame :: SpecialBackend b n
   => SpecialDiagram b n -> SpecialDiagram b n
@@ -295,12 +282,7 @@ choosePortDiagram str portAndSymbol portSymbolAndLabel
 -- before)
 
 -- | Make an identity TransformableDia
-caseResultDiagram :: SpecialBackend b n => TransformableDia b n
-caseResultDiagram transformParams = finalDia where
-  name = tpName transformParams
-  caseResultDia = nameDiagram name memptyWithPosition
-  output = makeQualifiedPort ResultPortConst name
-  finalDia = caseResultDia === output
+
 
 iconToDiagram :: SpecialBackend b n
   => IconInfo
@@ -309,8 +291,6 @@ iconToDiagram :: SpecialBackend b n
 iconToDiagram iconInfo (Icon icon _) = case icon of
   TextBoxIcon s -> literalDiagram s
   BindTextBoxIcon s -> bindDiagram s
-  MultiIfIcon n -> nestedMultiIfDia iconInfo (replicate (1 + (2 * n)) Nothing) MultiIfTag
-  CaseIcon n -> nestedCaseDia iconInfo (replicate (1 + (2 * n)) Nothing) CaseTag
   CaseResultIcon -> caseResultDiagram
   FunctionArgIcon argumentNames -> functionArgDia argumentNames
   FunctionDefIcon funcName _ inputNode -> functionDefDia iconInfo funcName (findMaybeIconFromName iconInfo inputNode)
@@ -322,16 +302,19 @@ iconToDiagram iconInfo (Icon icon _) = case icon of
        (findMaybeIconsFromNames iconInfo args)
   NestedPatternApp constructor args rhsNodeName
     -> nestedPatternAppDia iconInfo (repeat $ patternC colorScheme) constructor args (findMaybeIconFromName iconInfo rhsNodeName)
-  NestedCaseIcon args -> nestedCaseDia
+  NestedCaseIcon styleTag args -> nestedCaseDia
                          iconInfo
                          (findMaybeIconsFromNames iconInfo args)
-                         CaseTag
-  NestedMultiIfIcon args -> nestedMultiIfDia
-                            iconInfo
-                            (findMaybeIconsFromNames iconInfo args)
-                            MultiIfTag
+                         styleTag
   ListCompIcon {} -> listCompDiagram iconInfo (nestingC colorScheme) Nothing (replicate (1 + 7) Nothing) --(findMaybeIconsFromNames iconInfo args) -- listCompDiagram
   ListGenIcon from mThen mTo -> listGenDiagram iconInfo from mThen mTo
+
+caseResultDiagram :: SpecialBackend b n => TransformableDia b n
+caseResultDiagram transformParams = finalDia where
+  name = tpName transformParams
+  caseResultDia = nameDiagram name memptyWithPosition
+  output = makeQualifiedPort ResultPortConst name
+  finalDia = caseResultDia === output
 
 bindDiagram :: SpecialBackend b n =>
   String -> TransformableDia b n
@@ -521,15 +504,9 @@ nestedApplyDia iconInfo flavor = case flavor of
   ApplyNodeFlavor
     -> generalNestedDia iconInfo (nestingC colorScheme)
   ComposeNodeFlavor
-    -> generalNestedDia iconInfo (repeat $ apply1C colorScheme)
+    -> generalNestedDia iconInfo (applyCompositionC colorScheme)
 
-nestedMultiIfDia :: SpecialBackend b n =>
-  IconInfo
-  -> [Maybe NamedIcon]
-  -> CaseOrMultiIfTag
-  -> TransformableDia b n
-nestedMultiIfDia iconInfo
-  = generalNestedMultiIf iconInfo lineColorValue inMultiIfDecisionFrame
+
 
 nestedCaseDia :: SpecialBackend b n
   => IconInfo
@@ -537,21 +514,21 @@ nestedCaseDia :: SpecialBackend b n
   -> CaseOrMultiIfTag
   -> TransformableDia b n
 nestedCaseDia iconInfo
-  = generalNestedMultiIf iconInfo (patternC colorScheme) inCaseDecisionFrame
+  = generalNestedCaseDia iconInfo (caseRhsC colorScheme) inCaseDecisionFrame
 
--- | generalNestedMultiIf port layout:
+-- | generalNestedCaseDia port layout:
 -- 0 -> top
 -- 1 -> bottom
 -- odds -> left
 -- evens -> right
-generalNestedMultiIf ::forall b n. SpecialBackend b n
+generalNestedCaseDia ::forall b n. SpecialBackend b n
                    => IconInfo
                    -> Colour Double
                    -> (SpecialDiagram b n -> SpecialDiagram b n)
                    -> [Maybe NamedIcon]
                    -> CaseOrMultiIfTag
                    -> TransformableDia b n
-generalNestedMultiIf iconInfo symbolColor inConstBox inputAndArgs flavor
+generalNestedCaseDia iconInfo symbolColor inConstBox inputAndArgs flavor
   tp@(TransformParams name _nestingLevel)
   = case inputAndArgs of
   [] -> error "empty multiif"-- mempty
@@ -562,7 +539,7 @@ generalNestedMultiIf iconInfo symbolColor inConstBox inputAndArgs flavor
 
     inputDiagram
       | flavor == MultiIfTag = alignBR 
-        $ coloredTextBox symbolColor ifConditionConst
+        $ coloredTextBox (textBoxTextC colorScheme) ifConditionConst
       | otherwise = makeInputDiagram iconInfo tp (pure input) name
 
     (iFConstIcons, iFVarIcons)
@@ -570,7 +547,7 @@ generalNestedMultiIf iconInfo symbolColor inConstBox inputAndArgs flavor
 
     iconMapper port subicon
       | isInputPort port = Left $ inConstBox innerIcon{- middle -}
-      | otherwise = Right ${- middle -} vcat [multiIfVarSymbol symbolColor, innerIcon]
+      | otherwise = Right ${- middle -} vcat [caseVarSymbol symbolColor, innerIcon]
       where
         innerIcon = makeAppInnerIcon iconInfo tp isSameNestingLevel port (Labeled subicon "")
         isSameNestingLevel = True
@@ -599,7 +576,7 @@ functionArgDia argumentNames (TransformParams name _level)
     -- argumetPort = zipWith (makePassthroughPorts name) (zip argPortsConst resultPortsConst) argumentNames
   argumetPort = zipWith (makeLabelledPort name) resultPortsConst argumentNames
   combinedArgumetPort = hsep portSeparationSize argumetPort
-  -- argumetsInBox = inFrame combinedArgumetPort (lamArgResC colorScheme) (width combinedArgumetPort) (height combinedArgumetPort)
+  -- argumetsInBox = inFrame combinedArgumetPort (lambdaC colorScheme) (width combinedArgumetPort) (height combinedArgumetPort)
   finalDiagram = combinedArgumetPort
 
 functionDefDia ::  SpecialBackend b n
@@ -687,8 +664,8 @@ getShaftColor = getShaftColor' edgeColors where
 
 getShaftColor' :: [Colour Double]
   -> NameAndPort-> (Icon, Icon) -> Colour Double
-getShaftColor' _ _ (Icon FunctionDefIcon {} _, _) = regionPerimC colorScheme
-getShaftColor' _ _ (_, Icon FunctionDefIcon {} _) = regionPerimC colorScheme
+getShaftColor' _ _ (Icon FunctionDefIcon {} _, _) = lambdaC colorScheme
+getShaftColor' _ _ (_, Icon FunctionDefIcon {} _) = lambdaC colorScheme
 getShaftColor' edgeColors (NameAndPort (NodeName nodeNum) (Port portNum)) _ = shaftColor where
   namePortHash = mod (portNum + (503 * nodeNum)) (length edgeColors)
   shaftColor = edgeColors !! namePortHash

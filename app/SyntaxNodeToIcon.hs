@@ -44,7 +44,7 @@ nodeToIcon (Embedder embeddedNodes (SyntaxNode node src)) = case node of
   (FunctionArgNode labels)          -> functionArgIcon labels src
   (FunctionValueNode str bodyNodes) -> functionDefIcon embeddedNodes str bodyNodes src
   CaseResultNode                    -> Icon (CaseResultIcon) src
-  (CaseOrMultiIfNode tag x)         -> nestedCaseOrMultiIfNodeToIcon tag x embeddedNodes src
+  (CaseOrMultiIfNode tag x)         -> nestedCaseOrMultiIfToIcon tag x embeddedNodes src
   (ListCompNode)                    -> Icon ListCompIcon src -- TODO actualy embede nodes
   (ListGenNode hasThen hasTo)       -> listGenNodeToIcon embeddedNodes hasThen hasTo src
 
@@ -99,15 +99,14 @@ functionDefIcon embeddedNodes str bodyNodes src =
     dummyNode = SyntaxNode (FunctionValueNode str Set.empty) src
     embeddedBodyNode = makeArg embeddedNodes (inputPort dummyNode)
 
-nestedCaseOrMultiIfNodeToIcon ::
+nestedCaseOrMultiIfToIcon ::
   CaseOrMultiIfTag
   -> Int
   -> Set.Set (NodeName, Edge)
   -> SrcRef
   -> Icon
-nestedCaseOrMultiIfNodeToIcon tag numArgs args src = case tag of
-  CaseTag -> Icon (NestedCaseIcon argList) src
-  MultiIfTag -> Icon (NestedMultiIfIcon argList) src
+nestedCaseOrMultiIfToIcon styleTag numArgs args src 
+  = Icon (NestedCaseIcon styleTag argList) src
   where
     dummyNode = SyntaxNode (CaseOrMultiIfNode CaseTag numArgs) src
     argPorts = take (2 * numArgs) $ argumentPorts dummyNode

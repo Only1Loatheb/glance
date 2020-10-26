@@ -31,14 +31,10 @@ examples to work with:
 
 ```bash
 stack build --test  --ghc-options -Wall
-stack build  --exec "glance-exe -c ./examples/tutorial.hs ./images/tutorial.svg 500"
-stack build  --exec "glance-exe -c ./examples/advantages.hs ./images/advantages.svg 500"
-stack build  --exec "glance-exe ./examples/lab1.hs ./images/lab1.svg 500"
-stack build  --exec "glance-exe ./examples/lab2.hs ./images/lab2.svg 500"
+stack exec glance-exe -- -c ./examples/tutorial.hs ./images/tutorial.svg
+stack exec glance-exe -- -c ./examples/advantages.hs ./images/advantages.svg
+stack exec glance-exe -- -c ./examples/lab1.hs ./images/lab1.svg
+stack exec glance-exe -- -c ./examples/lab2.hs ./images/lab2.svg
 stack exec glance-exe -- -c  ./examples/simpleFunctions.hs ./images/simpleFunctions.svg
 firefox --new-window ./test/test-output/visual-tests.svg
-```
-
-```stack exec example
-stack exec glance-exe  ./examples/tutorial.hs ./examples/tutorial.svg 500
 ```

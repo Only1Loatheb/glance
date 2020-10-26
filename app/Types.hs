@@ -107,11 +107,7 @@ data DiagramIcon =
     (Labeled (Maybe NamedIcon))  -- Data constructor
     [Labeled (Maybe NamedIcon)]  -- Arguments
     (Maybe NodeName)  -- asigned value
-  | MultiIfIcon
-    Int  -- Number of alternatives
-  | NestedMultiIfIcon [Maybe NodeName]
-  | CaseIcon Int
-  | NestedCaseIcon [Maybe NodeName]
+  | NestedCaseIcon CaseOrMultiIfTag [Maybe NodeName]
   | CaseResultIcon
   | ListCompIcon
   | ListGenIcon 

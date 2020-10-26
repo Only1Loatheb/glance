@@ -102,8 +102,6 @@ getPortAngleHelper :: SpecialNum n
 getPortAngleHelper embedded iconInfo (Icon icon _) port maybeNodeName = case icon of
   TextBoxIcon {} -> 3/4 @@ turn
   BindTextBoxIcon {} -> 1/4 @@ turn
-  MultiIfIcon {} -> multiIfPortAngle port
-  CaseIcon {} -> multiIfPortAngle port
   CaseResultIcon -> 3/4 @@ turn
   FunctionArgIcon {} -> lambdaPortAngle port
   FunctionDefIcon {} -> lambdaPortAngle port
@@ -124,13 +122,7 @@ getPortAngleHelper embedded iconInfo (Icon icon _) port maybeNodeName = case ico
       (fmap laValue args)
       port
       maybeNodeName
-  NestedCaseIcon args
-    -> nestedMultiIfPortAngle
-      iconInfo
-      (findMaybeIconsFromNames iconInfo args)
-      port
-      maybeNodeName
-  NestedMultiIfIcon args
+  NestedCaseIcon _styleTag args
     -> nestedMultiIfPortAngle
       iconInfo
       (findMaybeIconsFromNames iconInfo args)
