@@ -39,7 +39,6 @@ nodeToIcon :: EmbedderSyntaxNode -> Icon
 nodeToIcon (Embedder embeddedNodes (SyntaxNode node src)) = case node of
   (ApplyNode flavor x)              -> nestedApplySyntaxNodeToIcon flavor x embeddedNodes src
   (PatternApplyNode s children)     -> nestedPatternNodeToIcon s children embeddedNodes src
-  (NameNode s)                      -> Icon (TextBoxIcon s) src
   (BindNameNode s)                  -> Icon (BindTextBoxIcon s) src
   (LiteralNode s)                   -> Icon (TextBoxIcon s) src
   (FunctionArgNode labels)          -> functionArgIcon labels src

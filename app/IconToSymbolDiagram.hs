@@ -313,7 +313,7 @@ iconToDiagram iconInfo (Icon icon _) = case icon of
   CaseIcon n -> nestedCaseDia iconInfo (replicate (1 + (2 * n)) Nothing) CaseTag
   CaseResultIcon -> caseResultDiagram
   FunctionArgIcon argumentNames -> functionArgDia argumentNames
-  FunctionDefIcon funcName _ _-> functionDefDia funcName 
+  FunctionDefIcon funcName _ inputNode -> functionDefDia iconInfo funcName (findMaybeIconFromName iconInfo inputNode)
   NestedApply flavor headIcon args
     -> nestedApplyDia
        iconInfo
@@ -410,7 +410,7 @@ nestedPatternAppDia
 
     patterns::[SpecialDiagram b n]
     patterns = alignB $ zipWith (makeAppInnerIcon iconInfo tp False) resultPortsConst subIcons
-    patternDiagram = hcat $  constructorDiagram : subscribedValueDia : patterns
+    patternDiagram = constructorDiagram ||| subscribedValueDia ||| hsep portSeparationSize patterns
 
     patternDiagramInBox = inFrame patternDiagram borderColor (width patternDiagram) (height patternDiagram)
 
@@ -437,23 +437,22 @@ generalNestedDia
   args
   tp@(TransformParams name nestingLevel)
   -- beside Place two monoidal objects (i.e. diagrams, paths, animations...) next to each other along the given vector.
-  = named name finalDia
-    where
-      borderColor = borderColors !! nestingLevel
-      boxWidth =  max (width transformedName) (width argPorts)
+  = finalDia where
+    borderColor = borderColors !! nestingLevel
+    boxWidth =  max (width transformedName) (width argPorts)
 
-      argPortsUncentred =  zipWith ( makeAppInnerIcon iconInfo tp False) argPortsConst (fmap pure args)
-      argPortsCentred  = fmap alignB argPortsUncentred
-      argPorts = centerX $ hsep portSeparationSize argPortsCentred
-      argsDiagram = inFrame argPorts borderColor boxWidth (height argPorts)
+    argPortsUncentred =  zipWith ( makeAppInnerIcon iconInfo tp False) argPortsConst (fmap pure args)
+    argPortsCentred  = fmap alignB argPortsUncentred
+    argPorts = centerX $ hsep portSeparationSize argPortsCentred
+    argsDiagram = inFrame argPorts borderColor boxWidth (height argPorts)
 
-      resultDiagram =  makeResultDiagram name
+    resultDiagram =  makeResultDiagram name
 
-      transformedName = makeInputDiagram iconInfo tp (pure maybeFunText) name
+    transformedName = makeInputDiagram iconInfo tp (pure maybeFunText) name
 
-      functionDiagramInBox = inFrame transformedName borderColor boxWidth (height transformedName)
+    functionDiagramInBox = inFrame transformedName borderColor boxWidth (height transformedName)
 
-      finalDia = vcat [ argsDiagram,functionDiagramInBox, resultDiagram]
+    finalDia = vcat [ argsDiagram,functionDiagramInBox, resultDiagram]
 
 listCompDiagram :: SpecialBackend b n
   => IconInfo
@@ -467,23 +466,22 @@ listCompDiagram
   maybeFunText
   args
   tp@(TransformParams name nestingLevel)
-  = named name finalDia
-    where
-      borderColor = borderColors !! nestingLevel
-      boxWidth =  max (width transformedName) (width argPorts)
+  = finalDia where
+    borderColor = borderColors !! nestingLevel
+    boxWidth =  max (width transformedName) (width argPorts)
 
-      argPortsUncentred =  zipWith ( makeAppInnerIcon iconInfo tp False) mixedPorts (fmap pure args)
-      argPortsCentred  = fmap alignB argPortsUncentred
-      argPorts = centerX $ hsep portSeparationSize argPortsCentred
-      argsDiagram = inFrame argPorts borderColor boxWidth (height argPorts)
+    argPortsUncentred =  zipWith ( makeAppInnerIcon iconInfo tp False) mixedPorts (fmap pure args)
+    argPortsCentred  = fmap alignB argPortsUncentred
+    argPorts = centerX $ hsep portSeparationSize argPortsCentred
+    argsDiagram = inFrame argPorts borderColor boxWidth (height argPorts)
 
-      resultDiagram =  makeResultDiagram name
+    resultDiagram =  makeResultDiagram name
 
-      transformedName = makeInputDiagram iconInfo tp (pure maybeFunText) name
+    transformedName = makeInputDiagram iconInfo tp (pure maybeFunText) name
 
-      functionDiagramInBox = inFrame transformedName borderColor boxWidth (height transformedName)
+    functionDiagramInBox = inFrame transformedName borderColor boxWidth (height transformedName)
 
-      finalDia = vcat [ argsDiagram,functionDiagramInBox, resultDiagram]
+    finalDia = vcat [ argsDiagram,functionDiagramInBox, resultDiagram]
 
 leftBracket = alignB $ coloredTextBox (listC colorScheme) "["
 rightBracket = alignB $ coloredTextBox (listC colorScheme) "]"
@@ -555,12 +553,12 @@ generalNestedMultiIf ::forall b n. SpecialBackend b n
                    -> TransformableDia b n
 generalNestedMultiIf iconInfo symbolColor inConstBox inputAndArgs flavor
   tp@(TransformParams name _nestingLevel)
-  = named name $ case inputAndArgs of
+  = case inputAndArgs of
   [] -> error "empty multiif"-- mempty
-  input : subicons -> centerXY finalDia where
-    finalDia = vcat [inputDiagram, allCasesAtRight ,resultPort]
+  input : subicons -> finalDia where
+    finalDia = vcat [inputDiagram, allCasesAtRight, resultDia]
 
-    resultPort = makeResultDiagram name
+    resultDia = makeResultDiagram name
 
     inputDiagram
       | flavor == MultiIfTag = alignBR 
@@ -605,14 +603,16 @@ functionArgDia argumentNames (TransformParams name _level)
   finalDiagram = combinedArgumetPort
 
 functionDefDia ::  SpecialBackend b n
-  => String 
+  => IconInfo
+  -> String
+  -> Maybe NamedIcon 
   -> TransformableDia b n
-functionDefDia functionName (TransformParams name _level)
-  = named name finalDiagram where
-  lambdaSymbol = lambdaBodySymbol functionName
-  inputDiagram = makeQualifiedPort' memptyWithPosition memptyWithPosition InputPortConst name
-  outputDiagram = makeQualifiedPort' memptyWithPosition memptyWithPosition ResultPortConst name
-  finalDiagram = lambdaSymbol ||| (inputDiagram === outputDiagram)
+functionDefDia iconInfo functionName input transformParams = finalDiagram where
+  name = tpName transformParams
+  lambdaSymbol = alignBR $ lambdaBodySymbol functionName
+  inputDiagram = makeInputDiagram iconInfo transformParams (pure input) name
+  resultDiagram =  makeResultDiagram name
+  finalDiagram = lambdaSymbol <> (inputDiagram === resultDiagram)
 -- Done to prevent this:
 -- glance-test: circleDiameter too small: 0.0
 -- CallStack (from HasCallStack):
@@ -651,40 +651,45 @@ lambdaRegionSymbol enclosedDiagarms (NodeName nameInt)
       $ lc regionLineColor (lwG defaultLineWidth contentsRect)
 
 getArrowShadowOpts :: (RealFloat n, Typeable n)
-  => (Point V2 n, Point V2 n)
+  => (NameAndPort,NameAndPort)
+  -> (Point V2 n, Point V2 n)
   -> (Maybe (Angle n), Maybe (Angle n))
   -> Icon
   -> ArrowOpts n
-getArrowShadowOpts points maybeAngles iconTo=
-  shaftStyle %~ (lwG arrowShadowWidth .
+getArrowShadowOpts 
+  (_, (NameAndPort _ toPort))
+  points maybeAngles iconTo
+  = shaftStyle %~ (lwG arrowShadowWidth .
                 lcA $ withOpacity shaftColor defaultShadowOpacity)
   $ headStyle %~ fc shaftColor
-  $ getArrowOpts points maybeAngles iconTo where
+  $ getArrowOpts points maybeAngles iconTo toPort where
     shaftColor = backgroundC colorScheme
 
 getArrowBaseOpts :: (RealFloat n, Typeable n)
-  => NameAndPort
+  => (NameAndPort,NameAndPort)
   -> (Point V2 n, Point V2 n)
   -> (Maybe (Angle n), Maybe (Angle n))
   -> (Icon, Icon)
   -> ArrowOpts n
-getArrowBaseOpts (NameAndPort (NodeName nodeNum) mPort) points maybeAngles 
+getArrowBaseOpts 
+  (formNameAndPort
+  , (NameAndPort _ toPort))
+  points maybeAngles 
   iconPair@(_, iconTo)
   = shaftStyle %~ (lwG arrowLineWidth {-- )-- -} . lc shaftColor) 
   $ headStyle %~ fc shaftColor
-  $ getArrowOpts points maybeAngles iconTo where
-    Port portNum = mPort
-    shaftColor = getShaftColor nodeNum portNum iconPair
+  $ getArrowOpts points maybeAngles iconTo toPort where
+    shaftColor = getShaftColor formNameAndPort iconPair
 
-getShaftColor :: Int -> Int -> (Icon, Icon) -> Colour Double
+getShaftColor :: NameAndPort -> (Icon, Icon) -> Colour Double
 getShaftColor = getShaftColor' edgeColors where
   edgeColors = edgeListC colorScheme
 
 getShaftColor' :: [Colour Double]
-                    -> Int -> Int -> (Icon, Icon) -> Colour Double
-getShaftColor' _ _ _ (Icon FunctionDefIcon {} _, _) = regionPerimC colorScheme
-getShaftColor' _ _ _ (_, Icon FunctionDefIcon {} _) = regionPerimC colorScheme
-getShaftColor' edgeColors nodeNum portNum _ = shaftColor where
+  -> NameAndPort-> (Icon, Icon) -> Colour Double
+getShaftColor' _ _ (Icon FunctionDefIcon {} _, _) = regionPerimC colorScheme
+getShaftColor' _ _ (_, Icon FunctionDefIcon {} _) = regionPerimC colorScheme
+getShaftColor' edgeColors (NameAndPort (NodeName nodeNum) (Port portNum)) _ = shaftColor where
   namePortHash = mod (portNum + (503 * nodeNum)) (length edgeColors)
   shaftColor = edgeColors !! namePortHash
 
@@ -692,12 +697,13 @@ getArrowOpts :: (RealFloat n, Typeable n)
   => (Point V2 n, Point V2 n)
   -> (Maybe (Angle n), Maybe (Angle n))
   -> Icon
+  -> Port
   -> ArrowOpts n
-getArrowOpts (formPoint, toPoint) (anglesFrom,anglesTo) iconTo
+getArrowOpts (formPoint, toPoint) (anglesFrom,anglesTo) iconTo portTo
   = arrowOptions where
     arrowOptions =
       -- arrowHead .~ noHead
-      arrowHead .~ getArrowHead iconTo
+      arrowHead .~ getArrowHead iconTo portTo
       $ arrowTail .~ noTail
       $ arrowShaft .~ edgeSymbol formPoint toPoint anglesFrom anglesTo
       -- TODO Don't use a magic number for lengths (headLength and tailLength)
@@ -705,9 +711,9 @@ getArrowOpts (formPoint, toPoint) (anglesFrom,anglesTo) iconTo
       $ with
 
 -- getArrowHead :: Icon -> 
-getArrowHead :: RealFloat n => Icon -> ArrowHT n
-getArrowHead (Icon FunctionDefIcon {} _) = noHead
-getArrowHead _ = tri
+getArrowHead :: RealFloat n => Icon -> Port -> ArrowHT n
+getArrowHead (Icon FunctionDefIcon {} _) InputPortConst = noHead
+getArrowHead _ _ = tri
 -- https://archives.haskell.org/projects.haskell.org/diagrams/doc/arrow.html
 
 edgeSymbol :: (R1 (Diff p), Affine p, Transformable (Diff p (N t)),

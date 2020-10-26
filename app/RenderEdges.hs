@@ -133,7 +133,7 @@ getArrowsOpts
     (EmbedInfo _embedDir --edge@(EmbedInfo _ (Edge _ (_namePort0, _namePort1)))
     e@(Edge
       _
-      (fromNamePort, toNamePort))))
+      namePorts@(fromNamePort, toNamePort))))
   (pointFrom, pointTo)
   = (arrowBaseOpts, arrowShadowOpts) where
     node0NameAndPort@(Named _ iconFrom) = fromMaybeError
@@ -146,9 +146,9 @@ getArrowsOpts
     angleFrom = findPortAngles iconInfo node0NameAndPort fromNamePort
     angleTo = findPortAngles iconInfo node1NameAndPort toNamePort
 
-    arrowBaseOpts{-'-} = getArrowBaseOpts fromNamePort (pointFrom, pointTo)  (angleFrom, angleTo) (iconFrom, iconTo)
+    arrowBaseOpts{-'-} = getArrowBaseOpts namePorts (pointFrom, pointTo)  (angleFrom, angleTo) (iconFrom, iconTo)
     -- arrowBaseOpts = Dia.shaftStyle Dia.%~ ( Dia.lc (shaftColor e))  $ arrowBaseOpts'
-    arrowShadowOpts = getArrowShadowOpts (pointFrom, pointTo)  (angleFrom, angleTo) iconTo
+    arrowShadowOpts = getArrowShadowOpts namePorts (pointFrom, pointTo)  (angleFrom, angleTo) iconTo
 
 shaftColor (Edge DrawAndNotConstraint _) = Dia.red
 shaftColor (Edge DoNotDrawButConstraint _) = Dia.blue

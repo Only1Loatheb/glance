@@ -45,6 +45,8 @@ import SimpSyntaxToSyntaxGraph(
   , customParseDecl
   )
 
+import StringSymbols(isTempLabel)
+
 import HsSyntaxToSimpSyntax(hsDeclToSimpDecl)
 import Util(
   nodeNameToInt
@@ -55,7 +57,7 @@ import Util(
 
 data ParentType = ApplyParent
                 | CaseParent
-                | LambdaParent
+                | LambdaParent String
                 | PatternApplyParent
                 | ListGenParent
                 | NotAParent
@@ -83,33 +85,31 @@ syntaxNodeIsEmbeddable :: ParentType
                        -> Bool
 syntaxNodeIsEmbeddable parentType (SyntaxNode syntaxNode _) mParentPort mChildPort
   = case (parentType, syntaxNode) of
-      (ApplyParent, ApplyNode {}) -> parentPortNotResult
-      (ApplyParent, LiteralNode {}) -> parentPortNotResult
+    (ApplyParent, ApplyNode {}) -> parentPortNotResult
+    (ApplyParent, LiteralNode {}) -> parentPortNotResult
 
-      (ListGenParent, ApplyNode {}) -> parentPortNotResult
-      (ListGenParent, LiteralNode {}) -> parentPortNotResult
+    (ListGenParent, ApplyNode {}) -> parentPortNotResult
+    (ListGenParent, LiteralNode {}) -> parentPortNotResult
 
-      -- (ApplyParent, FunctionValueNode {})
-      --   -> parentPortNotResult && isResult mChildPort
+    (LambdaParent fname, ApplyNode {}) -> parentPortIsInput && (isTempLabel fname) && childPortIsResult
+    (LambdaParent fname, CaseOrMultiIfNode {}) -> parentPortIsInput && (isTempLabel fname) && childPortIsResult
+    (LambdaParent fname, LiteralNode {}) -> parentPortIsInput && (isTempLabel fname) && childPortIsResult
+    (LambdaParent fname, ListGenNode {}) -> parentPortIsInput && (isTempLabel fname) && childPortIsResult
+    -- Move region drawing to arg node and enable this match
+    -- (LambdaParent fname, FunctionValueNode {}) -> (isInput mParentPort) && (isTempLabel fname) && childPortIsResult
 
-      -- -- -- The match below works, but can make messy drawings with the current
-      -- -- -- icon for lambdas.
-      -- -- (LambdaParent, ApplyNode _ _) -> parentPortIsInput
-      -- (LambdaParent, LiteralNode {}) -> parentPortIsInput
-      -- (LambdaParent, FunctionValueNode {})
-      --   -> parentPortIsInput && isResult mChildPort
+    -- (ApplyParent, FunctionValueNode {})
+    --   -> parentPortNotResult && childPortIsResult
 
-      (CaseParent, LiteralNode {}) -> parentPortNotResult
-      (CaseParent, ApplyNode {})
-        -> parentPortNotResult && parentPortNotInput
-      (CaseParent, PatternApplyNode {})
-        -> parentPortNotResult && parentPortNotInput
-      (CaseParent, CaseResultNode {}) -> True
-      
-      (PatternApplyParent, _) 
-        -> isPatternValueInputPort && isResult mChildPort
+    (CaseParent, LiteralNode {}) -> parentPortNotResult
+    (CaseParent, ApplyNode {}) -> parentPortNotResult && parentPortNotInput
+      || parentPortIsInput && childPortIsResult
+    (CaseParent, PatternApplyNode {}) -> parentPortNotResult && parentPortNotInput
+    (CaseParent, CaseResultNode {}) -> True
+    
+    (PatternApplyParent, _) -> isPatternValueInputPort && childPortIsResult
 
-      _ -> False
+    _ -> False
   where
     isInput mPort = case mPort of
       InputPortConst -> True
@@ -124,6 +124,7 @@ syntaxNodeIsEmbeddable parentType (SyntaxNode syntaxNode _) mParentPort mChildPo
       _ -> False
 
     parentPortIsInput = isInput mParentPort
+    childPortIsResult = isResult mChildPort
 
     parentPortNotInput = not $ isInput mParentPort
     parentPortNotResult = not $ isResult mParentPort
@@ -132,7 +133,7 @@ parentTypeForNode :: SyntaxNode -> ParentType
 parentTypeForNode (SyntaxNode n _) = case n of
   ApplyNode {} -> ApplyParent
   CaseOrMultiIfNode {} -> CaseParent
-  FunctionValueNode {} -> LambdaParent
+  FunctionValueNode fname _ -> LambdaParent fname
   PatternApplyNode {} -> PatternApplyParent
   ListGenNode {} -> ListGenParent
   _ -> NotAParent

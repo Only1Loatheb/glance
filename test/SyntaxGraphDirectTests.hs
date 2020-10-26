@@ -240,7 +240,6 @@ getNodeNames codeString
 syntaxNodeCoreToMaybeStr  :: SyntaxNodeCore -> [String]
 syntaxNodeCoreToMaybeStr (ApplyNode {}) = []
 syntaxNodeCoreToMaybeStr (PatternApplyNode name labeledList) = name : map laLabel labeledList
-syntaxNodeCoreToMaybeStr (NameNode name) = [name]
 syntaxNodeCoreToMaybeStr (BindNameNode name) = [name]
 syntaxNodeCoreToMaybeStr (LiteralNode name) = [name]
 syntaxNodeCoreToMaybeStr (FunctionArgNode names) = names

@@ -92,16 +92,12 @@ data Icon = Icon DiagramIcon SrcRef
 
 data DiagramIcon = 
   TextBoxIcon String
-  | MultiIfIcon
-    Int  -- Number of alternatives
   | FunctionArgIcon
     [String]  -- Parameter labels
   | FunctionDefIcon
     String  -- Function name
     (Set.Set NodeName)  -- Nodes inside the lambda
     (Maybe NodeName) -- embeded body node
-  | CaseIcon Int
-  | CaseResultIcon
   | BindTextBoxIcon String
   | NestedApply
     LikeApplyFlavor  -- apply or compose
@@ -111,8 +107,12 @@ data DiagramIcon =
     (Labeled (Maybe NamedIcon))  -- Data constructor
     [Labeled (Maybe NamedIcon)]  -- Arguments
     (Maybe NodeName)  -- asigned value
-  | NestedCaseIcon [Maybe NodeName]
+  | MultiIfIcon
+    Int  -- Number of alternatives
   | NestedMultiIfIcon [Maybe NodeName]
+  | CaseIcon Int
+  | NestedCaseIcon [Maybe NodeName]
+  | CaseResultIcon
   | ListCompIcon
   | ListGenIcon 
     (Maybe NodeName) --from
@@ -151,7 +151,6 @@ data SyntaxNodeCore =
   -- The list of nodes is unordered (replace with a map?)
   ApplyNode LikeApplyFlavor Int
   | PatternApplyNode String [Labeled (Maybe SgNamedNode)]
-  | NameNode String -- Identifiers or symbols
   | BindNameNode String -- for top level bindings --TODO delete this
   | LiteralNode String -- Literal values like the string "Hello World"
   | FunctionArgNode
