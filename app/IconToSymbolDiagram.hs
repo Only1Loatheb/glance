@@ -382,7 +382,7 @@ nestedPatternAppDia
   subIcons
   rhsNodeName
   tp@(TransformParams name nestingLevel)
-  = named name $ centerY finalDia
+  = centerY finalDia
   where
     borderColor = borderColors !! nestingLevel
     resultDia = makeResultDiagram name
@@ -649,24 +649,23 @@ getArrowBaseOpts :: (RealFloat n, Typeable n)
   -> (Icon, Icon)
   -> ArrowOpts n
 getArrowBaseOpts 
-  (formNameAndPort
-  , (NameAndPort _ toPort))
+  namesAndPorts@(_, (NameAndPort _ toPort))
   points maybeAngles 
   iconPair@(_, iconTo)
   = shaftStyle %~ (lwG arrowLineWidth {-- )-- -} . lc shaftColor) 
   $ headStyle %~ fc shaftColor
   $ getArrowOpts points maybeAngles iconTo toPort where
-    shaftColor = getShaftColor formNameAndPort iconPair
+    shaftColor = getShaftColor namesAndPorts iconPair
 
-getShaftColor :: NameAndPort -> (Icon, Icon) -> Colour Double
+getShaftColor :: (NameAndPort,NameAndPort) -> (Icon, Icon) -> Colour Double
 getShaftColor = getShaftColor' edgeColors where
   edgeColors = edgeListC colorScheme
 
 getShaftColor' :: [Colour Double]
-  -> NameAndPort-> (Icon, Icon) -> Colour Double
-getShaftColor' _ _ (Icon FunctionDefIcon {} _, _) = lambdaC colorScheme
-getShaftColor' _ _ (_, Icon FunctionDefIcon {} _) = lambdaC colorScheme
-getShaftColor' edgeColors (NameAndPort (NodeName nodeNum) (Port portNum)) _ = shaftColor where
+  -> (NameAndPort,NameAndPort)-> (Icon, Icon) -> Colour Double
+getShaftColor' _ (NameAndPort _ ResultPortConst,_) (Icon FunctionDefIcon {} _, _) = lambdaC colorScheme
+getShaftColor' _ (_, NameAndPort _ InputPortConst) (_, Icon FunctionDefIcon {} _) = lambdaC colorScheme
+getShaftColor' edgeColors (NameAndPort (NodeName nodeNum) (Port portNum),_) _ = shaftColor where
   namePortHash = mod (portNum + (503 * nodeNum)) (length edgeColors)
   shaftColor = edgeColors !! namePortHash
 

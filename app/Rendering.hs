@@ -179,7 +179,7 @@ renderIconGraph debugInfo fullGraphWithInfo viewGraph = do
     layoutParams = customLayoutParams{
       GV.fmtNode = nodeAttribute
       , GV.clusterBy = (clusterNodesBy iconInfo)
-      , GV.fmtEdge = edgeGraphVizAttrs
+      , GV.fmtEdge = (edgeGraphVizAttrs iconInfo)
       -- , GV.fmtCluster = (clusterAtributeList iconInfo)
       }
 

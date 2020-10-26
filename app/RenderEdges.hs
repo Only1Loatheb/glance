@@ -1,4 +1,4 @@
-{-# LANGUAGE NoMonomorphismRestriction, FlexibleContexts, TypeFamilies, PartialTypeSignatures, ScopedTypeVariables #-}
+{-# LANGUAGE NoMonomorphismRestriction, FlexibleContexts, TypeFamilies, PartialTypeSignatures, ScopedTypeVariables, PatternSynonyms #-}
 
 module RenderEdges(
   makeEdges
@@ -52,23 +52,34 @@ import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
             , Named(..)
             , TransformParams(..)
             , EdgeOption(..)
+            , DiagramIcon(..)
+            , Port(..)
             )
 
 import Util(nodeNameToInt, fromMaybeError, namedToTuple)
 import ClusterNodesBy (
   clusterNodesBy
   , ClusterT
-  ) 
-  
+  )
 
-edgeGraphVizAttrs :: (a, b, EmbedInfo Edge) -> [GVA.Attribute]
-edgeGraphVizAttrs (_nFrom, _nTo, (EmbedInfo _ (Edge DrawAndNotConstraint _))) = [
-  GVA.Constraint False
+import PortConstants(
+  pattern InputPortConst
+  , pattern ResultPortConst
+  )
+  
   -- MinLen - Minimum edge length (rank difference between head and tail).
-  , GVA.MinLen 0
-  ]
-edgeGraphVizAttrs (_nFrom, _nTo, (EmbedInfo _ (Edge DoNotDrawButConstraint _))) = [ GVA.MinLen 3 ]
-edgeGraphVizAttrs _ = []
+dontConstrainAttrs :: [GVA.Attribute]
+dontConstrainAttrs = [ GVA.Constraint False, GVA.MinLen 0]
+
+edgeGraphVizAttrs :: IconInfo -> (a, Int, EmbedInfo Edge) -> [GVA.Attribute]
+edgeGraphVizAttrs _ (_, _, EmbedInfo _ (Edge DoNotDrawButConstraint _)) = [ GVA.MinLen 3 ]
+edgeGraphVizAttrs _ (_, _, EmbedInfo _ (Edge DrawAndNotConstraint _)) = dontConstrainAttrs
+edgeGraphVizAttrs _ (_, _, EmbedInfo _ (Edge _ (_,NameAndPort _ InputPortConst))) = [] 
+edgeGraphVizAttrs iconInfo (_nFrom, iconNameTo, _) = case iconInfo IMap.! iconNameTo of
+  (Icon (FunctionDefIcon {}) _) -> dontConstrainAttrs
+  _ -> []
+
+-- edgeGraphVizAttrs _ = []
 
 -- | makeEdges draws the edges underneath the nodes.
 makeEdges :: (HasCallStack, SpecialBackend b n, ING.Graph gr) =>

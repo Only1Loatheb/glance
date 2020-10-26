@@ -249,16 +249,16 @@ combineExpresionsNotIsSource edgeConstructor (GraphAndRef graph ref, port)
 edgeForRefPortIsSource :: (Connection-> Edge) -> Reference -> NameAndPort -> SyntaxGraph
 edgeForRefPortIsSource edgeConstructor ref port = case ref of
       Left str -> bindsToSyntaxGraph $ SMap.singleton str (Right port)
-      Right resPort -> syntaxGraphFromEdges $ Set.singleton  (edgeConstructor connection)
+      Right refPort -> syntaxGraphFromEdges $ Set.singleton  (edgeConstructor connection)
         where
-          connection = (port, resPort)
+          connection = (port, refPort)
 
 edgeForRefPortIsNotSource :: (Connection-> Edge) -> Reference -> NameAndPort -> SyntaxGraph
 edgeForRefPortIsNotSource edgeConstructor ref port = case ref of
       Left str -> sinksToSyntaxGraph $ Set.singleton (SgSink str port)
-      Right resPort -> syntaxGraphFromEdges $ Set.singleton  (edgeConstructor connection)
+      Right refPort -> syntaxGraphFromEdges $ Set.singleton  (edgeConstructor connection)
         where
-          connection = (resPort, port)
+          connection = (refPort, port)
 -- END make edges
 grNamePortToGrRef :: (SyntaxGraph, NameAndPort) -> GraphAndRef
 grNamePortToGrRef (graph, np) = GraphAndRef graph (Right np)

@@ -100,12 +100,9 @@ syntaxNodeIsEmbeddable parentType (SyntaxNode syntaxNode _) mParentPort mChildPo
 
     -- (ApplyParent, FunctionValueNode {})
     --   -> parentPortNotResult && childPortIsResult
-
-    (CaseParent, LiteralNode {}) -> parentPortNotResult
-    (CaseParent, ApplyNode {}) -> parentPortNotResult && parentPortNotInput
-      || parentPortIsInput && childPortIsResult
-    (CaseParent, PatternApplyNode {}) -> parentPortNotResult && parentPortNotInput
     (CaseParent, CaseResultNode {}) -> True
+    (CaseParent, _) -> parentPortNotResult && parentPortNotInput && childPortIsResult
+      || parentPortIsInput && childPortIsResult
     
     (PatternApplyParent, _) -> isPatternValueInputPort && childPortIsResult
 
