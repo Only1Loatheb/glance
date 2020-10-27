@@ -1,8 +1,9 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE PatternSynonyms #-}
 module CollapseGraph(
-  translateStringToCollapsedGraphAndDecl
-  , translateModuleToCollapsedGraphs
+  syntaxGraphToCollapsedGraph
+  , syntaxGraphToLessCollapsedGraph
+  -- for tests:
   , annotateGraph
   , syntaxGraphToFglGraph
   , collapseAnnotatedGraph
@@ -44,10 +45,8 @@ import SimpSyntaxToSyntaxGraph(
   translateDeclToSyntaxGraph
   , customParseDecl
   )
-
-import StringSymbols(isTempLabel)
-
 import HsSyntaxToSimpSyntax(hsDeclToSimpDecl)
+import StringSymbols(isTempLabel)
 import Util(
   nodeNameToInt
   , fromMaybeError
@@ -77,13 +76,13 @@ parentAndChild embedDirection
 -- START annotateGraph --
 
 -- TODO Use pattern synonyms here
--- | A syntaxNodeIsEmbeddable if it can be collapsed into another node
-syntaxNodeIsEmbeddable :: ParentType
+-- | A isSyntaxNodeEmbeddable if it can be collapsed into another node
+isSyntaxNodeEmbeddable :: ParentType
                        -> SyntaxNode
                        -> Port
                        -> Port
                        -> Bool
-syntaxNodeIsEmbeddable parentType (SyntaxNode syntaxNode _) mParentPort mChildPort
+isSyntaxNodeEmbeddable parentType (SyntaxNode syntaxNode _) mParentPort mChildPort
   = case (parentType, syntaxNode) of
     (ApplyParent, ApplyNode {}) -> parentPortNotResult
     (ApplyParent, LiteralNode {}) -> parentPortNotResult
@@ -125,6 +124,29 @@ syntaxNodeIsEmbeddable parentType (SyntaxNode syntaxNode _) mParentPort mChildPo
     parentPortNotInput = not $ isInput mParentPort
     parentPortNotResult = not $ isResult mParentPort
 
+doesSyntaxNodeHaveToBeEmbeded :: ParentType
+    -> SyntaxNode
+    -> Port
+    -> Port
+    -> Bool
+doesSyntaxNodeHaveToBeEmbeded parentType (SyntaxNode syntaxNode _) mParentPort mChildPort
+  = case (parentType, syntaxNode) of
+    (ApplyParent, ApplyNode {}) -> parentPortNotResult
+    (ApplyParent, LiteralNode {}) -> parentPortNotResult
+
+    (ListGenParent, ApplyNode {}) -> parentPortNotResult
+    (ListGenParent, LiteralNode {}) -> parentPortNotResult
+
+    (CaseParent, CaseResultNode {}) -> True
+    _ -> False
+  where
+
+    isResult mPort = case mPort of
+      ResultPortConst -> True
+      _ -> False
+
+    parentPortNotResult = not $ isResult mParentPort
+
 parentTypeForNode :: SyntaxNode -> ParentType
 parentTypeForNode (SyntaxNode n _) = case n of
   ApplyNode {} -> ApplyParent
@@ -152,13 +174,14 @@ edgeIsSingular graph node edge = numEdges <= 1 where
   numEdges = length edgeLabels
 
 parentCanEmbedChild :: ING.Graph gr =>
-  IngSyntaxGraph gr -> ING.Node -> ING.Node -> Edge -> EmbedDirection -> Bool
-parentCanEmbedChild graph parent child edge embedDirection
+  (ParentType -> SyntaxNode -> Port -> Port -> Bool)
+  -> IngSyntaxGraph gr -> ING.Node -> ING.Node -> Edge -> EmbedDirection -> Bool
+parentCanEmbedChild embedingTest graph parent child edge embedDirection
   = case lookupSyntaxNode graph child of
       Nothing -> False
       Just childSyntaxNode ->
         edgeIsSingular graph child edge
-        && syntaxNodeIsEmbeddable
+        && embedingTest
         parentType
         (emNode childSyntaxNode)
         parentPort
@@ -169,22 +192,25 @@ parentCanEmbedChild graph parent child edge embedDirection
           (parentPort, childPort)
             = parentAndChild embedDirection (fromPort, toPort)
 
-findEmbedDir :: ING.Graph gr
-             => IngSyntaxGraph gr
-             -> ING.Node
-             -> ING.Node
-             -> Edge
-             -> Maybe EmbedDirection
-findEmbedDir gr fromNode toNode e = if
-  | parentCanEmbedChild gr fromNode toNode e EdEmbedTo
+findEmbedDir :: ING.Graph gr => 
+  (ParentType -> SyntaxNode -> Port -> Port -> Bool)
+  -> IngSyntaxGraph gr
+  -> ING.Node
+  -> ING.Node
+  -> Edge
+  -> Maybe EmbedDirection
+findEmbedDir embedingTest gr fromNode toNode e = if
+  | parentCanEmbedChild embedingTest gr fromNode toNode e EdEmbedTo
     -> Just EdEmbedTo
-  | parentCanEmbedChild gr toNode fromNode e EdEmbedFrom
+  | parentCanEmbedChild embedingTest gr toNode fromNode e EdEmbedFrom
     -> Just EdEmbedFrom
   | otherwise -> Nothing
 
 
-annotateGraph :: ING.DynGraph gr => IngSyntaxGraph gr -> gr SgNamedNode (EmbedInfo Edge)
-annotateGraph gr = ING.gmap edgeMapper gr
+annotateGraph' :: ING.DynGraph gr => 
+  (ParentType -> SyntaxNode -> Port -> Port -> Bool)
+  -> IngSyntaxGraph gr -> gr SgNamedNode (EmbedInfo Edge)
+annotateGraph' embedingTest gr = ING.gmap edgeMapper gr
   where
     edgeMapper :: ING.Context SgNamedNode Edge
                -> ING.Context SgNamedNode (EmbedInfo Edge)
@@ -195,11 +221,13 @@ annotateGraph gr = ING.gmap edgeMapper gr
         , getOutEmbedInfo node outEdges)
     getInEmbedInfo toNode
       = fmap (\(e, fromNode)
-               -> (EmbedInfo (findEmbedDir gr fromNode toNode e) e, fromNode))
+               -> (EmbedInfo (findEmbedDir embedingTest gr fromNode toNode e) e, fromNode))
     getOutEmbedInfo fromNode
      = fmap (\(e, toNode)
-              -> (EmbedInfo (findEmbedDir gr fromNode toNode e) e, toNode))
+              -> (EmbedInfo (findEmbedDir embedingTest gr fromNode toNode e) e, toNode))
 
+annotateGraph = annotateGraph' isSyntaxNodeEmbeddable
+annotateGraphLessCollapsed = annotateGraph' doesSyntaxNodeHaveToBeEmbeded
 -- END annotateGraph --
 -- START collapseAnnotatedGraph --
 
@@ -320,23 +348,8 @@ syntaxGraphToFglGraph (SyntaxGraph nodes edges _ _ eMap) =
 syntaxGraphToCollapsedGraph :: SyntaxGraph -> AnnotatedGraph FGR.Gr
 syntaxGraphToCollapsedGraph
   = collapseAnnotatedGraph . annotateGraph . syntaxGraphToFglGraph
-  -- = annotateGraph . syntaxGraphToFglGraph
 
-translateDeclToCollapsedGraph :: Exts.Decl Exts.SrcSpanInfo -> AnnotatedGraph FGR.Gr
-translateDeclToCollapsedGraph
-  = syntaxGraphToCollapsedGraph . translateDeclToSyntaxGraph . hsDeclToSimpDecl
+syntaxGraphToLessCollapsedGraph :: SyntaxGraph -> AnnotatedGraph FGR.Gr
+syntaxGraphToLessCollapsedGraph
+  = collapseAnnotatedGraph . annotateGraphLessCollapsed . syntaxGraphToFglGraph
 
--- Profiling: At one point, this was about 1.5% of total time.
-translateStringToCollapsedGraphAndDecl ::
-  String -> (AnnotatedGraph FGR.Gr, Exts.Decl Exts.SrcSpanInfo)
-translateStringToCollapsedGraphAndDecl s = (drawing, decl) where
-  decl = customParseDecl s -- :: ParseResult Module
-  drawing = translateDeclToCollapsedGraph decl
-
-translateModuleToCollapsedGraphs ::
-  Exts.Module Exts.SrcSpanInfo -> [AnnotatedGraph FGR.Gr]
-translateModuleToCollapsedGraphs (Exts.Module _ _ _ _ decls)
-  = fmap translateDeclToCollapsedGraph decls
-translateModuleToCollapsedGraphs moduleSyntax
-  = error $ "Unsupported syntax in translateModuleToCollapsedGraphs: "
-    <> show moduleSyntax

@@ -74,6 +74,12 @@ import           Types(
   , EdgeOption(..)
   , mkEmbedder
   , Connection(..)
+  , Reference
+  , EvalContext
+  , SgBind
+  , SgSink(..)
+  , SyntaxGraph(..)
+  , GraphAndRef(..)
   )
 import Util(
   makeSimpleEdge
@@ -89,47 +95,6 @@ import StringSymbols(defaultPatternNameStr)
 -- This module has the core functions and data types used by SimpSyntaxToSyntaxGraph.
 -- This module also contains most/all of the translation functions that
 -- do not require Language.Haskell.Exts.
-
-type Reference = Either String NameAndPort
-
-type EvalContext = Set.Set String
-
-type SgBind = (SMap.Key, Reference)
-
-data SgSink = SgSink String NameAndPort deriving (Eq, Ord, Show)
-
--- | A SyntaxGraph is an abstract representation of Haskell syntax. SyntaxGraphs
--- are generated from the Haskell syntax tree and are used to generate Drawings.
-data SyntaxGraph = SyntaxGraph {
-  sgNodes :: (Set.Set SgNamedNode),
-  sgEdges :: (Set.Set Edge),
-  sgSinks :: (Set.Set SgSink), -- values that havent been used (unused bindings)
-  -- TODO change to SMap.StringMap NameAndPort
-  sgBinds :: (SMap.StringMap Reference ), -- name form upper leval -> reference -- Reference -> Reference 
-  -- sgEmbedMap keeps track of nodes embedded in other nodes. If (child, parent)
-  -- is in the Map, then child is embedded inside parent.
-  sgEmbedMap :: IMap.IntMap NodeName -- NodeName -> NodeName
-  } deriving (Show, Eq)
-
-instance Semigroup SyntaxGraph where
-  (<>)
-    (SyntaxGraph icons1 edges1 sinks1 sources1 map1)
-    (SyntaxGraph icons2 edges2 sinks2 sources2 map2)
-    = SyntaxGraph
-      (Set.union icons1 icons2)
-      (Set.union edges1 edges2)
-      (Set.union sinks1 sinks2)
-      (SMap.union sources1 sources2)
-      (IMap.union map1 map2)
-
-instance Monoid SyntaxGraph where
-  mempty = SyntaxGraph Set.empty Set.empty Set.empty SMap.empty mempty
-  mappend = (<>)
-
-data GraphAndRef = GraphAndRef {
-  graph :: SyntaxGraph
-  , ref :: Reference
-  }
 
 lookupInEmbeddingMap :: NodeName -> IMap.IntMap NodeName -> NodeName
 lookupInEmbeddingMap origName eMap = lookupHelper origName where

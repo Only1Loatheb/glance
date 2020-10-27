@@ -47,6 +47,12 @@ module Types (
   , View(..)
   , CreateView
   , FuncDefRegionInfo
+  , Reference
+  , EvalContext
+  , SgBind
+  , SgSink(..)
+  , SyntaxGraph(..)
+  , GraphAndRef(..)
 ) where
 
 import Diagrams.Prelude(QDiagram, V2, Any, Renderable, Path, IsName)
@@ -55,6 +61,7 @@ import Control.Applicative(Applicative(..))
 import qualified Data.Graph.Inductive as ING
 import qualified Data.Graph.Inductive.PatriciaTree as FGR
 import qualified Data.IntMap as IMap
+import qualified Data.StringMap as SMap
 import qualified Data.Set as Set
 import Data.Typeable(Typeable)
 import qualified Language.Haskell.Exts as Exts
@@ -248,7 +255,7 @@ data NodeQueryValue = NodeQueryValue {
 
 data DeclQueryValue = DeclQueryValue {
   declSrcRef :: SrcRef
-  , declGraph :: AnnotatedFGR
+  , declGraph :: SyntaxGraph
   , commentsBefore :: [Exts.Comment]
   , commentsAfter :: [Exts.Comment]
   } deriving (Show)
@@ -266,6 +273,48 @@ type SourceCode = String
 
 type View = (Maybe DeclQueryValue, Maybe NodeQueryValue)
 type CreateView = DiaQuery -> View -> View
--- to del
-type ModuleGraphs = ([(SrcRef, AnnotatedFGR)],[Exts.Comment])
+
+type ModuleGraphs = ([(SrcRef, SyntaxGraph)],[Exts.Comment])
 type ViewGraphs = ([(SrcRef, (AnnotatedFGR, AnnotatedFGR))],[Exts.Comment])
+
+-- SYNTAX GRAPH
+type Reference = Either String NameAndPort
+
+type EvalContext = Set.Set String
+
+type SgBind = (SMap.Key, Reference)
+
+data SgSink = SgSink String NameAndPort deriving (Eq, Ord, Show)
+
+-- | A SyntaxGraph is an abstract representation of Haskell syntax. SyntaxGraphs
+-- are generated from the Haskell syntax tree and are used to generate Drawings.
+data SyntaxGraph = SyntaxGraph {
+  sgNodes :: (Set.Set SgNamedNode),
+  sgEdges :: (Set.Set Edge),
+  sgSinks :: (Set.Set SgSink), -- values that havent been used (unused bindings)
+  -- TODO change to SMap.StringMap NameAndPort
+  sgBinds :: (SMap.StringMap Reference ), -- name form upper leval -> reference -- Reference -> Reference 
+  -- sgEmbedMap keeps track of nodes embedded in other nodes. If (child, parent)
+  -- is in the Map, then child is embedded inside parent.
+  sgEmbedMap :: IMap.IntMap NodeName -- NodeName -> NodeName
+  } deriving (Show, Eq)
+
+instance Semigroup SyntaxGraph where
+  (<>)
+    (SyntaxGraph icons1 edges1 sinks1 sources1 map1)
+    (SyntaxGraph icons2 edges2 sinks2 sources2 map2)
+    = SyntaxGraph
+      (Set.union icons1 icons2)
+      (Set.union edges1 edges2)
+      (Set.union sinks1 sinks2)
+      (SMap.union sources1 sources2)
+      (IMap.union map1 map2)
+
+instance Monoid SyntaxGraph where
+  mempty = SyntaxGraph Set.empty Set.empty Set.empty SMap.empty mempty
+  mappend = (<>)
+
+data GraphAndRef = GraphAndRef {
+  graph :: SyntaxGraph
+  , ref :: Reference
+  }

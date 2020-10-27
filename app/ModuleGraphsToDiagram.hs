@@ -27,7 +27,6 @@ import IconToSymbolDiagram(
   , sourceCodeDiagram
   )
 import Rendering(renderIngSyntaxGraph)
-import CollapseGraph(translateModuleToCollapsedGraphs)
 import           Types  (
   SpecialDiagram
   , SpecialQDiagram
@@ -42,11 +41,13 @@ import           Types  (
   , NodeQueryValue(..)
   , AnnotatedFGR(..)
   , SourceCode
+  , SyntaxGraph(..)
   )
 
 import PartialView (neighborsSubgraph)
 
 import TextBox (multilineComment)
+import CollapseGraph(syntaxGraphToCollapsedGraph, syntaxGraphToLessCollapsedGraph)
 -- before loop
 diagramFromModule :: SpecialBackend b Double =>
   (SrcRef -> SourceCode) -> Bool -> ModuleGraphs -> SpecialQDiagram b Double
@@ -58,7 +59,7 @@ selectComments :: Bool -> [Exts.Comment] -> [Exts.Comment]
 selectComments includeComments comments = if includeComments then comments else []
 
 getModuleDiagram :: SpecialBackend b Double
-  => (SrcRef -> SourceCode) -> [(SrcRef, AnnotatedFGR)] -> [Exts.Comment] -> SpecialQDiagram b Double
+  => (SrcRef -> SourceCode) -> [(SrcRef, SyntaxGraph)] -> [Exts.Comment] -> SpecialQDiagram b Double
 getModuleDiagram getCodeFragment declSpansAndGraphs selectedComments = diagram where
   chunks = getDeclChunks declSpansAndGraphs
   diagram = placeDiagrams $ map (declIconDiagram getCodeFragment selectedComments) chunks 
@@ -106,8 +107,10 @@ filterComments comments (srcSpanBefore, srcSpanAfter) = nerbyComments where
 
 -- in loop 
 declDiagram declQV@(DeclQueryValue _ declGraph commentsBefore commentsAfter) = do
-  let (topComments, bottomComments) = viewDiagramBase declQV
-  declDia <- renderIngSyntaxGraph "" (declGraph, declGraph)
+  let 
+    (topComments, bottomComments) = viewDiagramBase declQV
+    collapsedDeclGraph = syntaxGraphToCollapsedGraph declGraph
+  declDia <- renderIngSyntaxGraph "" (collapsedDeclGraph, collapsedDeclGraph)
   let diagram = topComments Dia.===  (Dia.alignL declDia) Dia.=== bottomComments
   pure (diagram)
 
@@ -116,9 +119,11 @@ viewDiagramBase (DeclQueryValue _ _ commentsBefore commentsAfter) = (topComments
   bottomComments = placeDiagrams $ map commentToDiagram commentsAfter
 
 nodeDiagram declQV@(DeclQueryValue _ declGraph commentsBefore commentsAfter) (NodeQueryValue _ name) = do
-  let (topComments, bottomComments) = viewDiagramBase declQV
-  let viewGraph = neighborsSubgraph name declGraph
-  nodeDia <- renderIngSyntaxGraph "" (declGraph, viewGraph)
+  let
+    collapsedDeclGraph = syntaxGraphToLessCollapsedGraph declGraph
+    (topComments, bottomComments) = viewDiagramBase declQV
+    viewGraph = neighborsSubgraph name collapsedDeclGraph
+  nodeDia <- renderIngSyntaxGraph "" (collapsedDeclGraph, viewGraph)
   let diagram = topComments Dia.=== (Dia.alignL nodeDia) Dia.=== bottomComments
   pure (diagram)
 
@@ -133,7 +138,7 @@ staticDiagramFromModule :: SpecialBackend b Double =>
 staticDiagramFromModule includeComments (declSpansAndGraphs, comments) = do
   let 
     (declarationSpans, graphs) = unzip declSpansAndGraphs
-    fullGraphs = map moduleGraphsToViewGraphs graphs
+    fullGraphs = map (moduleGraphsToViewGraphs . syntaxGraphToCollapsedGraph) graphs
   --print drawingsGraphs
   declarationDiagrams <- traverse (renderIngSyntaxGraph "") fullGraphs
   let

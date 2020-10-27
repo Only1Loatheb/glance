@@ -12,7 +12,6 @@ import qualified Diagrams.Prelude as Dia hiding ((#), (&))
 import           Data.Maybe
 import qualified Language.Haskell.Exts as Exts
 
-import CollapseGraph(translateModuleToCollapsedGraphs)
 import           Types  (
   SpecialDiagram
   , SpecialQDiagram
@@ -23,6 +22,8 @@ import           Types  (
   , ModuleGraphs
   , ViewGraphs
   )
+import SimpSyntaxToSyntaxGraph(translateDeclToSyntaxGraph)
+import HsSyntaxToSimpSyntax(hsDeclToSimpDecl)
 
 parseModule :: String
   -> IO (Exts.ParseResult (Exts.Module Exts.SrcSpanInfo, [Exts.Comment]))
@@ -35,20 +36,21 @@ parseModule inputFilename =
         })
     inputFilename
 
-moduleToSrcSpanStarts ::
-  Exts.Module Exts.SrcSpanInfo -> [Exts.SrcSpan]
-moduleToSrcSpanStarts (Exts.Module _ _ _ _ decls)
-  = fmap (Exts.srcInfoSpan . Exts.ann) decls
-moduleToSrcSpanStarts moduleSyntax
-  = error $ "Unsupported syntax in moduleToSrcSpanStarts: "
+moduleToDecls ::
+  Exts.Module Exts.SrcSpanInfo -> [Exts.Decl Exts.SrcSpanInfo]
+moduleToDecls (Exts.Module _ _ _ _ decls) = decls
+moduleToDecls moduleSyntax = error $ "Unsupported syntax in moduleToDecls: "
     <> show moduleSyntax
+
+getSrcSpans = map (Exts.srcInfoSpan . Exts.ann)
 
 getModuleGraphs :: String -> IO(ModuleGraphs)
 getModuleGraphs inputFilename = do
   parseResult <- parseModule inputFilename
   let
     (parsedModule, comments) = Exts.fromParseResult parseResult
-    declGraphs = translateModuleToCollapsedGraphs parsedModule
-    declSpans = moduleToSrcSpanStarts parsedModule
+    decls = moduleToDecls parsedModule
+    declGraphs = map (translateDeclToSyntaxGraph . hsDeclToSimpDecl) decls
+    declSpans = getSrcSpans decls
     declSpansAndGraphs = zip declSpans declGraphs
   pure (declSpansAndGraphs, comments)

@@ -4,7 +4,7 @@ module VisualTests(
   visualTranslateTests
   , prettyShowSyntaxGraph
   ) where
-
+import qualified Language.Haskell.Exts as Exts
 import Diagrams.Prelude hiding ((#), (&))
 import qualified Data.Graph.Inductive.Graph as ING
 import Data.List(intercalate)
@@ -14,22 +14,38 @@ import qualified Data.StringMap as SMap
 
 import Types(SpecialDiagram, SpecialBackend, NodeName(..),TransformParams(..))
 
-import HsSyntaxToSimpSyntax(stringToSimpDecl)
+import HsSyntaxToSimpSyntax(stringToSimpDecl, hsDeclToSimpDecl)
 import SyntaxGraph( SyntaxGraph(..))
-import SimpSyntaxToSyntaxGraph(translateStringToSyntaxGraph)
-import CollapseGraph(translateStringToCollapsedGraphAndDecl, syntaxGraphToFglGraph)
+import SimpSyntaxToSyntaxGraph(translateStringToSyntaxGraph, customParseDecl, translateDeclToSyntaxGraph)
+import CollapseGraph(syntaxGraphToCollapsedGraph, syntaxGraphToFglGraph)
 import IconToSymbolDiagram(nameDiagram)
 import Rendering(renderIngSyntaxGraph)
 
-import Types(Icon(..), SpecialDiagram, SpecialBackend, SpecialNum
-            , NodeName(..), Port(..), LikeApplyFlavor(..)
-            , NamedIcon, Labeled(..), IconInfo
-            , Named(..), NameAndPort(..)
-            ,TransformParams(..),TransformableDia
-            ,CaseOrMultiIfTag(..))
+import Types(
+  Icon(..)
+  , SpecialDiagram
+  , SpecialBackend
+  , SpecialNum
+  , NodeName(..)
+  , Port(..)
+  , LikeApplyFlavor(..)
+  , NamedIcon
+  , Labeled(..)
+  , IconInfo
+  , Named(..)
+  , NameAndPort(..)
+  , TransformParams(..)
+  , TransformableDia
+  , CaseOrMultiIfTag(..)
+  , AnnotatedFGR(..)
+  )
 
 import TextBox(coloredTextBox)
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
+
+translateDeclToCollapsedGraph :: Exts.Decl Exts.SrcSpanInfo -> AnnotatedFGR
+translateDeclToCollapsedGraph
+  = syntaxGraphToCollapsedGraph . translateDeclToSyntaxGraph . hsDeclToSimpDecl
 
 prettyShowList :: Show a => [a] -> String
 prettyShowList ls = intercalate "\n" $ fmap show ls
@@ -430,8 +446,9 @@ translateStringToDrawing :: SpecialBackend b Double =>
 translateStringToDrawing s = do
   putStrLn $ "Translating string: " ++ s
   let
+    decl = customParseDecl s
     simpDecl = stringToSimpDecl s
-    (collapsedGraph, decl) = translateStringToCollapsedGraphAndDecl s
+    collapsedGraph = translateDeclToCollapsedGraph decl
     syntaxGraph = translateStringToSyntaxGraph s
     fglGraph = syntaxGraphToFglGraph syntaxGraph
   let
