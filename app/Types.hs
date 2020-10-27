@@ -154,7 +154,7 @@ data SyntaxNodeCore =
   | FunctionValueNode  -- Function definition (ie. lambda expression)
     String -- function name
     (Set.Set NodeName)  -- Nodes inside the lambda
-  | CaseResultNode
+  | CaseResultNode -- if same icon is in condition statment and result value
   | CaseOrMultiIfNode CaseOrMultiIfTag Int
   | ListCompNode
   | ListGenNode

@@ -99,17 +99,16 @@ drawLambdaRegions iconInfo placedNodes
         (find (\(Named n2 _, _) -> n1 == n2) placedNodes)
 
     -- Also draw the region around the icon the lambda is in.
+    -- Consult CollapseGraph to find out where FunctionDefIcon can be nested 
     drawRegion :: Set.Set NodeName -> NamedIcon -> SpecialDiagram b Double
     drawRegion parentNames (Named name (Icon diagramIcon _)) = case diagramIcon of
-      (FunctionDefIcon _ enclosedNames _)
-        -> lambdaRegionToDiagram enclosed name where
-            enclosed = findDia <$> (name : Set.toList (parentNames <> enclosedNames))
-      (NestedApply _ headIcon icons)
-        -> mconcat
-           $ drawRegion (Set.insert name parentNames)
-           <$> mapMaybe
-           (findMaybeIconFromName iconInfo)
-           (headIcon:icons)
+      (FunctionDefIcon _ enclosedNames maybeEmbededNode)
+        -> thisRegionDiagram <> innerRegionDiagram where
+          thisRegionDiagram = lambdaRegionToDiagram enclosed name
+          enclosed = findDia <$> (name : Set.toList (parentNames <> enclosedNames))
+          innerRegionDiagram = case findMaybeIconFromName iconInfo maybeEmbededNode of
+            Nothing -> mempty
+            Just foundIcon -> drawRegion (Set.insert name parentNames) foundIcon
       _ -> mempty
 
 customLayoutParams :: GV.GraphvizParams ING.Node v e ClusterT v

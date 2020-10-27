@@ -95,8 +95,7 @@ syntaxNodeIsEmbeddable parentType (SyntaxNode syntaxNode _) mParentPort mChildPo
     (LambdaParent fname, CaseOrMultiIfNode {}) -> parentPortIsInput && (isTempLabel fname) && childPortIsResult
     (LambdaParent fname, LiteralNode {}) -> parentPortIsInput && (isTempLabel fname) && childPortIsResult
     (LambdaParent fname, ListGenNode {}) -> parentPortIsInput && (isTempLabel fname) && childPortIsResult
-    -- Move region drawing to arg node and enable this match
-    -- (LambdaParent fname, FunctionValueNode {}) -> (isInput mParentPort) && (isTempLabel fname) && childPortIsResult
+    (LambdaParent fname, FunctionValueNode {}) -> (isInput mParentPort) && (isTempLabel fname) && childPortIsResult
 
     -- (ApplyParent, FunctionValueNode {})
     --   -> parentPortNotResult && childPortIsResult
