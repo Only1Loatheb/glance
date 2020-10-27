@@ -82,6 +82,7 @@ import           Types(
   , Edge(..)
   , EdgeOption(..)
   , Connection(..)
+  , FuncDefRegionInfo
   )
 import Util(
   makeSimpleEdge
@@ -135,6 +136,7 @@ import StringSymbols(
   , showSignlessLit
   , getFuncDefLabel
   )
+import FuncDefRegionInfo(getFuncDefRegionInfo)
   
 {-# ANN module "HLint: ignore Use record patterns" #-}
 
@@ -530,9 +532,8 @@ makeReferenceToArgument rhsRef (GraphAndRef _ ref) lamPort = if rhsRef == ref
 
 makeLambdaNode :: SyntaxGraph -> String -> [NodeName] -> SrcRef -> SyntaxNode
 makeLambdaNode combinedGraph  functionName lambdaNames srcRef = node where
-  allNodeNames = Set.map naName (sgNodes combinedGraph)
-  enclosedNodeNames =  Set.difference allNodeNames (Set.fromList lambdaNames)
-  node = SyntaxNode (FunctionValueNode functionName enclosedNodeNames) srcRef
+  regionInfo = getFuncDefRegionInfo combinedGraph lambdaNames
+  node = SyntaxNode (FunctionValueNode functionName regionInfo) srcRef
 
 makeLambdaArgumentNode :: [(GraphAndRef, Maybe String)] -> SrcRef -> SyntaxNode
 makeLambdaArgumentNode argPatternValsWithAsNames srcRef = node where 

@@ -32,6 +32,7 @@ import           Types(
   , Named(..)
   , EmbedderSyntaxNode
   , SrcRef
+  , FuncDefRegionInfo
   )
 import Util(maybeBoolToBool)
 
@@ -42,7 +43,7 @@ nodeToIcon (Embedder embeddedNodes (SyntaxNode node src)) = case node of
   (BindNameNode s)                  -> Icon (BindTextBoxIcon s) src
   (LiteralNode s)                   -> Icon (TextBoxIcon s) src
   (FunctionArgNode labels)          -> functionArgIcon labels src
-  (FunctionValueNode str bodyNodes) -> functionDefIcon embeddedNodes str bodyNodes src
+  (FunctionValueNode str funcDefRegionInfo) -> functionDefIcon embeddedNodes str funcDefRegionInfo src
   CaseResultNode                    -> Icon (CaseResultIcon) src
   (CaseOrMultiIfNode tag x)         -> nestedCaseOrMultiIfToIcon tag x embeddedNodes src
   (ListCompNode)                    -> Icon ListCompIcon src -- TODO actualy embede nodes
@@ -90,13 +91,13 @@ functionArgIcon labels src=
 functionDefIcon ::
   Set.Set (NodeName, Edge)  -- embedded icons
   -> String -- name
-  -> Set.Set NodeName  -- body nodes
+  -> FuncDefRegionInfo
   -> SrcRef
   -> Icon
-functionDefIcon embeddedNodes str bodyNodes src =
-  Icon (FunctionDefIcon str bodyNodes embeddedBodyNode) src
+functionDefIcon embeddedNodes str funcDefRegionInfo src =
+  Icon (FunctionDefIcon str funcDefRegionInfo embeddedBodyNode) src
   where
-    dummyNode = SyntaxNode (FunctionValueNode str Set.empty) src
+    dummyNode = SyntaxNode (FunctionValueNode str (Set.empty, 0)) src
     embeddedBodyNode = makeArg embeddedNodes (inputPort dummyNode)
 
 nestedCaseOrMultiIfToIcon ::

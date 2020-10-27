@@ -102,9 +102,9 @@ drawLambdaRegions iconInfo placedNodes
     -- Consult CollapseGraph to find out where FunctionDefIcon can be nested 
     drawRegion :: Set.Set NodeName -> NamedIcon -> SpecialDiagram b Double
     drawRegion parentNames (Named name (Icon diagramIcon _)) = case diagramIcon of
-      (FunctionDefIcon _ enclosedNames maybeEmbededNode)
+      (FunctionDefIcon _ (enclosedNames,level) maybeEmbededNode)
         -> thisRegionDiagram <> innerRegionDiagram where
-          thisRegionDiagram = lambdaRegionToDiagram enclosed name
+          thisRegionDiagram = lambdaRegionToDiagram enclosed name level
           enclosed = findDia <$> (name : Set.toList (parentNames <> enclosedNames))
           innerRegionDiagram = case findMaybeIconFromName iconInfo maybeEmbededNode of
             Nothing -> mempty

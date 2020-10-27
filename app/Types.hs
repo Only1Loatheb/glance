@@ -46,6 +46,7 @@ module Types (
   , QueryValue(..)
   , View(..)
   , CreateView
+  , FuncDefRegionInfo
 ) where
 
 import Diagrams.Prelude(QDiagram, V2, Any, Renderable, Path, IsName)
@@ -81,6 +82,10 @@ instance Applicative Labeled where
   pure x = Labeled x ""
   (Labeled f fStr) <*> (Labeled x xStr) = Labeled (f x) (fStr <> xStr)
 
+type FuncDefRegionInfo = (
+  (Set.Set NodeName)  -- Nodes inside the lambda
+  , Int) -- lambdaNestingLevel
+
 type IconInfo = IMap.IntMap Icon
 
 type SrcRef = Exts.SrcSpan
@@ -96,7 +101,7 @@ data DiagramIcon =
     [String]  -- Parameter labels
   | FunctionDefIcon
     String  -- Function name
-    (Set.Set NodeName)  -- Nodes inside the lambda
+    FuncDefRegionInfo
     (Maybe NodeName) -- embeded body node
   | BindTextBoxIcon String
   | NestedApply
@@ -153,7 +158,7 @@ data SyntaxNodeCore =
     [String]  -- Parameter labels
   | FunctionValueNode  -- Function definition (ie. lambda expression)
     String -- function name
-    (Set.Set NodeName)  -- Nodes inside the lambda
+    FuncDefRegionInfo
   | CaseResultNode -- if same icon is in condition statment and result value
   | CaseOrMultiIfNode CaseOrMultiIfTag Int
   | ListCompNode

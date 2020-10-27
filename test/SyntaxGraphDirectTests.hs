@@ -100,8 +100,8 @@ syntaxGraphComparisonTests = TestList [
   , evalExpNameInContextTest
   , evalExpLitTest
   , evalExpAppTest
-  , translateStrFunDef
-  , evalDeclFunDefTest
+  -- , translateStrFunDef
+  -- , evalDeclFunDefTest
   ]
 
 makeBoxTest :: Test
@@ -177,41 +177,41 @@ evalExpAppTest = syntaxGraphTest expectedSyntaxGraph generatedSyntaxGraph where
     , sgEmbedMap = IMap.fromList []
     }
 
-translateStrFunDef :: Test
-translateStrFunDef = syntaxGraphTest expectedSyntaxGraph generatedSyntaxGraph where
-  generatedSyntaxGraph = translateStringToSyntaxGraph "f x = x"
-  expectedSyntaxGraph = SyntaxGraph {
-    sgNodes = Set.fromList [
-      Named {naName = NodeName 0, naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = FunctionValueNode "f" (Set.fromList []), srcRef = Exts.SrcSpan "<unknown>.hs" 1 1 1 8}}}
-      ,Named {naName = NodeName 1, naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = FunctionArgNode ["x"], srcRef = Exts.SrcSpan "<unknown>.hs" 1 1 1 8}}}
-      ,Named {naName = NodeName 3, naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = BindNameNode "f", srcRef = Exts.SrcSpan "<unknown>.hs" 1 1 1 8}}}]
-    , sgEdges = Set.fromList [
-      Edge {edgeOption = DrawAndConstraint, edgeConnection = (NameAndPort (NodeName 0) (Port 1),NameAndPort (NodeName 3) (Port 0))}
-      ,Edge {edgeOption = DrawAndConstraint, edgeConnection = (NameAndPort (NodeName 1) (Port 3),NameAndPort (NodeName 0) (Port 0))}
-      ,Edge {edgeOption = DoNotDrawButConstraint, edgeConnection = (NameAndPort (NodeName 1) (Port 1),NameAndPort (NodeName 0) (Port 0))}]
-    , sgSinks = Set.fromList []
-    , sgBinds = SMap.empty
-    , sgEmbedMap = IMap.fromList []
-    }
+-- translateStrFunDef :: Test
+-- translateStrFunDef = syntaxGraphTest expectedSyntaxGraph generatedSyntaxGraph where
+--   generatedSyntaxGraph = translateStringToSyntaxGraph "f x = x"
+--   expectedSyntaxGraph = SyntaxGraph {
+--     sgNodes = Set.fromList [
+--       Named {naName = NodeName 0, naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = FunctionValueNode "f" (Set.fromList []), srcRef = Exts.SrcSpan "<unknown>.hs" 1 1 1 8}}}
+--       ,Named {naName = NodeName 1, naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = FunctionArgNode ["x"], srcRef = Exts.SrcSpan "<unknown>.hs" 1 1 1 8}}}
+--       ,Named {naName = NodeName 3, naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = BindNameNode "f", srcRef = Exts.SrcSpan "<unknown>.hs" 1 1 1 8}}}]
+--     , sgEdges = Set.fromList [
+--       Edge {edgeOption = DrawAndConstraint, edgeConnection = (NameAndPort (NodeName 0) (Port 1),NameAndPort (NodeName 3) (Port 0))}
+--       ,Edge {edgeOption = DrawAndConstraint, edgeConnection = (NameAndPort (NodeName 1) (Port 3),NameAndPort (NodeName 0) (Port 0))}
+--       ,Edge {edgeOption = DoNotDrawButConstraint, edgeConnection = (NameAndPort (NodeName 1) (Port 1),NameAndPort (NodeName 0) (Port 0))}]
+--     , sgSinks = Set.fromList []
+--     , sgBinds = SMap.empty
+--     , sgEmbedMap = IMap.fromList []
+--     }
 
--- f x = 1
-evalDeclFunDefTest :: Test
-evalDeclFunDefTest = syntaxGraphTest expectedSyntaxGraph generatedSyntaxGraph where
-  generatedSyntaxGraph = translateStringToSyntaxGraph "f x = 1"
-  expectedSyntaxGraph = SyntaxGraph {
-    sgNodes = Set.fromList [
-      Named {naName = NodeName 0, naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = FunctionValueNode "f" (Set.fromList [NodeName 2]), srcRef = Exts.SrcSpan "<unknown>.hs" 1 1 1 8}}}
-      , Named {naName = NodeName 1, naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = FunctionArgNode ["x"], srcRef = Exts.SrcSpan "<unknown>.hs" 1 1 1 8}}}
-      , Named {naName = NodeName 2, naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = LiteralNode "1", srcRef = Exts.SrcSpan "<unknown>.hs" 1 7 1 8}}}
-      , Named {naName = NodeName 3, naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = BindNameNode "f", srcRef = Exts.SrcSpan "<unknown>.hs" 1 1 1 8}}}]
-    , sgEdges = Set.fromList [
-      Edge {edgeOption = DrawAndConstraint, edgeConnection = (NameAndPort (NodeName 0) (Port 1),NameAndPort (NodeName 3) (Port 0))}
-      ,Edge {edgeOption = DrawAndConstraint, edgeConnection = (NameAndPort (NodeName 2) (Port 1),NameAndPort (NodeName 0) (Port 0))}
-      ,Edge {edgeOption = DoNotDrawButConstraint, edgeConnection = (NameAndPort (NodeName 1) (Port 1),NameAndPort (NodeName 0) (Port 0))}]
-    , sgSinks = Set.fromList []
-    , sgBinds = SMap.empty
-    , sgEmbedMap = IMap.fromList []
-    }
+-- -- f x = 1
+-- evalDeclFunDefTest :: Test
+-- evalDeclFunDefTest = syntaxGraphTest expectedSyntaxGraph generatedSyntaxGraph where
+--   generatedSyntaxGraph = translateStringToSyntaxGraph "f x = 1"
+--   expectedSyntaxGraph = SyntaxGraph {
+--     sgNodes = Set.fromList [
+--       Named {naName = NodeName 0, naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = FunctionValueNode "f" (Set.fromList [NodeName 2]), srcRef = Exts.SrcSpan "<unknown>.hs" 1 1 1 8}}}
+--       , Named {naName = NodeName 1, naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = FunctionArgNode ["x"], srcRef = Exts.SrcSpan "<unknown>.hs" 1 1 1 8}}}
+--       , Named {naName = NodeName 2, naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = LiteralNode "1", srcRef = Exts.SrcSpan "<unknown>.hs" 1 7 1 8}}}
+--       , Named {naName = NodeName 3, naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = BindNameNode "f", srcRef = Exts.SrcSpan "<unknown>.hs" 1 1 1 8}}}]
+--     , sgEdges = Set.fromList [
+--       Edge {edgeOption = DrawAndConstraint, edgeConnection = (NameAndPort (NodeName 0) (Port 1),NameAndPort (NodeName 3) (Port 0))}
+--       ,Edge {edgeOption = DrawAndConstraint, edgeConnection = (NameAndPort (NodeName 2) (Port 1),NameAndPort (NodeName 0) (Port 0))}
+--       ,Edge {edgeOption = DoNotDrawButConstraint, edgeConnection = (NameAndPort (NodeName 1) (Port 1),NameAndPort (NodeName 0) (Port 0))}]
+--     , sgSinks = Set.fromList []
+--     , sgBinds = SMap.empty
+--     , sgEmbedMap = IMap.fromList []
+--     }
 
 -- FGL Graph:
 -- 0:Named {naName = NodeName 0, naVal = Embedder {emEmbedded = fromList [], emNode = SyntaxNode {syntaxNodeCore = FunctionValueNode "f" (fromList []), srcRef = SrcSpan "<unknown>.hs" 1 1 1 8}}}->[(Edge {edgeOption = DrawAndConstraint, edgeConnection = (NameAndPort (NodeName 0) (Port 1),NameAndPort (NodeName 3) (Port 0))},3)]

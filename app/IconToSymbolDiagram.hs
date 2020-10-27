@@ -98,7 +98,7 @@ portSeparationSize :: (Fractional a) => a
 portSeparationSize = 0.3
 
 lambdaRegionPadding :: (Fractional a) => a
-lambdaRegionPadding = 2 * letterHeight + defaultLineWidth
+lambdaRegionPadding = 2.4 * letterHeight
 
 defaultOpacity :: (Fractional a) => a
 defaultOpacity = 0.4
@@ -598,6 +598,7 @@ functionDefDia iconInfo functionName input transformParams = finalDiagram where
 lambdaRegionToDiagram :: SpecialBackend b Double 
   => [SpecialDiagram b Double]
   -> NodeName
+  -> Int
   -> SpecialDiagram b Double
 lambdaRegionToDiagram
     = lambdaRegionSymbol
@@ -609,12 +610,13 @@ lambdaRegionToDiagram
 lambdaRegionSymbol :: SpecialBackend b Double
   => [SpecialDiagram b Double]
   -> NodeName
+  -> Int
   -> SpecialDiagram b Double
-lambdaRegionSymbol enclosedDiagarms (NodeName nameInt)
+lambdaRegionSymbol enclosedDiagarms (NodeName nameInt) level
   = regionSymbol
   where
     -- TODO Add lambda ranks/levels
-    paddingSize =  lambdaRegionPadding + (lambdaRegionPadding/30.0) * (fromIntegral $ length enclosedDiagarms)
+    paddingSize =  lambdaRegionPadding + 2 * defaultLineWidth * (fromIntegral level)
     paddedDiagrams = fmap (frame paddingSize) enclosedDiagarms
     diagramBoxes = map  boundingRect paddedDiagrams
     boxesPath = mconcat diagramBoxes
