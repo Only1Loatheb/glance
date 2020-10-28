@@ -586,7 +586,7 @@ functionDefDia ::  SpecialBackend b n
   -> TransformableDia b n
 functionDefDia iconInfo functionName input transformParams = finalDiagram where
   name = tpName transformParams
-  lambdaSymbol = alignBR $ lambdaBodySymbol functionName
+  lambdaSymbol = alignBR $ (lambdaBodySymbol functionName ||| memptyWithPosition)
   inputDiagram = makeInputDiagram iconInfo transformParams (pure input) name
   resultDiagram =  makeResultDiagram name
   finalDiagram = lambdaSymbol <> (inputDiagram === resultDiagram)
@@ -633,40 +633,40 @@ getArrowShadowOpts :: (RealFloat n, Typeable n)
   => (NameAndPort,NameAndPort)
   -> (Point V2 n, Point V2 n)
   -> (Maybe (Angle n), Maybe (Angle n))
-  -> Icon
+  -> (NamedIcon,NamedIcon)
   -> ArrowOpts n
 getArrowShadowOpts 
-  (_, (NameAndPort _ toPort))
-  points maybeAngles iconTo
+  (_, namedPortTo)
+  points maybeAngles iconPair
   = shaftStyle %~ (lwG arrowShadowWidth .
                 lcA $ withOpacity shaftColor defaultShadowOpacity)
   $ headStyle %~ fc shaftColor
-  $ getArrowOpts points maybeAngles iconTo toPort where
+  $ getArrowOpts points maybeAngles iconPair namedPortTo where
     shaftColor = backgroundC colorScheme
 
 getArrowBaseOpts :: (RealFloat n, Typeable n)
   => (NameAndPort,NameAndPort)
   -> (Point V2 n, Point V2 n)
   -> (Maybe (Angle n), Maybe (Angle n))
-  -> (Icon, Icon)
+  -> (NamedIcon, NamedIcon)
   -> ArrowOpts n
 getArrowBaseOpts 
-  namesAndPorts@(_, (NameAndPort _ toPort))
+  namesAndPorts@(_, namedPortTo)
   points maybeAngles 
-  iconPair@(_, iconTo)
+  iconPair
   = shaftStyle %~ (lwG arrowLineWidth {-- )-- -} . lc shaftColor) 
   $ headStyle %~ fc shaftColor
-  $ getArrowOpts points maybeAngles iconTo toPort where
+  $ getArrowOpts points maybeAngles iconPair namedPortTo where
     shaftColor = getShaftColor namesAndPorts iconPair
 
-getShaftColor :: (NameAndPort,NameAndPort) -> (Icon, Icon) -> Colour Double
+getShaftColor :: (NameAndPort,NameAndPort) -> (NamedIcon, NamedIcon) -> Colour Double
 getShaftColor = getShaftColor' edgeColors where
   edgeColors = edgeListC colorScheme
 
 getShaftColor' :: [Colour Double]
-  -> (NameAndPort,NameAndPort)-> (Icon, Icon) -> Colour Double
-getShaftColor' _ (NameAndPort _ ResultPortConst,_) (Icon FunctionDefIcon {} _, _) = lambdaC colorScheme
-getShaftColor' _ (_, NameAndPort _ InputPortConst) (_, Icon FunctionDefIcon {} _) = lambdaC colorScheme
+  -> (NameAndPort,NameAndPort)-> (NamedIcon, NamedIcon) -> Colour Double
+getShaftColor' _ (NameAndPort _ ResultPortConst,_) (Named _ (Icon FunctionDefIcon {} _), _) = lambdaC colorScheme
+getShaftColor' _ (_, NameAndPort _ InputPortConst) (_, Named iconName (Icon FunctionDefIcon {} _)) = lambdaC colorScheme
 getShaftColor' edgeColors (NameAndPort (NodeName nodeNum) (Port portNum),_) _ = shaftColor where
   namePortHash = mod (portNum + (503 * nodeNum)) (length edgeColors)
   shaftColor = edgeColors !! namePortHash
@@ -674,14 +674,14 @@ getShaftColor' edgeColors (NameAndPort (NodeName nodeNum) (Port portNum),_) _ = 
 getArrowOpts :: (RealFloat n, Typeable n)
   => (Point V2 n, Point V2 n)
   -> (Maybe (Angle n), Maybe (Angle n))
-  -> Icon
-  -> Port
+  -> (NamedIcon, NamedIcon)
+  -> NameAndPort
   -> ArrowOpts n
-getArrowOpts (formPoint, toPoint) (anglesFrom,anglesTo) iconTo portTo
+getArrowOpts (formPoint, toPoint) (anglesFrom,anglesTo) (_,iconTo) namedPortTo
   = arrowOptions where
     arrowOptions =
       -- arrowHead .~ noHead
-      arrowHead .~ getArrowHead iconTo portTo
+      arrowHead .~ getArrowHead iconTo namedPortTo
       $ arrowTail .~ noTail
       $ arrowShaft .~ edgeSymbol formPoint toPoint anglesFrom anglesTo
       -- TODO Don't use a magic number for lengths (headLength and tailLength)
@@ -689,8 +689,9 @@ getArrowOpts (formPoint, toPoint) (anglesFrom,anglesTo) iconTo portTo
       $ with
 
 -- getArrowHead :: Icon -> 
-getArrowHead :: RealFloat n => Icon -> Port -> ArrowHT n
-getArrowHead (Icon FunctionDefIcon {} _) InputPortConst = noHead
+getArrowHead :: RealFloat n => NamedIcon -> NameAndPort -> ArrowHT n
+getArrowHead (Named iconName (Icon FunctionDefIcon {} _)) (NameAndPort nodeName InputPortConst) 
+  = if nodeName == iconName then noHead else tri
 getArrowHead _ _ = tri
 -- https://archives.haskell.org/projects.haskell.org/diagrams/doc/arrow.html
 

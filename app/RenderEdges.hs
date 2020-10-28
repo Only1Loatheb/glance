@@ -72,7 +72,11 @@ dontConstrainAttrs :: [GVA.Attribute]
 dontConstrainAttrs = [ GVA.Constraint False, GVA.MinLen 0]
 
 edgeGraphVizAttrs :: IconInfo -> (a, Int, EmbedInfo Edge) -> [GVA.Attribute]
-edgeGraphVizAttrs _ (_, _, EmbedInfo _ (Edge DoNotDrawButConstraint _)) = [ GVA.MinLen 3 ]
+edgeGraphVizAttrs iconInfo (_, iconNameTo, EmbedInfo _ (Edge DoNotDrawButConstraint _)) 
+  = case iconInfo IMap.! iconNameTo of
+    (Icon (FunctionDefIcon _ (_,level) _) _) -> [ GVA.MinLen (2 * level + 1) ]
+    _ -> []
+  
 edgeGraphVizAttrs _ (_, _, EmbedInfo _ (Edge DrawAndNotConstraint _)) = dontConstrainAttrs
 edgeGraphVizAttrs _ (_, _, EmbedInfo _ (Edge _ (_,NameAndPort _ InputPortConst))) = [] 
 edgeGraphVizAttrs iconInfo (_nFrom, iconNameTo, _) = case iconInfo IMap.! iconNameTo of
@@ -147,19 +151,17 @@ getArrowsOpts
       namePorts@(fromNamePort, toNamePort))))
   (pointFrom, pointTo)
   = (arrowBaseOpts, arrowShadowOpts) where
-    node0NameAndPort@(Named _ iconFrom) = fromMaybeError
-                ("makeEdge: node0 is not in graph. node0: " ++ show node0)
+    namedIconFrom = fromMaybeError ("makeEdge: nodeFrom is not in graph: " ++ show node0)
                 $ ING.lab graph node0
-    node1NameAndPort@(Named _ iconTo) = fromMaybeError
-                ("makeEdge: node1 is not in graph. node1: " ++ show node1)
+    namedIconTo = fromMaybeError ("makeEdge: nodeTo is not in graph: " ++ show node1)
                 $ ING.lab graph node1
 
-    angleFrom = findPortAngles iconInfo node0NameAndPort fromNamePort
-    angleTo = findPortAngles iconInfo node1NameAndPort toNamePort
+    angleFrom = findPortAngles iconInfo namedIconFrom fromNamePort
+    angleTo = findPortAngles iconInfo namedIconTo toNamePort
 
-    arrowBaseOpts{-'-} = getArrowBaseOpts namePorts (pointFrom, pointTo)  (angleFrom, angleTo) (iconFrom, iconTo)
+    arrowBaseOpts{-'-} = getArrowBaseOpts namePorts (pointFrom, pointTo)  (angleFrom, angleTo) (namedIconFrom, namedIconTo)
     -- arrowBaseOpts = Dia.shaftStyle Dia.%~ ( Dia.lc (shaftColor e))  $ arrowBaseOpts'
-    arrowShadowOpts = getArrowShadowOpts namePorts (pointFrom, pointTo)  (angleFrom, angleTo) iconTo
+    arrowShadowOpts = getArrowShadowOpts namePorts (pointFrom, pointTo)  (angleFrom, angleTo) (namedIconFrom, namedIconTo)
 
 shaftColor (Edge DrawAndNotConstraint _) = Dia.red
 shaftColor (Edge DoNotDrawButConstraint _) = Dia.blue
