@@ -25,15 +25,16 @@ module SyntaxGraph(
   , grNamePortToGrRef
   , initialIdState
   , lookupInEmbeddingMap
-  , edgeForRefPortIsSource
-  , edgeForRefPortIsNotSource
+  , edgeFromPortToRef
+  , edgeFromRefToPort
   , syntaxGraphFromEdges
   , makeAsBindGraph
   , graphsToComponents
-  , combineExpresionsIsSource
+  , combineFromPortToGraph
   , graphAndRefToRef
   , makeEdgesKeepBindings
   , deleteBindingsWithRef
+  , combineFromGraphToPort
 ) where
 
 import Control.Monad.State ( State, state )
@@ -197,29 +198,29 @@ namesInPattern (graphAndRef, mName) = case mName of
 -- END Pattern
 -- BEGIN make edges
 combineExpressions :: Bool -> [(GraphAndRef, NameAndPort)] -> SyntaxGraph
-combineExpressions isSource portExpPairs
-  = if isSource
-    then mconcat $ fmap (combineExpresionsIsSource makeSimpleEdge) portExpPairs 
-    else mconcat $ fmap (combineExpresionsNotIsSource makeSimpleEdge) portExpPairs 
+combineExpressions isFromPortToGraph portExpPairs
+  = if isFromPortToGraph
+    then mconcat $ fmap (uncurry $ combineFromPortToGraph makeSimpleEdge) portExpPairs 
+    else mconcat $ fmap (uncurry $ combineFromGraphToPort makeSimpleEdge) portExpPairs 
 
-combineExpresionsIsSource :: (Connection-> Edge) -> (GraphAndRef, NameAndPort) -> SyntaxGraph
-combineExpresionsIsSource edgeConstructor (GraphAndRef graph ref, port) 
-  = graph <> edgeForRefPortIsSource edgeConstructor ref port
+combineFromPortToGraph :: (Connection-> Edge) -> GraphAndRef -> NameAndPort -> SyntaxGraph
+combineFromPortToGraph edgeConstructor (GraphAndRef graph ref) port 
+  = graph <> edgeFromPortToRef edgeConstructor ref port
 
-combineExpresionsNotIsSource :: (Connection-> Edge) -> (GraphAndRef, NameAndPort) -> SyntaxGraph
-combineExpresionsNotIsSource edgeConstructor (GraphAndRef graph ref, port) 
-  = graph <> edgeForRefPortIsNotSource edgeConstructor ref port
+combineFromGraphToPort :: (Connection-> Edge) -> GraphAndRef -> NameAndPort -> SyntaxGraph
+combineFromGraphToPort edgeConstructor (GraphAndRef graph ref) port 
+  = graph <> edgeFromRefToPort edgeConstructor ref port
     
 
-edgeForRefPortIsSource :: (Connection-> Edge) -> Reference -> NameAndPort -> SyntaxGraph
-edgeForRefPortIsSource edgeConstructor ref port = case ref of
+edgeFromPortToRef :: (Connection-> Edge) -> Reference -> NameAndPort -> SyntaxGraph
+edgeFromPortToRef edgeConstructor ref port = case ref of
       Left str -> bindsToSyntaxGraph $ SMap.singleton str (Right port)
       Right refPort -> syntaxGraphFromEdges $ Set.singleton  (edgeConstructor connection)
         where
           connection = (port, refPort)
 
-edgeForRefPortIsNotSource :: (Connection-> Edge) -> Reference -> NameAndPort -> SyntaxGraph
-edgeForRefPortIsNotSource edgeConstructor ref port = case ref of
+edgeFromRefToPort :: (Connection-> Edge) -> Reference -> NameAndPort -> SyntaxGraph
+edgeFromRefToPort edgeConstructor ref port = case ref of
       Left str -> sinksToSyntaxGraph $ Set.singleton (SgSink str port)
       Right refPort -> syntaxGraphFromEdges $ Set.singleton  (edgeConstructor connection)
         where

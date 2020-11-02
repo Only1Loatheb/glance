@@ -45,6 +45,7 @@ import           PortConstants (
   , listFromPort
   , listThenPort
   , listToPort
+  , listCompQualPorts
   )
 
 import HsSyntaxToSimpSyntax(
@@ -113,15 +114,16 @@ import SyntaxGraph(
   , grNamePortToGrRef
   , initialIdState
   , EvalContext
-  , edgeForRefPortIsSource
-  , edgeForRefPortIsNotSource
+  , edgeFromPortToRef
+  , edgeFromRefToPort
   , syntaxGraphFromEdges
   , makeAsBindGraph
   , graphsToComponents
-  , combineExpresionsIsSource
+  , combineFromPortToGraph
   , deleteBindings
   , graphAndRefToRef
   , deleteBindingsWithRef
+  , combineFromGraphToPort
   )
 import StringSymbols(
   listCompositionPlaceholderStr
@@ -409,13 +411,13 @@ makeCaseNodeGraph :: NodeName -> SyntaxNode -> Reference -> SyntaxGraph
 makeCaseNodeGraph caseIconName caseNode expRef = caseGraph where
     icons = Set.singleton (Named caseIconName (mkEmbedder caseNode))
     caseNodeNameAndPort = nameAndPort caseIconName (inputPort caseNode)
-    inputEdgeGraph = edgeForRefPortIsNotSource makeSimpleEdge expRef caseNodeNameAndPort
+    inputEdgeGraph = edgeFromRefToPort makeSimpleEdge expRef caseNodeNameAndPort
     caseGraph = inputEdgeGraph <> syntaxGraphFromNodes icons
 
 makeConditionEdges :: [Reference] -> NodeName -> SyntaxGraph
 makeConditionEdges patRefs caseIconName = conditionEdgesGraph where
     caseConditionNamedPorts = map (nameAndPort caseIconName) caseConditionPorts
-    patEdgesGraphs = zipWith (edgeForRefPortIsSource makeSimpleEdge) patRefs caseConditionNamedPorts
+    patEdgesGraphs = zipWith (edgeFromPortToRef makeSimpleEdge) patRefs caseConditionNamedPorts
     conditionEdgesGraph = mconcat patEdgesGraphs
 
 makeRhsGraph :: [Bool] -> [Reference ] -> NodeName -> [NodeName] -> [SrcRef]->  SyntaxGraph
@@ -429,7 +431,7 @@ makeRhsGraph patRhsConnected rhsRefs caseIconName resultIconNames altsSrcRefs = 
   unConnectedRhss = map (\(_,(x,y,z))->(x,y)) unConnected
   connectedRhss = map snd connected
 
-  caseEdgeGraph = mconcat $ fmap (uncurry (edgeForRefPortIsNotSource makeSimpleEdge)) unConnectedRhss
+  caseEdgeGraph = mconcat $ fmap (uncurry (edgeFromRefToPort makeSimpleEdge)) unConnectedRhss
 
   resultNodeGraph = mconcat $ zipWith makeCaseResult resultIconNames connectedRhss
 
@@ -746,9 +748,9 @@ evalListGen c l from mThen mTo = do
 
 makeListGenEdges :: NodeName -> GraphAndRef -> Maybe GraphAndRef -> Maybe GraphAndRef -> SyntaxGraph
 makeListGenEdges listGenName (GraphAndRef _ refFrom) maybeThenGraphAndRef maybeToGraphAndRef = mconcat $ edgeFrom : edgeThen ++ edgeTo where
-  edgeFrom = edgeForRefPortIsNotSource makeSimpleEdge refFrom (nameAndPort listGenName listFromPort)
-  edgeThen = maybeToList $ fmap ((flip (edgeForRefPortIsNotSource makeSimpleEdge)) (nameAndPort listGenName listThenPort)) (fmap ref maybeThenGraphAndRef)
-  edgeTo = maybeToList $ fmap ((flip (edgeForRefPortIsNotSource makeSimpleEdge)) (nameAndPort listGenName listToPort)) (fmap ref maybeToGraphAndRef) 
+  edgeFrom = edgeFromRefToPort makeSimpleEdge refFrom (nameAndPort listGenName listFromPort)
+  edgeThen = maybeToList $ fmap ((flip (edgeFromRefToPort makeSimpleEdge)) (nameAndPort listGenName listThenPort)) (fmap ref maybeThenGraphAndRef)
+  edgeTo = maybeToList $ fmap ((flip (edgeFromRefToPort makeSimpleEdge)) (nameAndPort listGenName listToPort)) (fmap ref maybeToGraphAndRef) 
 
 -- BEGIN BEGIN BEGIN BEGIN BEGIN list comp
 -- valus form ListCompNode are connected to item constructor
@@ -767,25 +769,20 @@ evalListComp context l  itemExp qualExps =  do
 
   let gens  = [(srcRef, x) | (SimpQStmt srcRef x@(SqGen {})) <- qualExps]
   genGRContextsAndGRpatRef <- mapM (evalSqGen declContext)  gens
-  let genGraphRefsAndContexts = fmap fst genGRContextsAndGRpatRef
   let genGraphsAndRefs =  fmap snd genGRContextsAndGRpatRef
-  let genContext = Set.unions (declContext : (fmap namesInPattern genGraphRefsAndContexts))
+  let genContext = Set.unions (declContext : (map (namesInPattern . fst) genGRContextsAndGRpatRef))
 
   listCompItemGraphAndRef@(GraphAndRef _ listCompItemRef)  <- evalExp genContext itemExp
   let declGraphsAndRefs = fmap (getRefForListCompItem listCompItemRef) declGraphAndRef
 
   let quals = [q | (SimpQStmt _ (SqQual q)) <- qualExps]
-  qualsGraphsAndRefs <- mapM (evalExp genContext) quals
+  qualGraphsAndRefs <- mapM (evalExp genContext) quals
 
   listCompName <- getUniqueName
-  let listCompNode = SyntaxNode ListCompNode l
-  let listCompNodeRef = nameAndPort listCompName (resultPort listCompNode)
 
-  let expGraphsAndRefs = qualsGraphsAndRefs ++ declGraphsAndRefs
+  let combinedGraphAndRef = makeListCompGraph context listCompName l listCompItemGraphAndRef qualGraphsAndRefs declGraphsAndRefs genGraphsAndRefs
 
-  let combinedGraph = makeListCompGraph context listCompNode listCompNodeRef listCompItemGraphAndRef expGraphsAndRefs genGraphsAndRefs
-
-  pure (GraphAndRef combinedGraph (Right listCompNodeRef))
+  pure combinedGraphAndRef
 
 getRefForListCompItem :: Reference -> SyntaxGraph -> GraphAndRef
 getRefForListCompItem expResultRef bindGraph = GraphAndRef bindGraph ref where
@@ -803,55 +800,52 @@ evalSqGen context (l, (SqGen values itemPat)) = do
 
 evalSqGen _ _ = error "SimpQStmt must be SqGen" 
 
-makeListCompGraph :: EvalContext -> SyntaxNode -> NameAndPort
-                       -> GraphAndRef -> [GraphAndRef] -> [GraphInPatternRef]-> SyntaxGraph
-makeListCompGraph context listCompNode listCompNodeRef listCompItemGraphAndRef qualGraphsAndRefs genGraphsAndRefs 
-  = combinedGraph where
-  (NameAndPort listCompName _) = listCompNodeRef
+makeListCompGraph :: EvalContext -> NodeName -> SrcRef -> GraphAndRef
+  -> [GraphAndRef] -> [GraphAndRef] -> [GraphInPatternRef] -> GraphAndRef
+makeListCompGraph context listCompName listCompSrcRef listCompItemGraphAndRef
+  qualGraphsAndRefs declGraphsAndRefs genGraphsAndRefs 
+  = GraphAndRef combinedGraph (Right listCompNodeRef) where
 
-  qualGraphs = mconcat $ fmap  graphAndRefToGraph qualGraphsAndRefs
-  genGraphs = mconcat $ fmap  graphInPatternRefToGraph genGraphsAndRefs
+  (listCompNode, listCompNodeRef, listCompNodeGraph) 
+    = makeListCompNodeGraph listCompName listCompSrcRef (length genGraphsAndRefs) (length qualGraphsAndRefs)
 
-  qStmtGraphs = qualGraphs <> genGraphs
+  listCompItemGraph = combineFromGraphToPort makeSimpleEdge
+    listCompItemGraphAndRef ( NameAndPort listCompName  (inputPort listCompNode))
 
-  listCompItemGraph = {-makeEdges context $-} combineExpresionsIsSource makeSimpleEdge
-    (listCompItemGraphAndRef, NameAndPort listCompName  (inputPort listCompNode))
+  qStmtGraph = makeQstmtGraph qualGraphsAndRefs declGraphsAndRefs genGraphsAndRefs 
 
+  qualEdgeGraph = makeListCompQualEdgeGraph listCompName qualGraphsAndRefs
+
+  listCompGenEdgeGraph = makeListCompGenEdgeGraph listCompName genGraphsAndRefs
+
+  combinedGraph = makeEdges makeSimpleEdge
+    (listCompItemGraph  <> listCompNodeGraph <> qStmtGraph <> qualEdgeGraph <> listCompGenEdgeGraph) 
+
+makeListCompQualEdgeGraph listCompName qualGraphsAndRefs = qualEdgeGraph where 
+  listCompQualNamedPorts = map (nameAndPort listCompName) listCompQualPorts
+  qualGraphRefAndPortTo = zip qualGraphsAndRefs listCompQualNamedPorts
+  qualEdgeGraph = mconcat $ map (uncurry (combineFromGraphToPort makeSimpleEdge)) qualGraphRefAndPortTo
+
+makeListCompGenEdgeGraph listCompName genGraphsAndRefs = inEdgeGraph <> outEdgeGraph where
+  listCompInNamedPorts = map (nameAndPort listCompName) argPortsConst
+  listCompOutNamedPorts = map (nameAndPort listCompName) resultPortsConst
+
+  graphAndValueRef = map graphInPatternRefToGraphAndRef genGraphsAndRefs
+  graphAndPatternRef = map graphInPatternRefToGraphAndPat genGraphsAndRefs
+
+  inEdgeGraph = mconcat $ map (uncurry (combineFromGraphToPort makeSimpleEdge)) (zip graphAndValueRef listCompInNamedPorts)
+  outEdgeGraph = mconcat $ map (uncurry (combineFromPortToGraph makeSimpleEdge)) (zip graphAndPatternRef listCompOutNamedPorts)
+
+
+makeListCompNodeGraph listCompName listCompSrcRef genCount qualCount = (listCompNode, listCompNodeRef, listCompNodeGraph) where
+  listCompNode = SyntaxNode (ListCompNode genCount qualCount) listCompSrcRef
+  listCompNodeRef = nameAndPort listCompName (resultPort listCompNode)
   listCompNodeGraph = syntaxGraphFromNodes
     $ Set.singleton (Named listCompName (mkEmbedder listCompNode))
 
-  innerOutputGraph = makeInnerOutputEdges listCompName 
-    (qualGraphsAndRefs ++ fmap graphInPatternRefToGraphAndPat genGraphsAndRefs)
-
-  innerInputGraph = makeInnerInputEdges listCompName 
-    (qualGraphsAndRefs ++ fmap graphInPatternRefToGraphAndRef genGraphsAndRefs)
-
-  combinedGraph = makeEdges makeSimpleEdge
-    (qStmtGraphs <> listCompItemGraph  <> listCompNodeGraph <> innerOutputGraph <> innerInputGraph) -- <> outputGraph
-
-makeInnerOutputEdges :: NodeName -> [GraphAndRef] -> SyntaxGraph
-makeInnerOutputEdges listCompName graphsAndRefs = graph where
-  listCompPorts = map (nameAndPort listCompName) resultPortsConst
-  binds = catMaybes $ zipWith makeInnerOutputBind graphsAndRefs listCompPorts
-  graph = bindsToSyntaxGraph ( SMap.fromList binds)
-
-makeInnerOutputBind :: GraphAndRef -> NameAndPort -> Maybe SgBind
-makeInnerOutputBind (GraphAndRef _ ref) lamPort = case ref of
-  Left str -> Just (str, Right lamPort)
-  Right _ -> Nothing
-  
-
-makeInnerInputEdges :: NodeName -> [GraphAndRef] -> SyntaxGraph
-makeInnerInputEdges listCompName graphsAndRefs = graph where
-  listCompPorts = map (nameAndPort listCompName) argPortsConst
-  edges =  catMaybes $ zipWith makeInnerInputEdge graphsAndRefs listCompPorts
-  graph = syntaxGraphFromEdges ( Set.fromList edges)
-
-makeInnerInputEdge :: GraphAndRef -> NameAndPort -> Maybe Edge
-makeInnerInputEdge (GraphAndRef _ ref) listCompPort = case ref of
-  Left _ ->  Nothing
-  Right port -> Just $ makeSimpleEdge (port, listCompPort)
-
+makeQstmtGraph qualGraphsAndRefs declGraphsAndRefs genGraphsAndRefs = genGraphs <> qualGraphs where
+  qualGraphs = mconcat $ fmap  graphAndRefToGraph (qualGraphsAndRefs ++ declGraphsAndRefs)
+  genGraphs = mconcat $ fmap  graphInPatternRefToGraph genGraphsAndRefs
 
 data GraphInPatternRef = GraphInPatternRef{
   syntaxGraph :: SyntaxGraph

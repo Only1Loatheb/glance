@@ -14,6 +14,7 @@ import           PortConstants(
   , listFromPort
   , listThenPort
   , listToPort
+  , listCompQualPorts
   )
 import           Types(
   Labeled(..)
@@ -38,23 +39,27 @@ import Util(maybeBoolToBool)
 
 nodeToIcon :: EmbedderSyntaxNode -> Icon
 nodeToIcon (Embedder embeddedNodes (SyntaxNode node src)) = case node of
-  (ApplyNode flavor x)              -> nestedApplySyntaxNodeToIcon flavor x embeddedNodes src
-  (PatternApplyNode s children)     -> nestedPatternNodeToIcon s children embeddedNodes src
-  (BindNameNode s)                  -> Icon (BindTextBoxIcon s) src
-  (LiteralNode s)                   -> Icon (TextBoxIcon s) src
-  (FunctionArgNode labels)          -> functionArgIcon labels src
-  (FunctionValueNode str funcDefRegionInfo) -> functionDefIcon embeddedNodes str funcDefRegionInfo src
-  CaseResultNode                    -> Icon (CaseResultIcon) src
-  (CaseOrMultiIfNode tag x)         -> nestedCaseOrMultiIfToIcon tag x embeddedNodes src
-  (ListCompNode)                    -> Icon ListCompIcon src -- TODO actualy embede nodes
-  (ListGenNode hasThen hasTo)       -> listGenNodeToIcon embeddedNodes hasThen hasTo src
+  (ApplyNode flavor x)               -> nestedApplySyntaxNodeToIcon flavor x embeddedNodes src
+  (PatternApplyNode s children)      -> nestedPatternNodeToIcon s children embeddedNodes src
+  (BindNameNode s)                   -> Icon (BindTextBoxIcon s) src
+  (LiteralNode s)                    -> Icon (TextBoxIcon s) src
+  (FunctionArgNode labels)           -> functionArgIcon labels src
+  (FunctionValueNode str regionInfo) -> functionDefIcon embeddedNodes str regionInfo src
+  CaseResultNode                     -> Icon (CaseResultIcon) src
+  (CaseOrMultiIfNode tag x)          -> nestedCaseOrMultiIfToIcon tag x embeddedNodes src
+  (ListCompNode genCount qualCount)  -> listCompIcon embeddedNodes genCount qualCount src 
+  (ListGenNode hasThen hasTo)        -> listGenNodeToIcon embeddedNodes hasThen hasTo src
 
--- listCompIcon embeddedNodes =  
---   ListCompIcon argList
---   where
---     dummyNode = ListCompNode
---     argPorts = take (Set.size embeddedNodes) (argumentPorts dummyNode)
---     argList = fmap (makeArg embeddedNodes) argPorts
+listCompIcon embeddedNodes genCount qualCount src =  Icon icon src where
+  dummyNode = SyntaxNode (ListCompNode 0 0) src
+  
+  genList = fmap (makeArg embeddedNodes) (take genCount $ argumentPorts dummyNode)
+
+  qualList = fmap (makeArg embeddedNodes) (take qualCount listCompQualPorts)
+
+  item = makeArg embeddedNodes (inputPort dummyNode)
+  
+  icon = ListCompIcon item genList qualList
 
 -- | Helper for makeArg
 findArg :: Port -> (NodeName, Edge) -> Bool
@@ -94,8 +99,8 @@ functionDefIcon ::
   -> FuncDefRegionInfo
   -> SrcRef
   -> Icon
-functionDefIcon embeddedNodes str funcDefRegionInfo src =
-  Icon (FunctionDefIcon str funcDefRegionInfo embeddedBodyNode) src
+functionDefIcon embeddedNodes str regionInfo src =
+  Icon (FunctionDefIcon str regionInfo embeddedBodyNode) src
   where
     dummyNode = SyntaxNode (FunctionValueNode str (Set.empty, 0)) src
     embeddedBodyNode = makeArg embeddedNodes (inputPort dummyNode)

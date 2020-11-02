@@ -122,6 +122,9 @@ data DiagramIcon =
   | NestedCaseIcon CaseOrMultiIfTag [Maybe NodeName]
   | CaseResultIcon
   | ListCompIcon
+    (Maybe NodeName) -- item constructor
+    [Maybe NodeName] -- generators
+    [Maybe NodeName] -- qualifiers
   | ListGenIcon 
     (Maybe NodeName) --from
     (Maybe (Maybe NodeName)) -- maybe then
@@ -167,8 +170,10 @@ data SyntaxNodeCore =
     String -- function name
     FuncDefRegionInfo
   | CaseResultNode -- if same icon is in condition statment and result value
-  | CaseOrMultiIfNode CaseOrMultiIfTag Int
+  | CaseOrMultiIfNode CaseOrMultiIfTag Int -- number of alternatives
   | ListCompNode
+    Int -- number of generators
+    Int -- number of qualifiers  
   | ListGenNode
     Bool -- has then
     Bool -- has to 

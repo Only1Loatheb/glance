@@ -129,9 +129,9 @@ doNotation = do
   guard (gcd localDefinition generatedItem == 1)
   return (fApplied generatedItem)
 {-
-listComprehension = [fApplied item | item <- generator
-                                      , gcd item localDefinition == 1
-                                      , let localDefinition = item + 1]
+listComprehension = [fApplied generatedItem | generatedItem <- generator
+                                      , gcd generatedItem localDefinition == 1
+                                      , let localDefinition = generatedItem + 1]
 -}
 listComprehension = [fApplied generatedItem | generatedItem <- generator
                                       , gcd generatedItem localDefinition == 1

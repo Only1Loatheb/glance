@@ -17,6 +17,8 @@ module PortConstants
   , listFromPort
   , listThenPort
   , listToPort
+  , listCompQualPorts
+  , isQualPort
   ) where
 
 import Types( Port(..)
@@ -26,6 +28,9 @@ import Types( Port(..)
 
 isInputPort :: Port -> Bool
 isInputPort (Port portNo) = even portNo
+
+isQualPort :: Port -> Bool
+isQualPort (Port portNo) = portNo < 0
 
 pattern InputPortConst :: Port
 pattern InputPortConst = Port 0
@@ -63,6 +68,10 @@ multiIfValuePorts = resultPortsConst
 multiIfBoolPorts :: [Port]
 multiIfBoolPorts = argPortsConst
 
+listCompQualPorts :: [Port]
+listCompQualPorts = fmap Port [-2,-4..]
+
+
 mixedPorts :: [Port]
 mixedPorts = fmap Port [2,3..]
 
@@ -74,10 +83,10 @@ resultPort :: SyntaxNode -> Port
 resultPort = const ResultPortConst
 
 argumentPorts :: SyntaxNode -> [Port]
-argumentPorts n = case n of
-  (SyntaxNode ApplyNode {} _) -> argPortsConst
-  (SyntaxNode PatternApplyNode {} _) -> resultPortsConst
-  (SyntaxNode FunctionValueNode {} _) -> resultPortsConst
-  (SyntaxNode CaseOrMultiIfNode {} _) -> mixedPorts
-  (SyntaxNode ListCompNode {} _) -> argPortsConst
+argumentPorts (SyntaxNode n _) = case n of
+  ApplyNode {} -> argPortsConst
+  PatternApplyNode {} -> resultPortsConst
+  FunctionValueNode {} -> resultPortsConst
+  CaseOrMultiIfNode {} -> mixedPorts
+  ListCompNode {} -> argPortsConst
   _ -> error "Node don't have argument ports. PortConstants argumentPorts"

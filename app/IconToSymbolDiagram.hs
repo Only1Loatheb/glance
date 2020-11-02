@@ -47,6 +47,7 @@ import PortConstants(
   , listFromPort
   , listThenPort
   , listToPort
+  , listCompQualPorts
   )
 import StringSymbols(
   ifConditionConst
@@ -267,70 +268,6 @@ choosePortDiagram str portAndSymbol portSymbolAndLabel
       | not (null str) = portSymbolAndLabel
       | otherwise = portAndSymbol
       
--- makePassthroughPorts :: SpecialBackend b n =>
---   NodeName -> (Port,Port) -> String ->  SpecialDiagram b n
--- makePassthroughPorts name (port1,port2) str
---   = choosePortDiagram str portsDiagram portSymbolsAndLabel where
---     portAndSymbol1 = makeQualifiedPort port1 name
---     portAndSymbol2 = makeQualifiedPort port2 name
---     label = transformablePortTextBox str
---     portsDiagram =  portAndSymbol1 === portAndSymbol2
---     portSymbolsAndLabel = portAndSymbol1 === label === portAndSymbol2
-
--- >>>>>>>>>>>>>>>>>>>>>> SUB Diagrams <<<<<<<<<<<<<<<<<<<<<<<<
--- TODO Detect if we are in a loop (have called iconToDiagram on the same node
--- before)
-
--- | Make an identity TransformableDia
-
-
-iconToDiagram :: SpecialBackend b n
-  => IconInfo
-  -> Icon
-  -> TransformableDia b n
-iconToDiagram iconInfo (Icon icon _) = case icon of
-  TextBoxIcon s -> literalDiagram s
-  BindTextBoxIcon s -> bindDiagram s
-  CaseResultIcon -> caseResultDiagram
-  FunctionArgIcon argumentNames -> functionArgDia argumentNames
-  FunctionDefIcon funcName _ inputNode -> functionDefDia iconInfo funcName (findMaybeIconFromName iconInfo inputNode)
-  NestedApply flavor headIcon args
-    -> nestedApplyDia
-       iconInfo
-       flavor
-       (findMaybeIconFromName iconInfo headIcon)
-       (findMaybeIconsFromNames iconInfo args)
-  NestedPatternApp constructor args rhsNodeName
-    -> nestedPatternAppDia iconInfo (repeat $ patternC colorScheme) constructor args (findMaybeIconFromName iconInfo rhsNodeName)
-  NestedCaseIcon styleTag args -> nestedCaseDia
-                         iconInfo
-                         (findMaybeIconsFromNames iconInfo args)
-                         styleTag
-  ListCompIcon {} -> listCompDiagram iconInfo (nestingC colorScheme) Nothing (replicate (1 + 7) Nothing) --(findMaybeIconsFromNames iconInfo args) -- listCompDiagram
-  ListGenIcon from mThen mTo -> listGenDiagram iconInfo from mThen mTo
-
-caseResultDiagram :: SpecialBackend b n => TransformableDia b n
-caseResultDiagram transformParams = finalDia where
-  name = tpName transformParams
-  caseResultDia = nameDiagram name memptyWithPosition
-  output = makeQualifiedPort ResultPortConst name
-  finalDia = caseResultDia === output
-
-bindDiagram :: SpecialBackend b n =>
-  String -> TransformableDia b n
-bindDiagram _bindName transformParams = finalDia where
-  name = tpName transformParams
-  bindDia = nameDiagram name memptyWithPosition
-
-  input = makeQualifiedPort InputPortConst name
-  finalDia = input === bindDia
-
-literalDiagram :: SpecialBackend b n =>
-  String -> TransformableDia b n
-literalDiagram t transformParams = finalDia where
-  finalDia = bindText === outputDia
-  outputDia = makeResultDiagram (tpName transformParams)
-  bindText = coloredTextBox (textBoxTextC colorScheme) t
 
 makeInputDiagram :: SpecialBackend b n
   => IconInfo
@@ -368,6 +305,77 @@ makeAppInnerIcon iconInfo (TransformParams _ nestingLevel ) isSameNestingLevel _
   where
     innerLevel = if isSameNestingLevel then nestingLevel else nestingLevel + 1
 
+makePassthroughIcon :: SpecialBackend b n
+  => IconInfo
+  -> TransformParams n
+  -> Bool  -- If False then add one to the nesting level. 
+  -> (Port,Port)  -- Port number (if the NamedIcon is Nothing)
+  -> Labeled (Maybe NamedIcon) -- The icon 
+  -> SpecialDiagram b n
+makePassthroughIcon iconInfo tp@(TransformParams name _) isSameNestingLevel (inPort,outPort) labledMaybeNamedIcon 
+  = inIcon === valuePort where
+    inIcon = makeAppInnerIcon iconInfo tp isSameNestingLevel inPort labledMaybeNamedIcon
+    --  makeLabelledPort name port str
+    valuePort = makeQualifiedPort outPort name
+
+-- >>>>>>>>>>>>>>>>>>>>>> SUB Diagrams <<<<<<<<<<<<<<<<<<<<<<<<
+-- TODO Detect if we are in a loop (have called iconToDiagram on the same node
+-- before)
+
+-- | Make an identity TransformableDia
+
+
+iconToDiagram :: SpecialBackend b n
+  => IconInfo
+  -> Icon
+  -> TransformableDia b n
+iconToDiagram iconInfo (Icon icon _) = case icon of
+  TextBoxIcon s -> literalDiagram s
+  BindTextBoxIcon s -> bindDiagram s
+  CaseResultIcon -> caseResultDiagram
+  FunctionArgIcon argumentNames -> functionArgDia argumentNames
+  FunctionDefIcon funcName _ inputNode -> functionDefDia iconInfo funcName (findMaybeIconFromName iconInfo inputNode)
+  NestedApply flavor headIcon args
+    -> nestedApplyDia
+       iconInfo
+       flavor
+       (findMaybeIconFromName iconInfo headIcon)
+       (findMaybeIconsFromNames iconInfo args)
+  NestedPatternApp constructor args rhsNodeName
+    -> nestedPatternAppDia iconInfo (repeat $ patternC colorScheme) constructor args (findMaybeIconFromName iconInfo rhsNodeName)
+  NestedCaseIcon styleTag args -> nestedCaseDia
+                         iconInfo
+                         (findMaybeIconsFromNames iconInfo args)
+                         styleTag
+  ListCompIcon itemName gensNames qualsNames -> listCompDiagram iconInfo 
+    (findMaybeIconFromName iconInfo itemName) 
+    (findMaybeIconsFromNames iconInfo gensNames)
+    (findMaybeIconsFromNames iconInfo qualsNames)
+  ListGenIcon from mThen mTo -> listGenDiagram iconInfo from mThen mTo
+
+caseResultDiagram :: SpecialBackend b n => TransformableDia b n
+caseResultDiagram transformParams = finalDia where
+  name = tpName transformParams
+  caseResultDia = nameDiagram name memptyWithPosition
+  output = makeQualifiedPort ResultPortConst name
+  finalDia = caseResultDia === output
+
+bindDiagram :: SpecialBackend b n =>
+  String -> TransformableDia b n
+bindDiagram _bindName transformParams = finalDia where
+  name = tpName transformParams
+  bindDia = nameDiagram name memptyWithPosition
+
+  input = makeQualifiedPort InputPortConst name
+  finalDia = input === bindDia
+
+literalDiagram :: SpecialBackend b n =>
+  String -> TransformableDia b n
+literalDiagram t transformParams = finalDia where
+  finalDia = bindText === outputDia
+  outputDia = makeResultDiagram (tpName transformParams)
+  bindText = coloredTextBox (textBoxTextC colorScheme) t
+
 nestedPatternAppDia :: forall b n. SpecialBackend b n
   => IconInfo
   -> [Colour Double]
@@ -398,10 +406,6 @@ nestedPatternAppDia
     patternDiagramInBox = inFrame patternDiagram borderColor (width patternDiagram) (height patternDiagram)
 
     finalDia = patternDiagramInBox  === resultDia
-
-
-
-
 
 -- | apply port locations:
 -- InputPortConst: Function
@@ -439,32 +443,45 @@ generalNestedDia
 
 listCompDiagram :: SpecialBackend b n
   => IconInfo
-  -> [Colour Double]
   -> Maybe NamedIcon
+  -> [Maybe NamedIcon]
   -> [Maybe NamedIcon]
   -> TransformableDia b n
 listCompDiagram
   iconInfo
-  borderColors
-  maybeFunText
-  args
-  tp@(TransformParams name nestingLevel)
-  = finalDia where
-    borderColor = borderColors !! nestingLevel
-    boxWidth =  max (width transformedName) (width argPorts)
+  maybeItem
+  genIcons
+  qualIcons
+  tp@(TransformParams name _)
+  = finalDia where 
+    boxWidth =  width argPorts
 
-    argPortsUncentred =  zipWith ( makeAppInnerIcon iconInfo tp False) mixedPorts (fmap pure args)
+    qualDiagrams = zipWith ( makeAppInnerIcon iconInfo tp False) listCompQualPorts (fmap pure qualIcons)
+    qualDiagram = alignL $ hcat $ map inCaseDecisionFrame qualDiagrams
+    
+    argPortsUncentred =  zipWith 
+      (makePassthroughIcon iconInfo tp False) 
+      (zip argPortsConst resultPortsConst) 
+      (fmap pure genIcons)
+
     argPortsCentred  = fmap alignB argPortsUncentred
     argPorts = centerX $ hsep portSeparationSize argPortsCentred
-    argsDiagram = inFrame argPorts borderColor boxWidth (height argPorts)
+    argsDiagram = inFrame argPorts (listC colorScheme) boxWidth (height argPorts)
 
     resultDiagram =  makeResultDiagram name
 
-    transformedName = makeInputDiagram iconInfo tp (pure maybeFunText) name
+    itemDiagram = alignB $ makeInputDiagram iconInfo tp (pure maybeItem) name
 
-    functionDiagramInBox = inFrame transformedName borderColor boxWidth (height transformedName)
+    listCompItemDiagram = inItemFrame itemDiagram
 
-    finalDia = vcat [ argsDiagram,functionDiagramInBox, resultDiagram]
+    finalDia = vcat [argsDiagram, qualDiagram, listCompItemDiagram, resultDiagram]
+    
+
+inItemFrame itemDiagram = finalDia where
+  finalDia = beside (-unitX) (itemDiagram ||| rightListItemFrame) leftListItemFrame
+  leftListItemFrame = leftBracket
+  rightListItemFrame = alignB $ coloredTextBox (listC colorScheme) "..]"
+  scaleFactor = (height itemDiagram) / letterHeight
 
 leftBracket = alignB $ coloredTextBox (listC colorScheme) "["
 rightBracket = alignB $ coloredTextBox (listC colorScheme) "]"
@@ -590,10 +607,6 @@ functionDefDia iconInfo functionName input transformParams = finalDiagram where
   inputDiagram = makeInputDiagram iconInfo transformParams (pure input) name
   resultDiagram =  makeResultDiagram name
   finalDiagram = lambdaSymbol <> (inputDiagram === resultDiagram)
--- Done to prevent this:
--- glance-test: circleDiameter too small: 0.0
--- CallStack (from HasCallStack):
--- error, called at app/Rendering.hs:315:18 in main:Rendering
 
 lambdaRegionToDiagram :: SpecialBackend b Double 
   => [SpecialDiagram b Double]
@@ -666,8 +679,12 @@ getShaftColor = getShaftColor' edgeColors where
 getShaftColor' :: [Colour Double]
   -> (NameAndPort,NameAndPort)-> (NamedIcon, NamedIcon) -> Colour Double
 getShaftColor' _ (NameAndPort _ ResultPortConst,_) (Named _ (Icon FunctionDefIcon {} _), _) = lambdaC colorScheme
-getShaftColor' _ (_, NameAndPort _ InputPortConst) (_, Named iconName (Icon FunctionDefIcon {} _)) = lambdaC colorScheme
-getShaftColor' edgeColors (NameAndPort (NodeName nodeNum) (Port portNum),_) _ = shaftColor where
+getShaftColor' _ (_, NameAndPort _ InputPortConst) (_, Named _ (Icon FunctionDefIcon {} _)) = lambdaC colorScheme
+getShaftColor' edgeColors (NameAndPort (NodeName nodeNum) (Port portNum),_) (Named _ (Icon ListCompIcon {} _), _) = hashedShaftColor nodeNum portNum edgeColors
+getShaftColor' edgeColors (_, NameAndPort (NodeName nodeNum) (Port portNum)) (_, Named _ (Icon ListCompIcon {} _)) = hashedShaftColor nodeNum (portNum + 1) edgeColors
+getShaftColor' edgeColors (NameAndPort (NodeName nodeNum) (Port portNum),_) _ = hashedShaftColor nodeNum portNum edgeColors
+
+hashedShaftColor nodeNum portNum edgeColors = shaftColor where
   namePortHash = mod (portNum + (503 * nodeNum)) (length edgeColors)
   shaftColor = edgeColors !! namePortHash
 

@@ -21,7 +21,9 @@ import PortConstants(
   pattern ResultPortConst
   , pattern InputPortConst
   , pattern PatternValuePortConst
-  , isInputPort)
+  , isInputPort
+  , isQualPort
+  )
 import Types(
   SyntaxNode(..)
   , SyntaxNodeCore(..)
@@ -58,6 +60,7 @@ data ParentType = ApplyParent
                 | CaseParent
                 | LambdaParent String
                 | PatternApplyParent
+                | ListCompParent
                 | ListGenParent
                 | NotAParent
   deriving (Eq, Show)
@@ -104,11 +107,21 @@ isSyntaxNodeEmbeddable parentType (SyntaxNode syntaxNode _) mParentPort mChildPo
     
     (PatternApplyParent, _) -> isPatternValueInputPort && childPortIsResult
 
+    (ListCompParent, ApplyNode {}) -> parentPortIsInput && childPortIsResult
+      || isParentQualPort
+    (ListCompParent, PatternApplyNode {}) -> parentPortIsInput && childPortIsResult
+      || isParentQualPort
+    (ListCompParent, LiteralNode {}) -> parentPortIsInput && childPortIsResult
+      || isParentQualPort
+    (ListCompParent, ListCompNode {}) -> parentPortIsInput && childPortIsResult
+
     _ -> False
   where
     isInput mPort = case mPort of
       InputPortConst -> True
       _ -> False
+
+    isParentQualPort = isQualPort mParentPort
 
     isPatternValueInputPort = case mParentPort of
       PatternValuePortConst -> True
@@ -154,6 +167,7 @@ parentTypeForNode (SyntaxNode n _) = case n of
   FunctionValueNode fname _ -> LambdaParent fname
   PatternApplyNode {} -> PatternApplyParent
   ListGenNode {} -> ListGenParent
+  ListCompNode {} -> ListCompParent
   _ -> NotAParent
 
 lookupSyntaxNode :: ING.Graph gr =>
