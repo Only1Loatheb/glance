@@ -10,7 +10,7 @@ import qualified Data.Set as Set
 import           PortConstants(
   inputPort
   , argumentPorts
-  , pattern PatternValuePortConst
+  , pattern PatternUnpackingPort
   , listFromPort
   , listThenPort
   , listToPort
@@ -134,7 +134,7 @@ nestedPatternNodeToIcon str children args src = Icon (
   src
   where
     icon = pure $ Just (Named (NodeName (-1)) (Icon (TextBoxIcon str) src))
-    asigendValueName = makeArg args PatternValuePortConst
+    asigendValueName = makeArg args PatternUnpackingPort
 
 listGenNodeToIcon ::
   Set.Set (NodeName, Edge)

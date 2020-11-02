@@ -58,7 +58,6 @@ import           PortConstants(
   , multiIfValuePorts
   , multiIfBoolPorts
   , resultPortsConst
-  , pattern PatternValuePortConst
   )
 
 import           Types(

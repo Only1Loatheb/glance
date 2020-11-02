@@ -355,6 +355,8 @@ listCompTests = [
   "localLet = take 10 [ (i,j) | i <- [1..], \n\
   \                             let k = i*i, \n\
   \                             j <- [1..k] ]"
+  ,
+  "patternFilter xs = [l | (Left l) <- xs]"
   ]
 
 otherInLambdaTest :: [String]

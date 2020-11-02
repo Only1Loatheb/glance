@@ -26,7 +26,7 @@ import Icons(findIcon,findMaybeIconFromName,findMaybeIconsFromNames)
 import PortConstants(
     pattern InputPortConst
   , pattern ResultPortConst
-  , isInputPort)
+  , isArgPort)
 
 {-# ANN module "HLint: ignore Use record patterns" #-}
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
@@ -45,21 +45,21 @@ lambdaPortAngle :: Floating n => Port -> Angle n
 lambdaPortAngle InputPortConst = 1/4 @@ turn
 lambdaPortAngle ResultPortConst = 3/4 @@ turn
 lambdaPortAngle port
-  | isInputPort port = 1/2 @@ turn
+  | isArgPort port = 1/2 @@ turn
   | otherwise        = 3/4 @@ turn
 
 patternAppPortAngle :: Floating n => Port -> Angle n
 patternAppPortAngle InputPortConst = 1/4 @@ turn
 patternAppPortAngle ResultPortConst = 3/4 @@ turn
 patternAppPortAngle port
-  | isInputPort port = 1/4 @@ turn
+  | isArgPort port = 1/4 @@ turn
   | otherwise        = 3/4 @@ turn
 
 multiIfPortAngle :: Floating n => Port -> Angle n
 multiIfPortAngle InputPortConst = 1/4 @@ turn
 multiIfPortAngle ResultPortConst = 3/4 @@ turn
 multiIfPortAngle port
-  | isInputPort port = 1/4 @@ turn
+  | isArgPort port = 1/4 @@ turn
   | otherwise        = 3/4 @@ turn
 
 nestedMultiIfPortAngle :: SpecialNum n

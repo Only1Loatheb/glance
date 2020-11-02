@@ -41,9 +41,9 @@ import PortConstants(
   , pattern ResultPortConst
   , argPortsConst
   , resultPortsConst
-  , isInputPort
+  , isArgPort
   , mixedPorts
-  , pattern PatternValuePortConst
+  , pattern PatternUnpackingPort
   , listFromPort
   , listThenPort
   , listToPort
@@ -246,7 +246,7 @@ makeQualifiedPort' :: SpecialBackend b n =>
 makeQualifiedPort' inputDia resultDia port name = portAndSymbol where
   namedPort = name .>> (makePort port)
   portAndSymbol = namedPort <> symbol
-  symbol = if isInputPort port then inputDia else resultDia
+  symbol = if isArgPort port then inputDia else resultDia
 
 -- Don't display " tempvar" from SimpSyntaxToSyntaxGraph.hs/matchesToCase
 makeLabelledPort :: SpecialBackend b n =>
@@ -255,7 +255,7 @@ makeLabelledPort name port str
   = choosePortDiagram str portAndSymbol portSymbolAndLabel where
     portAndSymbol = makeQualifiedPort port name
     label = coloredTextBox (textBoxTextC colorScheme) str
-    portSymbolAndLabel = if isInputPort port
+    portSymbolAndLabel = if isArgPort port
       then portAndSymbol === label
       else label === portAndSymbol
 
@@ -395,7 +395,7 @@ nestedPatternAppDia
     borderColor = borderColors !! nestingLevel
     resultDia = makeResultDiagram name
 
-    subscribedValueDia = alignT $ makeAppInnerIcon iconInfo tp True PatternValuePortConst (Labeled rhsNodeName patternSubscribedValueStr)
+    subscribedValueDia = alignT $ makeAppInnerIcon iconInfo tp True PatternUnpackingPort (Labeled rhsNodeName patternSubscribedValueStr)
 
     constructorDiagram = alignB $ makeInputDiagram iconInfo tp maybeConstructorName name
 
@@ -457,8 +457,10 @@ listCompDiagram
     boxWidth =  width argPorts
 
     qualDiagrams = zipWith ( makeAppInnerIcon iconInfo tp False) listCompQualPorts (fmap pure qualIcons)
-    qualDiagram = alignL $ hcat $ map inCaseDecisionFrame qualDiagrams
-    
+    qualDiagram = hcat $ map inCaseDecisionFrame qualDiagrams
+    qualDiagramWithLine = (alignBR $ listCompLine $ vrule  (letterHeight + height qualDiagram))
+      <> (alignBL qualDiagram)
+
     argPortsUncentred =  zipWith 
       (makePassthroughIcon iconInfo tp False) 
       (zip argPortsConst resultPortsConst) 
@@ -470,18 +472,20 @@ listCompDiagram
 
     resultDiagram =  makeResultDiagram name
 
-    itemDiagram = alignB $ makeInputDiagram iconInfo tp (pure maybeItem) name
+    itemDiagram = makeInputDiagram iconInfo tp (pure maybeItem) name
 
     listCompItemDiagram = inItemFrame itemDiagram
 
-    finalDia = vcat [argsDiagram, qualDiagram, listCompItemDiagram, resultDiagram]
+    finalDia = vcat [argsDiagram, qualDiagramWithLine, listCompItemDiagram, resultDiagram]
     
 
+listCompLine = lwG defaultLineWidth $ lc (listC colorScheme)
+
 inItemFrame itemDiagram = finalDia where
-  finalDia = beside (-unitX) (itemDiagram ||| rightListItemFrame) leftListItemFrame
-  leftListItemFrame = leftBracket
-  rightListItemFrame = alignB $ coloredTextBox (listC colorScheme) "..]"
-  scaleFactor = (height itemDiagram) / letterHeight
+  itemDiagramAligned = alignB itemDiagram
+  finalDia = beside (-unitX) (itemDiagramAligned ||| rightListItemFrame) (leftListItemFrame ||| strutX defaultLineWidth)
+  leftListItemFrame = alignBR $ listCompLine $ vrule  $ (max  letterHeight $ height  itemDiagram)
+  rightListItemFrame =  dots ||| leftListItemFrame
 
 leftBracket = alignB $ coloredTextBox (listC colorScheme) "["
 rightBracket = alignB $ coloredTextBox (listC colorScheme) "]"
@@ -563,7 +567,7 @@ generalNestedCaseDia iconInfo symbolColor inConstBox inputAndArgs flavor
       = partitionEithers $ zipWith iconMapper mixedPorts subicons
 
     iconMapper port subicon
-      | isInputPort port = Left $ inConstBox innerIcon{- middle -}
+      | isArgPort port = Left $ inConstBox innerIcon{- middle -}
       | otherwise = Right ${- middle -} vcat [caseVarSymbol symbolColor, innerIcon]
       where
         innerIcon = makeAppInnerIcon iconInfo tp isSameNestingLevel port (Labeled subicon "")

@@ -19,10 +19,11 @@ import GHC.Stack(HasCallStack)
 
 import PortConstants(
   pattern ResultPortConst
-  , pattern InputPortConst
-  , pattern PatternValuePortConst
   , isInputPort
+  , isPatternUnpackingPort
+  , isArgPort
   , isQualPort
+  , isResultPort
   )
 import Types(
   SyntaxNode(..)
@@ -85,7 +86,7 @@ isSyntaxNodeEmbeddable :: ParentType
                        -> Port
                        -> Port
                        -> Bool
-isSyntaxNodeEmbeddable parentType (SyntaxNode syntaxNode _) mParentPort mChildPort
+isSyntaxNodeEmbeddable parentType (SyntaxNode syntaxNode _) parentPort childPort
   = case (parentType, syntaxNode) of
     (ApplyParent, ApplyNode {}) -> parentPortNotResult
     (ApplyParent, LiteralNode {}) -> parentPortNotResult
@@ -93,56 +94,52 @@ isSyntaxNodeEmbeddable parentType (SyntaxNode syntaxNode _) mParentPort mChildPo
     (ListGenParent, ApplyNode {}) -> parentPortNotResult
     (ListGenParent, LiteralNode {}) -> parentPortNotResult
 
-    (LambdaParent fname, ApplyNode {}) -> parentPortIsInput && (isTempLabel fname) && childPortIsResult
-    (LambdaParent fname, CaseOrMultiIfNode {}) -> parentPortIsInput && (isTempLabel fname) && childPortIsResult
-    (LambdaParent fname, LiteralNode {}) -> parentPortIsInput && (isTempLabel fname) && childPortIsResult
-    (LambdaParent fname, ListGenNode {}) -> parentPortIsInput && (isTempLabel fname) && childPortIsResult
-    (LambdaParent fname, FunctionValueNode {}) -> (isInput mParentPort) && (isTempLabel fname) && childPortIsResult
+    (LambdaParent fname, ApplyNode {}) -> lambdaEmbeddable fname
+    (LambdaParent fname, CaseOrMultiIfNode {}) -> lambdaEmbeddable fname
+    (LambdaParent fname, LiteralNode {}) -> lambdaEmbeddable fname
+    (LambdaParent fname, ListGenNode {}) -> lambdaEmbeddable fname
+    (LambdaParent fname, FunctionValueNode {}) -> lambdaEmbeddable fname
 
     -- (ApplyParent, FunctionValueNode {})
     --   -> parentPortNotResult && childPortIsResult
     (CaseParent, CaseResultNode {}) -> True
-    (CaseParent, _) -> parentPortNotResult && parentPortNotInput && childPortIsResult
-      || parentPortIsInput && childPortIsResult
+    (CaseParent, PatternApplyNode {}) -> caseEmbeddable || parentPortIsArg && isPatternUnpackingPort childPort
+    (CaseParent, LiteralNode {}) -> caseEmbeddable || parentPortIsArg && isPatternUnpackingPort childPort
+    (CaseParent, _) -> caseEmbeddable
     
-    (PatternApplyParent, _) -> isPatternValueInputPort && childPortIsResult
+    (PatternApplyParent, _) -> isPatternUnpackingPort parentPort && childPortIsResult
 
-    (ListCompParent, ApplyNode {}) -> parentPortIsInput && childPortIsResult
-      || isParentQualPort
-    (ListCompParent, PatternApplyNode {}) -> parentPortIsInput && childPortIsResult
-      || isParentQualPort
-    (ListCompParent, LiteralNode {}) -> parentPortIsInput && childPortIsResult
-      || isParentQualPort
-    (ListCompParent, ListCompNode {}) -> parentPortIsInput && childPortIsResult
+    (ListCompParent, ApplyNode {}) -> listCompEmbeddable
+    -- (ListCompParent, PatternApplyNode {}) -> parentPortNotInput
+    (ListCompParent, LiteralNode {}) -> listCompEmbeddable
+    (ListCompParent, ListGenNode {}) -> listCompEmbeddable
+    (ListCompParent, ListCompNode {}) -> parentPortNotInput && parentPortIsArg && childPortIsResult
 
     _ -> False
   where
-    isInput mPort = case mPort of
-      InputPortConst -> True
-      _ -> False
+    isParentQualPort = isQualPort parentPort
 
-    isParentQualPort = isQualPort mParentPort
+    parentPortIsInput = isInputPort parentPort
+    parentPortIsArg = isArgPort parentPort
+    childPortIsResult = isResultPort childPort
 
-    isPatternValueInputPort = case mParentPort of
-      PatternValuePortConst -> True
-      _ -> False
+    parentPortNotInput = not $ parentPortIsInput
+    parentPortNotResult = not $ isResultPort parentPort
 
-    isResult mPort = case mPort of
-      ResultPortConst -> True
-      _ -> False
+    listCompEmbeddable = isParentQualPort
+      || parentPortIsArg && childPortIsResult
 
-    parentPortIsInput = isInput mParentPort
-    childPortIsResult = isResult mChildPort
-
-    parentPortNotInput = not $ isInput mParentPort
-    parentPortNotResult = not $ isResult mParentPort
+    lambdaEmbeddable fname = parentPortIsInput && (isTempLabel fname) && childPortIsResult
+    
+    caseEmbeddable = parentPortNotResult && parentPortNotInput && childPortIsResult
+      || parentPortIsInput && childPortIsResult
 
 doesSyntaxNodeHaveToBeEmbeded :: ParentType
     -> SyntaxNode
     -> Port
     -> Port
     -> Bool
-doesSyntaxNodeHaveToBeEmbeded parentType (SyntaxNode syntaxNode _) mParentPort mChildPort
+doesSyntaxNodeHaveToBeEmbeded parentType (SyntaxNode syntaxNode _) parentPort childPort
   = case (parentType, syntaxNode) of
     (ApplyParent, ApplyNode {}) -> parentPortNotResult
     (ApplyParent, LiteralNode {}) -> parentPortNotResult
@@ -153,12 +150,7 @@ doesSyntaxNodeHaveToBeEmbeded parentType (SyntaxNode syntaxNode _) mParentPort m
     (CaseParent, CaseResultNode {}) -> True
     _ -> False
   where
-
-    isResult mPort = case mPort of
-      ResultPortConst -> True
-      _ -> False
-
-    parentPortNotResult = not $ isResult mParentPort
+    parentPortNotResult = not $ isResultPort parentPort
 
 parentTypeForNode :: SyntaxNode -> ParentType
 parentTypeForNode (SyntaxNode n _) = case n of

@@ -41,7 +41,7 @@ import           PortConstants (
   , resultPortsConst
   , pattern ResultPortConst
   , pattern InputPortConst
-  , pattern PatternValuePortConst
+  , pattern PatternUnpackingPort
   , listFromPort
   , listThenPort
   , listToPort
@@ -353,7 +353,7 @@ evalAlt c (SimpAlt s pat rhs) = do
         -- || ( length (sgEdges grWithEdges) > (length (sgEdges rhsGraph) + length (sgEdges patGraph)))
   pure (patRhsAreConnected
        , grWithEdges
-       , patRef
+       , makePatternRefForUnpacking patRef
        , lookedUpRhsRef
        , mPatAsName)
 
@@ -388,13 +388,13 @@ evalCaseHelper ::
 evalCaseHelper numAlts context srcRef altsSrcRefs caseIconName resultIconNames (GraphAndRef expGraph expRef) evaledAlts
   = result
   where
-    (patRhsConnected, altGraphs, patRefs, rhsRefs, asNames) = unzip5 evaledAlts
+    (patRhsConnected, altGraphs, unpackingPatRef, rhsRefs, asNames) = unzip5 evaledAlts
     combindedAltGraph = mconcat altGraphs
     caseNode = SyntaxNode (CaseOrMultiIfNode CaseTag numAlts) srcRef
     caseNodeGraph = makeCaseNodeGraph caseIconName caseNode expRef
 
     bindGraph = makeAsBindGraph expRef asNames
-    conditionEdgesGraph = makeConditionEdges patRefs caseIconName 
+    conditionEdgesGraph = makeConditionEdges unpackingPatRef caseIconName 
     caseResultGraphs = makeRhsGraph patRhsConnected rhsRefs caseIconName resultIconNames altsSrcRefs
 
     finalGraph = makeEdges makeSimpleEdge $ mconcat [
@@ -415,9 +415,9 @@ makeCaseNodeGraph caseIconName caseNode expRef = caseGraph where
     caseGraph = inputEdgeGraph <> syntaxGraphFromNodes icons
 
 makeConditionEdges :: [Reference] -> NodeName -> SyntaxGraph
-makeConditionEdges patRefs caseIconName = conditionEdgesGraph where
+makeConditionEdges unpackingPatRef caseIconName = conditionEdgesGraph where
     caseConditionNamedPorts = map (nameAndPort caseIconName) caseConditionPorts
-    patEdgesGraphs = zipWith (edgeFromPortToRef makeSimpleEdge) patRefs caseConditionNamedPorts
+    patEdgesGraphs = zipWith (edgeFromPortToRef makeNotConstraintEdge) unpackingPatRef caseConditionNamedPorts
     conditionEdgesGraph = mconcat patEdgesGraphs
 
 makeRhsGraph :: [Bool] -> [Reference ] -> NodeName -> [NodeName] -> [SrcRef]->  SyntaxGraph
@@ -577,7 +577,7 @@ makePatternEdgeInLambda (GraphAndRef _ ref) lamPort = case ref of
   Left str -> Right (str, Right lamPort)
 
 patternValueInputPort :: NodeName -> NameAndPort
-patternValueInputPort name = NameAndPort name  PatternValuePortConst
+patternValueInputPort name = NameAndPort name  PatternUnpackingPort
 -- END END END END END evalLambda 
 
 makeApplyGraph ::
@@ -642,7 +642,7 @@ evalPAsPat outerName p = do
   pure (GraphAndRef (asBindGraph <> evaledPatGraph) evaledPatRef
        , Just outerName)
 
--- TODO add PatternValuePortConst to all
+-- TODO add PatternUnpackingPort to all
 evalPattern :: SimpPat -> State IDState (GraphAndRef, Maybe String)
 evalPattern (SimpPat s p) = case p of
   SpVar {} -> pure (GraphAndRef mempty (Left $ simpPatNameStr p ), Nothing)
@@ -795,10 +795,15 @@ getRefForListCompItem expResultRef bindGraph = GraphAndRef bindGraph ref where
 evalSqGen context (l, (SqGen values itemPat)) = do 
   (GraphAndRef patternGraph patternRef, itemContext) <- evalPattern itemPat
   (GraphAndRef valueGraph valueRef) <- evalExp context values -- TODO use "pat" to put value into item constructor
-  let graph = valueGraph <> patternGraph
-  pure ((GraphAndRef graph patternRef, itemContext),(GraphInPatternRef graph valueRef patternRef))
-
+  let 
+    graph = valueGraph <> patternGraph
+    patternRefForUnpacking = makePatternRefForUnpacking patternRef
+  pure ((GraphAndRef graph patternRef, itemContext),(GraphInPatternRef graph valueRef patternRefForUnpacking))
 evalSqGen _ _ = error "SimpQStmt must be SqGen" 
+
+makePatternRefForUnpacking :: Reference -> Reference
+makePatternRefForUnpacking (Right (NameAndPort name ResultPortConst)) = Right (NameAndPort name PatternUnpackingPort)
+makePatternRefForUnpacking ref = ref
 
 makeListCompGraph :: EvalContext -> NodeName -> SrcRef -> GraphAndRef
   -> [GraphAndRef] -> [GraphAndRef] -> [GraphInPatternRef] -> GraphAndRef
@@ -823,8 +828,7 @@ makeListCompGraph context listCompName listCompSrcRef listCompItemGraphAndRef
 
 makeListCompQualEdgeGraph listCompName qualGraphsAndRefs = qualEdgeGraph where 
   listCompQualNamedPorts = map (nameAndPort listCompName) listCompQualPorts
-  qualGraphRefAndPortTo = zip qualGraphsAndRefs listCompQualNamedPorts
-  qualEdgeGraph = mconcat $ map (uncurry (combineFromGraphToPort makeSimpleEdge)) qualGraphRefAndPortTo
+  qualEdgeGraph = mconcat $ zipWith (combineFromGraphToPort makeSimpleEdge) qualGraphsAndRefs listCompQualNamedPorts
 
 makeListCompGenEdgeGraph listCompName genGraphsAndRefs = inEdgeGraph <> outEdgeGraph where
   listCompInNamedPorts = map (nameAndPort listCompName) argPortsConst
@@ -833,8 +837,8 @@ makeListCompGenEdgeGraph listCompName genGraphsAndRefs = inEdgeGraph <> outEdgeG
   graphAndValueRef = map graphInPatternRefToGraphAndRef genGraphsAndRefs
   graphAndPatternRef = map graphInPatternRefToGraphAndPat genGraphsAndRefs
 
-  inEdgeGraph = mconcat $ map (uncurry (combineFromGraphToPort makeSimpleEdge)) (zip graphAndValueRef listCompInNamedPorts)
-  outEdgeGraph = mconcat $ map (uncurry (combineFromPortToGraph makeSimpleEdge)) (zip graphAndPatternRef listCompOutNamedPorts)
+  inEdgeGraph = mconcat $ zipWith (combineFromGraphToPort makeSimpleEdge) graphAndValueRef listCompInNamedPorts
+  outEdgeGraph = mconcat $ zipWith (combineFromPortToGraph makeNotConstraintEdge) graphAndPatternRef listCompOutNamedPorts
 
 
 makeListCompNodeGraph listCompName listCompSrcRef genCount qualCount = (listCompNode, listCompNodeRef, listCompNodeGraph) where
