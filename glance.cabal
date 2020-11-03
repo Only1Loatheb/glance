@@ -55,7 +55,7 @@ executable glance-exe
   Other-modules: EdgeAngles
                , Icons
                , Rendering
-               , IconToSymbolDiagram
+               , IconToDiagram
                , StringSymbols
                , TextBox
                , Types
@@ -78,6 +78,8 @@ executable glance-exe
                , SrcRefToSourceCode
                , ModuleGraphsToDiagram
                , FuncDefRegionInfo
+               , EdgeToDiagram
+               , DiagramSymbols
 
 test-suite glance-test
   type:                exitcode-stdio-1.0
@@ -118,7 +120,7 @@ test-suite glance-test
                , VisualTests
                , VisualGraphAlgorithmTests
                , Rendering
-               , IconToSymbolDiagram
+               , IconToDiagram
                , StringSymbols
                , TextBox
                , Types
@@ -141,6 +143,8 @@ test-suite glance-test
                , SrcRefToSourceCode
                , ModuleGraphsToDiagram
                , FuncDefRegionInfo
+               , EdgeToDiagram
+               , DiagramSymbols
 source-repository head
   type:     git
   location: https://github.com/rgleichman/glance

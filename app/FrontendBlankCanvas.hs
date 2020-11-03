@@ -14,7 +14,7 @@ import Types (
   SpecialDiagram
   ,SpecialQDiagram
   , SpecialBackend
-  , DiaQuery(..)
+  , DiaQuery
   , ModuleGraphs
   , SrcRef
   , ViewGraphs
@@ -23,7 +23,7 @@ import Types (
   , View
   )
 
-import IconToSymbolDiagram(ColorStyle(..), colorScheme, multilineComment)
+import IconToDiagram(ColorStyle(..), colorScheme)
 
 getBlankCanvasOpts :: Int -> BC.Options
 getBlankCanvasOpts  portNumber =  BC.Options {

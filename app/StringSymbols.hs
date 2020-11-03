@@ -1,19 +1,12 @@
 module StringSymbols
   (
   ifConditionConst
-  , qualifiedSeparatorStr
-  , unitConstructorStr
-  , listTypeConstructorStr
-  , functionConstructor
-  , listDataConstructorStr
-  , unboxedTupleConstructorStr
   , otherwiseExpStr
   , negateSymbolStr
-  , enumThenStr
-  , enumToStr
+  , enumComaStr
+  , enumDotsStr
   , thenOperatorStr
   , bindOperatorStr
-  , listCompositionPlaceholderStr
   , typeSignatureSeparatorStr
   , typeNameSeparatorStr
   , negativeLiteralStr
@@ -34,6 +27,8 @@ module StringSymbols
   , getTempVarLabel
   , getFuncDefLabel
   , sourceCodeDiagramLabel
+  , enumLBracketStr
+  , enumRBracketStr
   ) where
 
 import qualified Language.Haskell.Exts as Exts
@@ -94,19 +89,23 @@ otherwiseExpStr = "otherwise"
 negateSymbolStr :: String
 negateSymbolStr = "negate"
 
-enumThenStr :: String
-enumThenStr = ","
+enumComaStr :: String
+enumComaStr = ","
 
-enumToStr :: String
-enumToStr = ".."
+enumDotsStr :: String
+enumDotsStr = ".."
+
+enumLBracketStr :: String
+enumLBracketStr = "["
+
+enumRBracketStr :: String
+enumRBracketStr = "]"
 
 thenOperatorStr :: String
 thenOperatorStr = ">>"
 
 bindOperatorStr :: String
 bindOperatorStr = ">>="
-
-listCompositionPlaceholderStr = "listComp"
 
 typeSignatureSeparatorStr :: String
 typeSignatureSeparatorStr = " :: "

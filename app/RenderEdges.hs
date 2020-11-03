@@ -38,7 +38,7 @@ import GHC.Stack(HasCallStack)
 --import Data.GraphViz.Commands
 
 import Icons(findMaybeIconFromName)
-import IconToSymbolDiagram  ( 
+import EdgeToDiagram( 
   getArrowShadowOpts
   , getArrowBaseOpts
   )
@@ -146,7 +146,7 @@ getArrowsOpts
   graph
   (node0, node1, 
     (EmbedInfo _embedDir --edge@(EmbedInfo _ (Edge _ (_namePort0, _namePort1)))
-    e@(Edge
+      (Edge
       _
       namePorts@(fromNamePort, toNamePort))))
   (pointFrom, pointTo)

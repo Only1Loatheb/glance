@@ -32,13 +32,13 @@ colorOnBlackScheme :: (Floating a, Ord a) => ColorStyle a
 colorOnBlackScheme = ColorStyle {
   backgroundC = black,
   textBoxTextC = white,
-  applyCompositionC = cycle [cyan,olive,green],
+  applyCompositionC = cycle [cyan,lightSlightlyPurpleBlue],
   boolC = slightlyGreenYellow,
   lambdaC = lime,
   caseRhsC = orange,
   patternC = lightMagenta,
   bindTextBoxTextC = lightGreen,
-  edgeListC = [white, red, reddishOrange, lightPurple, yellow, lightBlue, cyan, coral,maroon,lightpink],
+  edgeListC = [white, red, reddishOrange, lightPurple, yellow, lightBlue, cyan, coral,maroon,lightpink, olive, green],
   nestingC = cycle [red, reddishOrange, yellow],
   listC = lightBlue
 }

@@ -5,7 +5,7 @@ module Main
   , CmdLineOptions(..)) where
 
 import Prelude hiding (return)
-import Data.Maybe
+import Data.Maybe()
 
 -- Note: (#) and (&) are hidden in all Glance source files, since they would
 -- require a special case when translating when Glance is run on its own source
@@ -16,18 +16,14 @@ import SVGrender(customRenderSVG')
 
 
 import Types (
-  SpecialDiagram
-  ,SpecialQDiagram
+  SpecialQDiagram
   , SpecialBackend
-  , DiaQuery(..)
-  , ModuleGraphs
-  , NodeQueryValue(..)
+  , DiaQuery
   , SourceCode
   , SrcRef
-  , ViewGraphs
   , QueryValue(..)
   , CreateView
-  , View(..)
+  , View
   )
 
 import ModuleToGraphs(getModuleGraphs)
@@ -57,12 +53,12 @@ passCmdArgs = CMD.customExecParser CMD.parserPrefs  CMD.opts >>= prepareDiagram
 
 prepareDiagram :: CMD.CmdLineOptions -> IO ()
 prepareDiagram (CMD.CmdLineOptions
-             inputFilename
-             outputFilename
-             portNumber
-             imageScale
-             doIncludeComments
-             isInteractive)
+  inputFilename
+  outputFilename
+  portNumber
+  imageScale
+  doIncludeComments
+  isInteractive)
   = do
   putStrLn $ "Opening file " ++ inputFilename ++ " for visualisation."
   moduleGraphs <- getModuleGraphs inputFilename
@@ -117,7 +113,6 @@ progressView (clicked:_) (Nothing, _ ) = case clicked of
 progressView (clicked:_) (oldDeclQV@(Just _), _ ) = case clicked of
   (NodeQv nodeQV) -> (oldDeclQV, Just nodeQV)
   (DeclQv declQV) -> (Just declQV, Nothing)
-progressView _ _ = error "progressView"
 
 withdrawView :: View -> View
 withdrawView (oldDeclQV@(Just {}), Just _) = (oldDeclQV, Nothing)

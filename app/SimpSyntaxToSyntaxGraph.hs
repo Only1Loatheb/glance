@@ -51,7 +51,7 @@ import           PortConstants (
 import HsSyntaxToSimpSyntax(
   SimpAlt(..)
   , stringToSimpDecl
-  , SrcRef(..)
+  , SrcRef
   , SimpExp(..)
   , SimpExpCore(..)
   , SimpPat(..)
@@ -126,8 +126,7 @@ import SyntaxGraph(
   , combineFromGraphToPort
   )
 import StringSymbols(
-  listCompositionPlaceholderStr
-  , typeSignatureSeparatorStr
+  typeSignatureSeparatorStr
   , typeNameSeparatorStr
   , negativeLiteralStr
   , patternWildCardStr
@@ -761,7 +760,7 @@ evalListComp ::
   EvalContext -> SrcRef -> SimpExp -> [SimpQStmt] -> State IDState GraphAndRef
 evalListComp context l  itemExp qualExps =  do  
   
-  let decls = [d | (SimpQStmt srcRef (SqLet d )) <- qualExps]
+  let decls = [d | (SimpQStmt _ (SqLet d )) <- qualExps]
   declGraphAndRefdeclContexts <-  mapM (evalDecls context) decls -- TODO add decls to context and graph
   let (declGraphAndRef, declContexts) = unzip declGraphAndRefdeclContexts
   let declContext =  Set.unions (context : declContexts)

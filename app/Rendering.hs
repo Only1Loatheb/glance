@@ -26,7 +26,7 @@ import GHC.Stack(HasCallStack)
 --import Data.GraphViz.Commands
 
 import Icons(findMaybeIconFromName)
-import IconToSymbolDiagram  ( iconToDiagram
+import IconToDiagram  ( iconToDiagram
                 , lambdaRegionToDiagram
                 )
 
@@ -48,7 +48,7 @@ import           Types (
   , Named(..)
   , TransformParams(..)
   , SpecialQDiagram
-  , AnnotatedFGR(..)
+  , AnnotatedFGR
   )
 
 import Util(nodeNameToInt, fromMaybeError, namedToTuple)

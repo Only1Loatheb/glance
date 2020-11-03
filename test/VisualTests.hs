@@ -18,7 +18,6 @@ import HsSyntaxToSimpSyntax(stringToSimpDecl, hsDeclToSimpDecl)
 import SyntaxGraph( SyntaxGraph(..))
 import SimpSyntaxToSyntaxGraph(translateStringToSyntaxGraph, customParseDecl, translateDeclToSyntaxGraph)
 import CollapseGraph(syntaxGraphToCollapsedGraph, syntaxGraphToFglGraph)
-import IconToSymbolDiagram(nameDiagram)
 import Rendering(renderIngSyntaxGraph)
 
 import Types(
@@ -37,7 +36,7 @@ import Types(
   , TransformParams(..)
   , TransformableDia
   , CaseOrMultiIfTag(..)
-  , AnnotatedFGR(..)
+  , AnnotatedFGR
   )
 
 import TextBox(coloredTextBox)

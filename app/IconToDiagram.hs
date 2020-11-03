@@ -4,27 +4,21 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module IconToSymbolDiagram
+module IconToDiagram
   ( ColorStyle(..)
   , colorScheme
-  , defaultLineWidth
   , iconToDiagram
-  , multilineComment
-  , getArrowShadowOpts
-  , getArrowBaseOpts
   , lambdaRegionToDiagram
   , nameDiagram
-  , sourceCodeDiagram
   )
 where
 
 import Diagrams.Prelude hiding ((&), (#), Name)
-import Diagrams.TwoD.Combinators(strutR2)
+
 import qualified Diagrams.TwoD.Path.Boolean as B
 
-import Data.Maybe(fromMaybe, isNothing)
 import Data.Either(partitionEithers)
-import Data.Typeable(Typeable)
+import Data.Maybe(isNothing)
 
 import Icons(
   findMaybeIconFromName
@@ -32,7 +26,6 @@ import Icons(
   )
 import TextBox (
   coloredTextBox
-  , multilineComment
   , letterHeight
   )
 
@@ -49,13 +42,11 @@ import PortConstants(
   , listToPort
   , listCompQualPorts
   )
+
 import StringSymbols(
   ifConditionConst
   , isTempLabel
   , patternSubscribedValueStr
-  , sourceCodeDiagramLabel
-  , enumThenStr
-  , enumToStr
   )
 
 import DrawingColors(colorScheme, ColorStyle(..))
@@ -82,144 +73,34 @@ import Types(
   , Connection
   )
 
+import DiagramSymbols(
+  defaultLineWidth
+  , symbolSize
+  , boxPadding
+  , portSeparationSize
+  , lambdaRegionPadding
+  , defaultOpacity
+  , inputPortSymbol
+  , resultPortSymbol
+  , valueSymbol
+  , caseVarSymbol
+  , inNoteFrame
+  , inCaseDecisionFrame
+  , inDecisionFrame
+  , inFrame
+  , memptyWithPosition
+  , inItemFrame
+  , listCompLine
+  , enumLeftBracket
+  , enumRightBracket
+  , enumComa
+  , enumDots
+  )
+
 {-# ANN module "HLint: ignore Use record patterns" #-}
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
--- CONSTANTS --
-defaultLineWidth :: (Fractional a) => a
-defaultLineWidth = 0.15
 
-symbolSize :: (Fractional a) => a
-symbolSize = 0.5
-
-boxPadding :: Fractional a => a
-boxPadding = 2 * defaultLineWidth
-
-portSeparationSize :: (Fractional a) => a
-portSeparationSize = 0.3
-
-lambdaRegionPadding :: (Fractional a) => a
-lambdaRegionPadding = 2.4 * letterHeight
-
-defaultOpacity :: (Fractional a) => a
-defaultOpacity = 0.4
-
-defaultShadowOpacity :: (Fractional a) => a
-defaultShadowOpacity = 0.6
-
-arrowLineWidth :: Fractional a => a
-arrowLineWidth = defaultLineWidth
-
-arrowShadowWidth :: Fractional a => a
-arrowShadowWidth = 1.9 * arrowLineWidth
-
-
--- BEGIN diagram basic symbols --
-inputPortSymbol :: SpecialBackend b n => SpecialDiagram b n
-inputPortSymbol = memptyWithPosition 
-
-resultPortSymbol :: SpecialBackend b n
-  => SpecialDiagram b n
-resultPortSymbol = memptyWithPosition -- valueSymbol
-
-valueSymbol ::SpecialBackend b n => SpecialDiagram b n
-valueSymbol = fc color $ lw none $ rotateBy (1/2) $ eqTriangle (5/4 * symbolSize) where -- don't set it to be to big so it fits in diagrams
-  color = caseRhsC colorScheme
-
-caseVarSymbol :: SpecialBackend b n
-  => Colour Double
-  ->  SpecialDiagram b n
-caseVarSymbol color = alignB coloredSymbol  where
-    symbol = vrule (2 * symbolSize)
-    coloredSymbol
-      = lwG defaultLineWidth $ lc color (strokeLine symbol)
-
-inNoteFrame :: SpecialBackend b n
-  => Colour Double
-  -> SpecialDiagram b n
-  -> SpecialDiagram b n
-inNoteFrame borderColor diagram
-  = centerXY diagram <> coloredFrame where
-  
-    boxHeight = height diagram
-    boxWidth = width diagram
-    cornerSize = letterHeight / 2
-    notCornerHeight = boxHeight - cornerSize 
-    frameWidth = boxWidth + 2 * cornerSize
-  
-    offsets = [
-      frameWidth *^ unitX
-      , notCornerHeight *^ unitY
-      , cornerSize *^ (-unitX + unitY)
-      , cornerSize *^ (-unitY)
-      , cornerSize *^ unitX
-      , cornerSize *^ (-unitX + unitY)
-      , (boxWidth + cornerSize) *^ (-unitX)
-      , boxHeight *^ (-unitY)
-      ]
-  
-    decisionFrame = centerXY $ strokeLoop $  closeLine $ fromOffsets offsets
-  
-    coloredFrame = lwG (defaultLineWidth/2) $  lc borderColor decisionFrame
-
-sourceCodeDiagram :: SpecialBackend b n
-  => String -> SpecialDiagram b n
-sourceCodeDiagram s = label === sourceCode  ||| padding where
-  sourceCode = multilineComment s
-  label = multilineComment sourceCodeDiagramLabel
-  padding = strut $ 10 * unitX  
-
-
-lambdaBodySymbol :: SpecialBackend b n
-  => String
-  -> SpecialDiagram b n
-lambdaBodySymbol label = if isTempLabel label
-  then mempty
-  else coloredTextBox (textBoxTextC colorScheme) label
-
-inCaseDecisionFrame :: SpecialBackend b n
-  => SpecialDiagram b n -> SpecialDiagram b n
-inCaseDecisionFrame = inDecisionFrame (caseRhsC colorScheme)
-
-inDecisionFrame :: SpecialBackend b n
-  => Colour Double
-  -> SpecialDiagram b n
-  -> SpecialDiagram b n
-inDecisionFrame borderColor diagram
-  = centerXY diagram <> coloredFrame where
-    boxHeight = boxPadding + max (height diagram) letterHeight
-    halfBoxHeight = boxHeight / 2
-    boxWidth = boxPadding + width diagram
-
-    topRightOffsets = [
-      halfBoxHeight *^ (unitY+unitX)
-      , halfBoxHeight *^ (unitY-unitX)
-      , boxWidth *^ (-unitX)
-      ]
-    bottomLeftOffsets = map negate topRightOffsets
-    offsets = topRightOffsets ++ bottomLeftOffsets
-
-    decisionFrame = centerXY $ strokeLoop $  closeLine $ fromOffsets offsets
-
-    coloredFrame = lwG defaultLineWidth $  lc borderColor decisionFrame
-
-inFrame :: SpecialBackend b n
-  => SpecialDiagram b n
-  -> Colour Double
-  -> n
-  -> n
-  -> SpecialDiagram b n
-inFrame diagram borderColor diagramWidth diagramHeight
-  = centerXY diagram <> coloredArgBox where
-    rectWidth = boxPadding + max diagramWidth letterHeight
-    rectHeight = boxPadding + max diagramHeight letterHeight
-    argBox = rect rectWidth rectHeight
-    coloredArgBox = lwG defaultLineWidth $ lcA (withOpacity borderColor defaultOpacity) argBox
-
--- BEGIN Diagram helper functions --
-memptyWithPosition :: SpecialBackend b n => SpecialDiagram b n
-memptyWithPosition = strutR2 (V2 symbolSize 0)
--- | Names the diagram and puts all sub-names in the namespace of the top level
 -- name.
 nameDiagram :: SpecialNum n =>
   NodeName
@@ -318,6 +199,12 @@ makePassthroughIcon iconInfo tp@(TransformParams name _) isSameNestingLevel (inP
     --  makeLabelledPort name port str
     valuePort = makeQualifiedPort outPort name
 
+lambdaBodySymbol :: SpecialBackend b n
+  => String
+  -> SpecialDiagram b n
+lambdaBodySymbol label = if isTempLabel label
+  then mempty
+  else coloredTextBox (textBoxTextC colorScheme) label
 -- >>>>>>>>>>>>>>>>>>>>>> SUB Diagrams <<<<<<<<<<<<<<<<<<<<<<<<
 -- TODO Detect if we are in a loop (have called iconToDiagram on the same node
 -- before)
@@ -479,19 +366,6 @@ listCompDiagram
     finalDia = vcat [argsDiagram, qualDiagramWithLine, listCompItemDiagram, resultDiagram]
     
 
-listCompLine = lwG defaultLineWidth $ lc (listC colorScheme)
-
-inItemFrame itemDiagram = finalDia where
-  itemDiagramAligned = alignB itemDiagram
-  finalDia = beside (-unitX) (itemDiagramAligned ||| rightListItemFrame) (leftListItemFrame ||| strutX defaultLineWidth)
-  leftListItemFrame = alignBR $ listCompLine $ vrule  $ (max  letterHeight $ height  itemDiagram)
-  rightListItemFrame =  dots ||| leftListItemFrame
-
-leftBracket = alignB $ coloredTextBox (listC colorScheme) "["
-rightBracket = alignB $ coloredTextBox (listC colorScheme) "]"
-coma = alignB $ coloredTextBox (listC colorScheme) ","
-dots = alignB $ coloredTextBox (listC colorScheme) ".."
-
 listGenDiagram :: SpecialBackend b n
   => IconInfo
   -> (Maybe NodeName)
@@ -504,14 +378,14 @@ listGenDiagram iconInfo fromName maybeThenName maybeToName transformParams = fin
   fromDia = alignB $ makeAppInnerIcon iconInfo transformParams False listFromPort (pure  (findMaybeIconFromName iconInfo fromName))
   thenDia = case maybeThenName of
     Nothing -> mempty
-    Just thenName -> coma ||| (alignB $ makeAppInnerIcon iconInfo transformParams False listThenPort (pure  (findMaybeIconFromName iconInfo thenName)))
+    Just thenName -> enumComa ||| (alignB $ makeAppInnerIcon iconInfo transformParams False listThenPort (pure  (findMaybeIconFromName iconInfo thenName)))
   toDia = case maybeToName of
     Nothing -> mempty
-    Just toName -> dots ||| (alignB $ makeAppInnerIcon iconInfo transformParams False listToPort (pure  (findMaybeIconFromName iconInfo toName)))
+    Just toName -> enumDots ||| (alignB $ makeAppInnerIcon iconInfo transformParams False listToPort (pure  (findMaybeIconFromName iconInfo toName)))
   
-  dotsIfNotTo = if isNothing maybeToName then  dots else mempty  
+  dotsIfNotTo = if isNothing maybeToName then  enumDots else mempty  
 
-  listDia = centerX $ hcat [leftBracket, fromDia, thenDia, dotsIfNotTo, toDia, rightBracket]
+  listDia = centerX $ hcat [enumLeftBracket, fromDia, thenDia, dotsIfNotTo, toDia, enumRightBracket]
   resultDia = centerX $ makeResultDiagram name
   finalDia = listDia === resultDia
 
@@ -645,89 +519,3 @@ lambdaRegionSymbol enclosedDiagarms (NodeName nameInt) level
 
     regionSymbol = dashingG [0.3 * symbolSize, 0.7 * symbolSize] 0 
       $ lc regionLineColor (lwG defaultLineWidth contentsRect)
-
-getArrowShadowOpts :: (RealFloat n, Typeable n)
-  => (NameAndPort,NameAndPort)
-  -> (Point V2 n, Point V2 n)
-  -> (Maybe (Angle n), Maybe (Angle n))
-  -> (NamedIcon,NamedIcon)
-  -> ArrowOpts n
-getArrowShadowOpts 
-  (_, namedPortTo)
-  points maybeAngles iconPair
-  = shaftStyle %~ (lwG arrowShadowWidth .
-                lcA $ withOpacity shaftColor defaultShadowOpacity)
-  $ headStyle %~ fc shaftColor
-  $ getArrowOpts points maybeAngles iconPair namedPortTo where
-    shaftColor = backgroundC colorScheme
-
-getArrowBaseOpts :: (RealFloat n, Typeable n)
-  => (NameAndPort,NameAndPort)
-  -> (Point V2 n, Point V2 n)
-  -> (Maybe (Angle n), Maybe (Angle n))
-  -> (NamedIcon, NamedIcon)
-  -> ArrowOpts n
-getArrowBaseOpts 
-  namesAndPorts@(_, namedPortTo)
-  points maybeAngles 
-  iconPair
-  = shaftStyle %~ (lwG arrowLineWidth {-- )-- -} . lc shaftColor) 
-  $ headStyle %~ fc shaftColor
-  $ getArrowOpts points maybeAngles iconPair namedPortTo where
-    shaftColor = getShaftColor namesAndPorts iconPair
-
-getShaftColor :: (NameAndPort,NameAndPort) -> (NamedIcon, NamedIcon) -> Colour Double
-getShaftColor = getShaftColor' edgeColors where
-  edgeColors = edgeListC colorScheme
-
-getShaftColor' :: [Colour Double]
-  -> (NameAndPort,NameAndPort)-> (NamedIcon, NamedIcon) -> Colour Double
-getShaftColor' _ (NameAndPort _ ResultPortConst,_) (Named _ (Icon FunctionDefIcon {} _), _) = lambdaC colorScheme
-getShaftColor' _ (_, NameAndPort _ InputPortConst) (_, Named _ (Icon FunctionDefIcon {} _)) = lambdaC colorScheme
-getShaftColor' edgeColors (NameAndPort (NodeName nodeNum) (Port portNum),_) (Named _ (Icon ListCompIcon {} _), _) = hashedShaftColor nodeNum portNum edgeColors
-getShaftColor' edgeColors (_, NameAndPort (NodeName nodeNum) (Port portNum)) (_, Named _ (Icon ListCompIcon {} _)) = hashedShaftColor nodeNum (portNum + 1) edgeColors
-getShaftColor' edgeColors (NameAndPort (NodeName nodeNum) (Port portNum),_) _ = hashedShaftColor nodeNum portNum edgeColors
-
-hashedShaftColor nodeNum portNum edgeColors = shaftColor where
-  namePortHash = mod (portNum + (503 * nodeNum)) (length edgeColors)
-  shaftColor = edgeColors !! namePortHash
-
-getArrowOpts :: (RealFloat n, Typeable n)
-  => (Point V2 n, Point V2 n)
-  -> (Maybe (Angle n), Maybe (Angle n))
-  -> (NamedIcon, NamedIcon)
-  -> NameAndPort
-  -> ArrowOpts n
-getArrowOpts (formPoint, toPoint) (anglesFrom,anglesTo) (_,iconTo) namedPortTo
-  = arrowOptions where
-    arrowOptions =
-      -- arrowHead .~ noHead
-      arrowHead .~ getArrowHead iconTo namedPortTo
-      $ arrowTail .~ noTail
-      $ arrowShaft .~ edgeSymbol formPoint toPoint anglesFrom anglesTo
-      -- TODO Don't use a magic number for lengths (headLength and tailLength)
-      $ lengths .~ global 0.5
-      $ with
-
--- getArrowHead :: Icon -> 
-getArrowHead :: RealFloat n => NamedIcon -> NameAndPort -> ArrowHT n
-getArrowHead (Named iconName (Icon FunctionDefIcon {} _)) (NameAndPort nodeName InputPortConst) 
-  = if nodeName == iconName then noHead else tri
-getArrowHead _ _ = tri
--- https://archives.haskell.org/projects.haskell.org/diagrams/doc/arrow.html
-
-edgeSymbol :: (R1 (Diff p), Affine p, Transformable (Diff p (N t)),
-                 TrailLike t, Floating (N (Diff p (N t))), Eq (N (Diff p (N t))),
-                 V (Diff p (N t)) ~ V2, V t ~ Diff p)
-  => p (N t)
-  -> p (N t)
-  -> Maybe (Angle (N (Diff p (N t))))
-  -> Maybe (Angle (N (Diff p (N t))))
-  -> t
-edgeSymbol formPoint toPoint anglesFrom anglesTo = fromSegments [bezier3 offsetToControl1 offsetToControl2 offsetToEnd] where
-  angleFrom = fromMaybe (3/4 @@ turn) anglesFrom  -- } edges defaults to go down for unnamed nodes
-  angleTo = fromMaybe (1/4 @@ turn) anglesTo  -- }
-  scaleFactor = symbolSize * 8.0
-  offsetToEnd = toPoint .-. formPoint
-  offsetToControl1 = rotate angleFrom (scale scaleFactor unitX)
-  offsetToControl2 = rotate angleTo (scale scaleFactor unitX) ^+^ offsetToEnd

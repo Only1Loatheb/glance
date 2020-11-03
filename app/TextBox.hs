@@ -8,15 +8,15 @@ module TextBox
   , multilineComment
   , letterHeight
   , transparentAlpha
+  , sourceCodeDiagram
   )
 where
 
 import Diagrams.Prelude hiding ((&), (#), Name)
-import Diagrams.TwoD.Combinators(strutR2)
 
-import           Types  ( SpecialDiagram
-                        , SpecialBackend
-                        )
+import Types(SpecialDiagram, SpecialBackend)
+
+import StringSymbols(sourceCodeDiagramLabel)
 {-# ANN module "HLint: ignore Use record patterns" #-}
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
@@ -103,3 +103,11 @@ coloredTextBox' textColor objectWithSize textDiagram = objectWithSize <> textLab
     fontSize
     (local textBoxFontSize)
     (font textFont $ fillColor textColor  textDiagram)
+
+
+sourceCodeDiagram :: SpecialBackend b n
+  => String -> SpecialDiagram b n
+sourceCodeDiagram s = label === sourceCode  ||| padding where
+  sourceCode = multilineComment s
+  label = multilineComment sourceCodeDiagramLabel
+  padding = strut $ 10 * unitX  

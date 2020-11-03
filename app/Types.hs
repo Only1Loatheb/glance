@@ -40,11 +40,11 @@ module Types (
   , DiagramIcon(..)
   , SrcRef
   , ModuleGraphs
-  , AnnotatedFGR(..)
+  , AnnotatedFGR
   , SourceCode
   , ViewGraphs
   , QueryValue(..)
-  , View(..)
+  , View
   , CreateView
   , FuncDefRegionInfo
   , Reference

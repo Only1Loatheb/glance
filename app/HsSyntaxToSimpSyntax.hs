@@ -1,7 +1,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 module HsSyntaxToSimpSyntax (
   SimpExp(..)
-  , SrcRef(..)
+  , SrcRef
   , SelectorAndVal(..)
   , SimpAlt(..)
   , SimpDecl(..)
@@ -22,7 +22,7 @@ module HsSyntaxToSimpSyntax (
   ) where
 
 import Data.List(foldl')
-import Data.Maybe(catMaybes, isJust, fromMaybe)
+import Data.Maybe(catMaybes, isJust)
 
 import Types (
   SrcRef
@@ -32,13 +32,7 @@ import Types (
 import qualified Language.Haskell.Exts as Exts
 
 import StringSymbols(
-  qualifiedSeparatorStr
-  , unitConstructorStr
-  , listTypeConstructorStr
-  , functionConstructor
-  , listDataConstructorStr
-  , unboxedTupleConstructorStr
-  , getTempVarLabel
+  getTempVarLabel
   , otherwiseExpStr
   , negateSymbolStr
   , thenOperatorStr
@@ -173,7 +167,7 @@ srcRef :: Exts.SrcSpanInfo -> SrcRef
 srcRef = Exts.srcInfoSpan 
 
 srcSpanInfo :: SrcRef -> Exts.SrcSpanInfo
-srcSpanInfo span = Exts.infoSpan span []
+srcSpanInfo srcSpan = Exts.infoSpan srcSpan []
 
 nameToQname :: Exts.SrcSpanInfo -> Exts.Name Exts.SrcSpanInfo -> Exts.QName Exts.SrcSpanInfo
 nameToQname l name = strToQName l $ nameToString name  
@@ -207,16 +201,16 @@ simpExpToRhs l e = Exts.UnGuardedRhs l (simpExpToHsExp e)
 hsPatToSimpPat :: Exts.Pat Exts.SrcSpanInfo -> SimpPat
 hsPatToSimpPat p = SimpPat (srcRef $ Exts.ann p) simpPatCore where
   simpPatCore = case p of
-    Exts.PVar l n -> SpVar n
-    Exts.PLit l sign lit -> SpLit sign lit
+    Exts.PVar _l n -> SpVar n
+    Exts.PLit _l sign lit -> SpLit sign lit
     Exts.PInfixApp l p1 qName p2 -> patCore $ hsPatToSimpPat (Exts.PApp l qName [p1, p2])
-    Exts.PApp l name patts -> SpApp name (fmap hsPatToSimpPat patts)
+    Exts.PApp _l name patts -> SpApp name (fmap hsPatToSimpPat patts)
     Exts.PTuple l _ patts -> SpApp
                             ((strToQName l . nTupleString . length) patts)
                             (fmap hsPatToSimpPat patts)
-    Exts.PParen l pat -> patCore $ hsPatToSimpPat pat
-    Exts.PAsPat l name pat -> SpAsPat name (hsPatToSimpPat pat)
-    Exts.PWildCard l -> SpWildCard
+    Exts.PParen _l pat -> patCore $ hsPatToSimpPat pat
+    Exts.PAsPat _l name pat -> SpAsPat name (hsPatToSimpPat pat)
+    Exts.PWildCard _l -> SpWildCard
     Exts.PList l patts -> SpApp
                           ((strToQName l . nListString . length) patts)
                           (fmap hsPatToSimpPat patts)
@@ -253,8 +247,8 @@ matchToAlt (Exts.Match l _ mtaPats rhs binds)
 matchToAlt match = error $ "Unsupported syntax in matchToAlt: " <> show match
   
 matchesToFunBind :: Exts.SrcSpanInfo -> [Exts.Match Exts.SrcSpanInfo] -> Exts.Match Exts.SrcSpanInfo
-matchesToFunBind l [] = error $ "Empty matches in matchesToFunBind."
-matchesToFunBind l [match] = match 
+matchesToFunBind _l [] = error $ "Empty matches in matchesToFunBind."
+matchesToFunBind _l [match] = match 
 matchesToFunBind l allMatches@(firstMatch : _) = multipleMatchesToCase l firstMatch allMatches
 
 -- TODO combine srcLoc
@@ -277,7 +271,7 @@ multipleMatchesToCase l _ _ = error $ "Unsupported syntax in matchesToFunBind:" 
 hsDeclToSimpDecl :: Exts.Decl Exts.SrcSpanInfo -> SimpDecl
 hsDeclToSimpDecl decl = SimpDecl (srcRef $ Exts.ann decl)  simpDeclCore where
   simpDeclCore = case decl of
-    Exts.TypeSig l names typeForNames -> SdTypeSig names typeForNames
+    Exts.TypeSig _l names typeForNames -> SdTypeSig names typeForNames
     Exts.FunBind l matches -> declCore $ matchToDeclWLambda $ matchesToFunBind l matches
     Exts.PatBind l pat rhs maybeBinds -> SdPatBind (hsPatToSimpPat pat) expr
     -- TODO Add a visual representation of data declarations
@@ -306,7 +300,7 @@ simpPatToHsPat :: SimpPat -> Exts.Pat Exts.SrcSpanInfo
 simpPatToHsPat (SimpPat s pat) = hsPat where
   hsPat = case pat of
     SpVar n -> Exts.PVar l n
-    SpLit s lit -> Exts.PLit l s lit
+    SpLit sgn lit -> Exts.PLit l sgn lit
     SpApp n pats -> Exts.PApp l n (fmap simpPatToHsPat pats)
     SpAsPat n p -> Exts.PAsPat l n (simpPatToHsPat p)
     SpWildCard -> Exts.PWildCard l
@@ -440,9 +434,9 @@ desugarEnums l eFrom eThen eTo = SimpExp (srcRef l) $ SeListGen
 desugarListComp :: Exts.Stmt Exts.SrcSpanInfo ->  SimpQStmt
 desugarListComp qStmt = SimpQStmt (srcRef $ Exts.ann qStmt) simpQStmtCore where
   simpQStmtCore = case qStmt of
-    (Exts.Qualifier l e)     -> SqQual (hsExpToSimpExp e)
-    (Exts.Generator l pat e) -> SqGen (hsExpToSimpExp e) (hsPatToSimpPat pat)
-    (Exts.LetStmt l binds)   -> SqLet (hsBindsToDecls binds)
+    (Exts.Qualifier _l e)     -> SqQual (hsExpToSimpExp e)
+    (Exts.Generator _l pat e) -> SqGen (hsExpToSimpExp e) (hsPatToSimpPat pat)
+    (Exts.LetStmt _l binds)   -> SqLet (hsBindsToDecls binds)
     _                        -> error "Unsupported syntax in hsQStmtsToSimpStmts'" 
                             
 -- http://hackage.haskell.org/package/haskell-src-exts-1.23.0/docs/Language-Haskell-Exts-Syntax.html#g:8
@@ -459,7 +453,7 @@ hsExpToSimpExp x = simplifyExp $ case x of
   Exts.Let l bs e ->  SimpExp (srcRef l) $ SeLet (hsBindsToDecls bs) (hsExpToSimpExp e)
   Exts.If l e1 e2 e3 -> ifToGuard (srcRef l) (hsExpToSimpExp e1) (hsExpToSimpExp e2) (hsExpToSimpExp e3)
   Exts.Case l e alts -> SimpExp (srcRef l) $ SeCase (hsExpToSimpExp e) (fmap hsAltToSimpAlt alts)
-  Exts.Paren l e -> hsExpToSimpExp e
+  Exts.Paren _l e -> hsExpToSimpExp e
   Exts.List l exprs -> hsExpToSimpExp $ deListifyApp
                       l
                       (makeVarExp l $ nListString $ length exprs)
@@ -509,7 +503,8 @@ simpExpToHsExp (SimpExp s x) = case x of
     Exts.Case l (simpExpToHsExp e) $ fmap (simpAltToHsAlt s) alts
   SeMultiIf selsAndVal ->
     Exts.MultiIf l (fmap (selAndValToGuardedRhs s) selsAndVal)
-  SeListComp e1 me2 -> error "TODO simpExpToHsExp SeListComp l e1 me2 "
+  SeListComp _e1 _me2 -> error "TODO simpExpToHsExp SeListComp l e1 me2 "
+  (SeListGen _ _ _) -> error "simpExpToHsExp SeListGen"
   where 
     l = srcSpanInfo s
 

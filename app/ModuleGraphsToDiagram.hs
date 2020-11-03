@@ -13,40 +13,34 @@ module ModuleGraphsToDiagram(
 -- require a special case when translating when Glance is run on its own source
 -- code.
 import qualified Diagrams.Prelude as Dia hiding ((#), (&))
-import qualified Data.Map as Map
-import           Data.Maybe
+import           Data.Maybe()
 import qualified Language.Haskell.Exts as Exts
 import           Data.List( sortBy )
 import Data.List.Split as Split
 import           Data.Function( on )
 
-import IconToSymbolDiagram(
-  ColorStyle(..)
-  , colorScheme
-  , multilineComment
-  , sourceCodeDiagram
-  )
+import DrawingColors(ColorStyle(..), colorScheme)
 import Rendering(renderIngSyntaxGraph)
 import           Types  (
   SpecialDiagram
   , SpecialQDiagram
   , SpecialBackend
   , NamedIcon
-  , SrcRef(..)
+  , SrcRef
   , NodeQueryValue(..)
   , ModuleGraphs
   , ViewGraphs
   , QueryValue(..)
   , DeclQueryValue(..)
   , NodeQueryValue(..)
-  , AnnotatedFGR(..)
+  , AnnotatedFGR
   , SourceCode
   , SyntaxGraph(..)
   )
 
 import PartialView (neighborsSubgraph)
 
-import TextBox (multilineComment)
+import TextBox (multilineComment, sourceCodeDiagram)
 import CollapseGraph(syntaxGraphToCollapsedGraph, syntaxGraphToLessCollapsedGraph)
 -- before loop
 diagramFromModule :: SpecialBackend b Double =>
@@ -165,10 +159,10 @@ commentToSpanAndDiagram (Exts.Comment _ srcSpan c) = (srcSpan, Dia.value mempty 
 moduleGraphsToViewGraphs :: AnnotatedFGR -> (AnnotatedFGR, AnnotatedFGR)
 moduleGraphsToViewGraphs graph = (graph, graph) 
 
--- addSourceCodeDiagram :: SpecialBackend b Double
---   => SpecialQDiagram b Double
---   -> SourceCode
---   -> SpecialQDiagram b Double
+addSourceCodeDiagram :: SpecialBackend b Double
+  => SpecialQDiagram b Double
+  -> SourceCode
+  -> SpecialQDiagram b Double
 addSourceCodeDiagram diagram codeString = diagramWithsourceCode where
   sourceCodeDia = Dia.value mempty $ sourceCodeDiagram codeString
   diagramWithsourceCode = (diagram Dia.===  sourceCodeDia)

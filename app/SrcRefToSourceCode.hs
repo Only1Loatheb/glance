@@ -1,7 +1,6 @@
 
 module SrcRefToSourceCode (srcRefToSourceCode) where
 
-import System.IO 
 import qualified Language.Haskell.Exts as Exts
 
 import Types (SrcRef, SourceCode)

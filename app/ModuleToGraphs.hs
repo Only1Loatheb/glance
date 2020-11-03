@@ -17,7 +17,7 @@ import           Types  (
   , SpecialQDiagram
   , SpecialBackend
   , NamedIcon
-  , SrcRef(..)
+  , SrcRef
   , NodeQueryValue(..)
   , ModuleGraphs
   , ViewGraphs

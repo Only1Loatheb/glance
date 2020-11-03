@@ -19,13 +19,13 @@ import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
   , TransformParams(..)
   , EdgeOption(..)
   , QueryValue(..)
-  , DiaQuery(..)
+  , DiaQuery
   , NodeQueryValue(..)
   )
 
 import TextBox(transparentAlpha)
 
-import IconToSymbolDiagram  ( iconToDiagram)
+import IconToDiagram  ( iconToDiagram)
 
 -- CONSTANT
 graphvizScaleFactor :: (Fractional a) => a

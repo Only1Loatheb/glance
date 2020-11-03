@@ -11,7 +11,7 @@ import Data.Char(isAlpha)
 import System.FilePath(takeBaseName)
 import Data.Typeable(Typeable)
 import qualified Diagrams.Prelude as Dia
-import IconToSymbolDiagram(colorScheme, ColorStyle(..))
+import IconToDiagram(colorScheme, ColorStyle(..))
 
 import           Types (
   Edge(..)

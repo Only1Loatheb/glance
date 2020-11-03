@@ -29,14 +29,16 @@ import           Options.Applicative (
   , Parser
   )
 
+import Options.Applicative.Types(ParserPrefs, ParserInfo)
+
 
 data CmdLineOptions = CmdLineOptions {
-  inputFilename :: String
-  , outputFilename :: String
-  , portNumber :: Int
-  , imageWidth :: Double
-  , doIncludeComments :: Bool
-  , isInteractive :: Bool
+  inputFilenameOpt :: String
+  , outputFilenameOpt :: String
+  , portNumberOpt :: Int
+  , imageWidthOpt :: Double
+  , doIncludeCommentsOpt :: Bool
+  , isInteractiveOpt :: Bool
   }
 
 optionParser :: Parser CmdLineOptions
@@ -50,10 +52,12 @@ optionParser = CmdLineOptions
   -- TODO add port option
   -- TODO add which function are detiled option
 
+parserPrefs :: ParserPrefs
 parserPrefs = defaultPrefs{
   prefShowHelpOnError = True
   }
 
+opts :: ParserInfo CmdLineOptions
 opts = info (helper <*> optionParser)
   (fullDesc
   Dia.<> progDesc "SimpSyntaxToSyntaxGraph a Haskell source file (.hs) into an SVG image."
