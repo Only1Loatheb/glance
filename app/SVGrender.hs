@@ -31,18 +31,18 @@ import           Types (
 
 customRenderSVG' :: (Typeable n, Show n, RealFloat n) =>
   FilePath
-  -> Dia.SizeSpec Dia.V2 n
+  -> n
   -> Dia.QDiagram SVG Dia.V2 n DiaQuery
   -> IO ()
-customRenderSVG' outputFilename size qDiagram = customRenderSVG outputFilename size diagram where
+customRenderSVG' outputFilename scale qDiagram = customRenderSVG outputFilename scale diagram where
   diagram = Dia.clearValue qDiagram
 
 customRenderSVG :: (Typeable n, Show n, RealFloat n) =>
   FilePath
-  -> Dia.SizeSpec Dia.V2 n
+  -> n
   -> Dia.QDiagram SVG Dia.V2 n Dia.Any
   -> IO ()
-customRenderSVG outputFilename size diagram 
+customRenderSVG outputFilename scale diagram 
   = renderSVG' outputFilename svgOptions diagramWithBackground where
     diagramWithBackground = Dia.bg (backgroundC colorScheme) diagram
     -- This xml:space attribute preserves the whitespace in the svg text.
@@ -50,4 +50,4 @@ customRenderSVG outputFilename size diagram
     -- https://github.com/diagrams/diagrams-svg/blob/master/src/Diagrams/Backend/SVG.hs#L367
     mkPrefix :: FilePath -> T.Text
     mkPrefix = T.filter isAlpha . T.pack . takeBaseName
-    svgOptions = SVGOptions size Nothing (mkPrefix outputFilename) attributes True
+    svgOptions = SVGOptions (Dia.mkWidth $ scale * Dia.width diagram) Nothing (mkPrefix outputFilename) attributes True

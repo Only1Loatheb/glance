@@ -59,10 +59,10 @@ fromMaybeError :: String -> Maybe a -> a
 fromMaybeError s = fromMaybe (error s)
 
 printSelf :: (Show a) => a -> a
-printSelf a = Debug.Trace.trace (show a ++ "\n\n") a
+printSelf a = Debug.Trace.trace ("\nPrinted\n" ++ show a ++ "\n") a
 
 -- printSelf :: (Show a) => a -> a
-printSelfM a = Debug.Trace.traceM (show a ++ "\n\n")
+printSelfM a = Debug.Trace.traceM ("\nPrinted\n" ++ show a ++ "\n")
 
 -- | (Just True) = True, Nothing = False
 maybeBoolToBool :: Maybe Bool -> Bool

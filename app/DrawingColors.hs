@@ -42,16 +42,39 @@ colorOnBlackScheme = ColorStyle {
   nestingC = cycle [red, reddishOrange, yellow],
   listC = lightBlue
 }
-  where
-    slightlyGreenYellow = sRGB24 212 255 0
-    lightMagenta = sRGB24 255 94 255
-    lightSlightlyPurpleBlue = sRGB24 109 87 255
-    reddishOrange = sRGB24 255 119 0
-    --lightBlue = sRGB24 126 127 255
-    lightBlue = sRGB24 35 156 255
-    lightPurple = sRGB24 208 137 255
-    lightGreen = sRGB24 180 255 145
 
+slightlyGreenYellow :: (Floating a, Ord a) => Colour a
+slightlyGreenYellow = sRGB24 212 255 0
+lightMagenta :: (Floating a, Ord a) => Colour a
+lightMagenta = sRGB24 255 94 255
+lightSlightlyPurpleBlue :: (Floating a, Ord a) => Colour a
+lightSlightlyPurpleBlue = sRGB24 109 87 255
+reddishOrange :: (Floating a, Ord a) => Colour a
+reddishOrange = sRGB24 255 119 0
+-- :: (Floating a, Ord a) => Colour a
+--lightBlue = sRGB24 126 127 255
+lightBlue :: (Floating a, Ord a) => Colour a
+lightBlue = sRGB24 35 156 255
+lightPurple :: (Floating a, Ord a) => Colour a
+lightPurple = sRGB24 208 137 255
+lightGreen :: (Floating a, Ord a) => Colour a
+lightGreen = sRGB24 180 255 145
+
+
+colorsOnWhiteScheme :: (Floating a, Ord a) => ColorStyle a
+colorsOnWhiteScheme = ColorStyle {
+  backgroundC = white,
+  textBoxTextC = black,
+  applyCompositionC = cycle [cyan,lightSlightlyPurpleBlue],
+  boolC = slightlyGreenYellow,
+  lambdaC = lime,
+  caseRhsC = orange,
+  patternC = lightMagenta,
+  bindTextBoxTextC = lightGreen,
+  edgeListC = [black, red, reddishOrange, lightPurple, yellow, lightBlue, cyan, coral,maroon,lightpink, olive, green],
+  nestingC = cycle [red, reddishOrange, yellow],
+  listC = lightBlue
+}
 
 whiteOnBlackScheme :: (Floating a, Ord a) => ColorStyle a
 whiteOnBlackScheme = ColorStyle {

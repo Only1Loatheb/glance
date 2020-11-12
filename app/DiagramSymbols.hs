@@ -24,11 +24,11 @@ module DiagramSymbols(
   , inFrame
   , memptyWithPosition
   , inItemFrame
-  , listCompLine
   , enumLeftBracket
   , enumRightBracket
   , enumComa
   , enumDots
+  , listCompPipe
   ) where
 
 import Diagrams.Prelude hiding ((&), (#), Name)
@@ -193,3 +193,7 @@ enumComa = alignB $ coloredTextBox (listC colorScheme) enumComaStr
 
 enumDots :: SpecialBackend b n => SpecialDiagram b n
 enumDots = alignB $ coloredTextBox (listC colorScheme) enumDotsStr
+
+listCompPipe height = alignB $ centerX $ listCompLine pipe where
+  line = vrule height
+  pipe = hcat [line, strutX symbolSize, line]

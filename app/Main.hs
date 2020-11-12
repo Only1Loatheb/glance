@@ -73,7 +73,7 @@ prepareDiagram (CMD.CmdLineOptions
     blankCanvasLoop moduleDiagram portNumber loopControl imageScale
   else do
     diagram <- staticDiagramFromModule doIncludeComments moduleGraphs
-    customRenderSVG' outputFilename (Dia.mkWidth 500) diagram
+    customRenderSVG' outputFilename imageScale diagram
     putStrLn $ "Saving file: " ++ outputFilename
 
 selectViewWithSourceCode :: SpecialBackend b Double =>

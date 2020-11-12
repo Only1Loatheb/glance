@@ -28,7 +28,8 @@ renderDrawings = mapM_ saveDrawing where
   saveDrawing (name, drawingMaker) = do
     dia <- drawingMaker
     -- TODO Replace string concatenation with proper path manipulation functions.
-    customRenderSVG ("test/test-output/" ++ name ++ ".svg") (mkWidth 700)  dia
+    customRenderSVG ("test/test-output/" ++ name ++ ".svg") widthScale dia 
+      where widthScale = 12
 
 main :: HasCallStack => IO ()
 --main = print "Hello world"

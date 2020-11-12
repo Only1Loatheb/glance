@@ -90,11 +90,11 @@ import DiagramSymbols(
   , inFrame
   , memptyWithPosition
   , inItemFrame
-  , listCompLine
   , enumLeftBracket
   , enumRightBracket
   , enumComa
   , enumDots
+  , listCompPipe
   )
 
 {-# ANN module "HLint: ignore Use record patterns" #-}
@@ -345,8 +345,7 @@ listCompDiagram
 
     qualDiagrams = zipWith ( makeAppInnerIcon iconInfo tp False) listCompQualPorts (fmap pure qualIcons)
     qualDiagram = hcat $ map inCaseDecisionFrame qualDiagrams
-    qualDiagramWithLine = (alignBR $ listCompLine $ vrule  (letterHeight + height qualDiagram))
-      <> (alignBL qualDiagram)
+    qualDiagramWithLine = (alignB $ listCompPipe (letterHeight + height qualDiagram)) <> (alignBL qualDiagram)
 
     argPortsUncentred =  zipWith 
       (makePassthroughIcon iconInfo tp False) 
