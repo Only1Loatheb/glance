@@ -16,7 +16,6 @@ module DiagramSymbols(
   , arrowShadowWidth
   , inputPortSymbol
   , resultPortSymbol
-  , valueSymbol
   , caseVarSymbol
   , inNoteFrame
   , inCaseDecisionFrame
@@ -54,16 +53,16 @@ import StringSymbols(
 
 -- CONSTANTS --
 defaultLineWidth :: (Fractional a) => a
-defaultLineWidth = 0.15
+defaultLineWidth = 0.15 * letterHeight
 
 symbolSize :: (Fractional a) => a
-symbolSize = 0.5
+symbolSize = 0.5 * letterHeight
 
 boxPadding :: Fractional a => a
 boxPadding = 2 * defaultLineWidth
 
 portSeparationSize :: (Fractional a) => a
-portSeparationSize = 0.3
+portSeparationSize = 0.3 * letterHeight
 
 lambdaRegionPadding :: (Fractional a) => a
 lambdaRegionPadding = 2.4 * letterHeight
@@ -87,11 +86,7 @@ inputPortSymbol = memptyWithPosition
 
 resultPortSymbol :: SpecialBackend b n
   => SpecialDiagram b n
-resultPortSymbol = memptyWithPosition -- valueSymbol
-
-valueSymbol ::SpecialBackend b n => SpecialDiagram b n
-valueSymbol = fc color $ lw none $ rotateBy (1/2) $ eqTriangle (5/4 * symbolSize) where -- don't set it to be to big so it fits in diagrams
-  color = caseRhsC colorScheme
+resultPortSymbol = memptyWithPosition
 
 caseVarSymbol :: SpecialBackend b n
   => Colour Double

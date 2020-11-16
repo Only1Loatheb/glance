@@ -10,6 +10,7 @@ module IconToDiagram
   , iconToDiagram
   , lambdaRegionToDiagram
   , nameDiagram
+  , lambdaRegionPadding
   )
 where
 
@@ -82,7 +83,6 @@ import DiagramSymbols(
   , defaultOpacity
   , inputPortSymbol
   , resultPortSymbol
-  , valueSymbol
   , caseVarSymbol
   , inNoteFrame
   , inCaseDecisionFrame

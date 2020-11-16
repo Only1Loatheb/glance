@@ -56,6 +56,9 @@ import DiagramSymbols(
   , symbolSize
   )
 
+edgeControlVectorLen ::  Fractional a => a
+edgeControlVectorLen = symbolSize * 4.0
+
 getArrowShadowOpts :: (RealFloat n, Typeable n)
   => (NameAndPort,NameAndPort)
   -> (Point V2 n, Point V2 n)
@@ -116,7 +119,7 @@ getArrowOpts (formPoint, toPoint) (anglesFrom,anglesTo) (_,iconTo) namedPortTo
       $ arrowTail .~ noTail
       $ arrowShaft .~ edgeSymbol formPoint toPoint anglesFrom anglesTo
       -- TODO Don't use a magic number for lengths (headLength and tailLength)
-      $ lengths .~ global 0.5
+      $ lengths .~ global symbolSize
       $ with
 
 -- getArrowHead :: Icon -> 
@@ -137,7 +140,6 @@ edgeSymbol :: (R1 (Diff p), Affine p, Transformable (Diff p (N t)),
 edgeSymbol formPoint toPoint anglesFrom anglesTo = fromSegments [bezier3 offsetToControl1 offsetToControl2 offsetToEnd] where
   angleFrom = fromMaybe (3/4 @@ turn) anglesFrom  -- } edges defaults to go down for unnamed nodes
   angleTo = fromMaybe (1/4 @@ turn) anglesTo  -- }
-  scaleFactor = symbolSize * 8.0
   offsetToEnd = toPoint .-. formPoint
-  offsetToControl1 = rotate angleFrom (scale scaleFactor unitX)
-  offsetToControl2 = rotate angleTo (scale scaleFactor unitX) ^+^ offsetToEnd
+  offsetToControl1 = rotate angleFrom (scale edgeControlVectorLen unitX)
+  offsetToControl2 = rotate angleTo (scale edgeControlVectorLen unitX) ^+^ offsetToEnd

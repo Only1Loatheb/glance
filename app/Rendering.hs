@@ -26,9 +26,9 @@ import GHC.Stack(HasCallStack)
 --import Data.GraphViz.Commands
 
 import Icons(findMaybeIconFromName)
-import IconToDiagram  ( iconToDiagram
-                , lambdaRegionToDiagram
-                )
+import IconToDiagram( iconToDiagram, lambdaRegionToDiagram, lambdaRegionPadding)
+
+import TextBox(letterHeight)
 
 import SyntaxNodeToIcon(nodeToIcon)
 import           Types (
@@ -127,7 +127,8 @@ customLayoutParams = GV.defaultParams{
       --GVA.OverlapScaling 4,
       GVA.OverlapShrink True
       , GVA.ClusterRank GVA.Local
-      , GVA.RankSep [0.3]
+      , GVA.RankSep [1.2 * lambdaRegionPadding * drawingToGraphvizScaleFactor]
+      , GVA.NodeSep $ 0.5 * lambdaRegionPadding * drawingToGraphvizScaleFactor
       ]
     ]
   , GV.clusterID =  GV.Num . GV.Int --   ClusterT
@@ -137,7 +138,8 @@ customLayoutParams = GV.defaultParams{
 drawingToGraphvizScaleFactor :: Double
 -- For Neato, ScaleOverlaps
 --drawingToGraphvizScaleFactor = 0.08
-drawingToGraphvizScaleFactor = 0.15
+-- has to be set acording to drawings
+drawingToGraphvizScaleFactor = 0.13
 
 -- GVA.Width and GVA.Height have a minimum of 0.01
 minialGVADimention :: Double
@@ -157,7 +159,7 @@ renderIconGraph debugInfo fullGraphWithInfo viewGraph = do
   let
     iconAndPositions = Map.toList $  fst $ getGraph layoutResult
     iconAndPlacedNodes :: [(NamedIcon,SpecialDiagram b Double)]
-    iconAndPlacedNodes = fmap (placeNode iconInfo) iconAndPositions
+    iconAndPlacedNodes = map (placeNode iconInfo drawingToGraphvizScaleFactor) iconAndPositions
     placedNodes = mconcat $ fmap snd iconAndPlacedNodes
 
     placedRegions = Dia.value mempty $ drawLambdaRegions iconInfo iconAndPlacedNodes

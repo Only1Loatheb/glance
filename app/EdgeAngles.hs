@@ -26,7 +26,9 @@ import Icons(findIcon,findMaybeIconFromName,findMaybeIconsFromNames)
 import PortConstants(
     pattern InputPortConst
   , pattern ResultPortConst
-  , isArgPort)
+  , isArgPort
+  , isQualPort
+  )
 
 {-# ANN module "HLint: ignore Use record patterns" #-}
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
@@ -41,11 +43,11 @@ nestedApplyPortAngle InputPortConst = 1/2 @@ turn -- input function
 nestedApplyPortAngle ResultPortConst = 3/4 @@ turn
 nestedApplyPortAngle _isInput = 3/16 @@ turn
 
-lambdaPortAngle :: Floating n => Port -> Angle n
-lambdaPortAngle InputPortConst = 1/4 @@ turn
-lambdaPortAngle ResultPortConst = 3/4 @@ turn
-lambdaPortAngle port
-  | isArgPort port = 1/2 @@ turn
+lambdaPortAngle :: Floating n => Bool -> Port -> Angle n
+lambdaPortAngle _ InputPortConst = 1/4 @@ turn
+lambdaPortAngle _ ResultPortConst = 3/4 @@ turn
+lambdaPortAngle isEmbedded port
+  | isArgPort port = if isEmbedded then 1/2 @@ turn else 1/4 @@ turn
   | otherwise        = 3/4 @@ turn
 
 patternAppPortAngle :: Floating n => Port -> Angle n
@@ -61,6 +63,14 @@ multiIfPortAngle ResultPortConst = 3/4 @@ turn
 multiIfPortAngle port
   | isArgPort port = 1/4 @@ turn
   | otherwise        = 3/4 @@ turn
+
+listCompPortAngle :: Floating n => Port -> Angle n
+listCompPortAngle InputPortConst = 1/4 @@ turn
+listCompPortAngle ResultPortConst = 3/4 @@ turn
+listCompPortAngle port
+  | isQualPort port = 1/4 @@ turn
+  | isArgPort port  = 1/4 @@ turn
+  | otherwise       = 3/4 @@ turn
 
 nestedMultiIfPortAngle :: SpecialNum n
   => IconInfo
@@ -90,7 +100,7 @@ generalNestedPortAngle iconInfo defaultAngle headIcon args port maybeNodeName =
   case maybeNodeName of
     Nothing -> defaultAngle port
     Just name -> case findIcon iconInfo name (headIcon : args) of
-      Nothing -> 0 @@ turn
+      Nothing -> 1/8 @@ turn
       Just (_, icon) -> getPortAngleHelper True iconInfo icon port Nothing
 
 getPortAngle :: SpecialNum n
@@ -99,16 +109,16 @@ getPortAngle = getPortAngleHelper False
 
 getPortAngleHelper :: SpecialNum n
   => Bool -> IconInfo -> Icon -> Port -> Maybe NodeName -> Angle n
-getPortAngleHelper embedded iconInfo (Icon icon _) port maybeNodeName = case icon of
+getPortAngleHelper isEmbedded iconInfo (Icon icon _) port maybeNodeName = case icon of
   TextBoxIcon {} -> 3/4 @@ turn
   BindTextBoxIcon {} -> 1/4 @@ turn
   CaseResultIcon -> 3/4 @@ turn
-  FunctionArgIcon {} -> lambdaPortAngle port
-  FunctionDefIcon {} -> lambdaPortAngle port
+  FunctionArgIcon {} -> lambdaPortAngle isEmbedded port
+  FunctionDefIcon {} -> lambdaPortAngle isEmbedded port
   NestedApply _ headIcon args
     -> generalNestedPortAngle
       iconInfo
-      (if not embedded then applyPortAngle else nestedApplyPortAngle)
+      (if not isEmbedded then applyPortAngle else nestedApplyPortAngle)
       -- TODO Refactor with iconToDiagram
       (findMaybeIconFromName iconInfo headIcon)
       (findMaybeIconsFromNames iconInfo args)
@@ -128,5 +138,5 @@ getPortAngleHelper embedded iconInfo (Icon icon _) port maybeNodeName = case ico
       (findMaybeIconsFromNames iconInfo args)
       port
       maybeNodeName
-  ListCompIcon {} -> applyPortAngle port -- TODO better angles for ListCompIcon 
+  ListCompIcon {} -> listCompPortAngle port -- TODO better angles for ListCompIcon 
   ListGenIcon {} -> applyPortAngle port -- TODO better angles for ListGenIcon 

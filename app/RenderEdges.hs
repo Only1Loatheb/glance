@@ -74,7 +74,7 @@ dontConstrainAttrs = [ GVA.Constraint False, GVA.MinLen 0]
 edgeGraphVizAttrs :: IconInfo -> (a, Int, EmbedInfo Edge) -> [GVA.Attribute]
 edgeGraphVizAttrs iconInfo (_, iconNameTo, EmbedInfo _ (Edge DoNotDrawButConstraint _)) 
   = case iconInfo IMap.! iconNameTo of
-    (Icon (FunctionDefIcon _ (_,level) _) _) -> [ GVA.MinLen (2 * level + 1) ]
+    (Icon (FunctionDefIcon _ (_,level) _) _) -> [ GVA.MinLen (level) ]
     _ -> []
   
 edgeGraphVizAttrs _ (_, _, EmbedInfo _ (Edge DrawAndNotConstraint _)) = dontConstrainAttrs

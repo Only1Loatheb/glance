@@ -23,36 +23,30 @@ import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
   , NodeQueryValue(..)
   )
 
-import TextBox(transparentAlpha)
+import TextBox(transparentAlpha, letterHeight)
 
-import IconToDiagram  ( iconToDiagram)
-
--- CONSTANT
-graphvizScaleFactor :: (Fractional a) => a
-graphvizScaleFactor = 0.12 -- For Neato
--- For Fdp
---scaleFactor = 0.09
---scaleFactor = 0.04
+import IconToDiagram(iconToDiagram)
 
 placeNode :: SpecialBackend b Double
   => IconInfo 
+  -> Double
   -> (NamedIcon, Dia.P2 Double) 
   -> (NamedIcon, SpecialDiagram b Double)
-placeNode iconInfo (namedIcon@(Named name icon), layoutPosition)
+placeNode iconInfo graphVizScale (namedIcon@(Named name icon), layoutPosition)
   = (namedIcon, Dia.place transformedDia diaPosition) where
       origDia = iconToDiagram
                 iconInfo
                 icon
                 (TransformParams name 0)
       transformedDia = Dia.centerXY origDia
-      diaPosition = getDiaPosition layoutPosition
+      diaPosition = getDiaPosition graphVizScale layoutPosition
 
-getDiaPosition :: (Functor f, Fractional a) => f a -> f a
-getDiaPosition layoutPosition = graphvizScaleFactor Dia.*^ layoutPosition
+-- getDiaPosition :: (Functor f, Fractional a) => f a -> f a
+getDiaPosition graphVizScale layoutPosition = graphVizScale Dia.*^ layoutPosition
 
 
 boundingBoxPadding :: Double
-boundingBoxPadding = 0.5
+boundingBoxPadding = 0.5 * letterHeight
 
 getQueryRects :: SpecialBackend b Double
   =>[(NamedIcon, SpecialDiagram b Double)]
@@ -61,7 +55,9 @@ getQueryRects iconAndPlacedNodes
   = [box | (icon, diagram) <- iconAndPlacedNodes,
     let 
       box = Dia.value (queryValue icon) 
-        $ Dia.opacity transparentAlpha $  Dia.boundingRect
+        $ Dia.opacity transparentAlpha 
+        -- $ Dia.lc Dia.blue
+        $ Dia.boundingRect
         $ Dia.frame boundingBoxPadding diagram]
 
 queryValue :: (NamedIcon -> DiaQuery)

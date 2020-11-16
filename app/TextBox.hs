@@ -16,13 +16,15 @@ import Diagrams.Prelude hiding ((&), (#), Name)
 
 import Types(SpecialDiagram, SpecialBackend)
 
+import DrawingColors(ColorStyle(..), colorScheme)
+
 import StringSymbols(sourceCodeDiagramLabel)
 {-# ANN module "HLint: ignore Use record patterns" #-}
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
 -- Text constants --
 textBoxFontSize :: (Num a) => a
-textBoxFontSize = 1
+textBoxFontSize = 12
 
 letterWidth :: Fractional a => a
 letterWidth = textBoxFontSize * monoLetterWidthToHeightFraction
@@ -31,7 +33,7 @@ letterHeight :: Fractional a => a
 letterHeight = textBoxFontSize * textBoxHeightFactor
 
 monoLetterWidthToHeightFraction :: (Fractional a) => a
-monoLetterWidthToHeightFraction = 0.681
+monoLetterWidthToHeightFraction = 0.72
 
 textBoxHeightFactor :: (Fractional a) => a
 textBoxHeightFactor = 1.4
@@ -42,8 +44,6 @@ sidePadding = letterWidth * 0.0
 textFont :: String
 textFont = "monospace"
 
-textCorrection :: Fractional n => P2 n
-textCorrection = p2 (0,- textBoxFontSize * textBoxHeightFactor /4)
 -- BEGIN Text helper functions --
 
 -- This may be a faster implementation of normalizeAngle
@@ -72,7 +72,7 @@ textSizeDiagram t = invisibleRect
 
 multilineComment :: SpecialBackend b n 
   => String -> SpecialDiagram b n
-multilineComment = multilineComment' white
+multilineComment = multilineComment' (textBoxTextC colorScheme)
 
 multilineComment' :: SpecialBackend b n =>
   Colour Double -> String -> SpecialDiagram b n
@@ -99,7 +99,7 @@ coloredTextBox textColor t = coloredTextBox' textColor objectWithSize textDiagra
 coloredTextBox' :: SpecialBackend b n =>
   Colour Double -> SpecialDiagram b n -> SpecialDiagram b n -> SpecialDiagram b n
 coloredTextBox' textColor objectWithSize textDiagram = objectWithSize <> textLabel where
-  textLabel = moveTo textCorrection $
+  textLabel =
     fontSize
     (local textBoxFontSize)
     (font textFont $ fillColor textColor  textDiagram)

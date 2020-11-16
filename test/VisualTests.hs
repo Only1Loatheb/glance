@@ -39,7 +39,7 @@ import Types(
   , AnnotatedFGR
   )
 
-import TextBox(coloredTextBox)
+import TextBox(multilineComment)
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
 translateDeclToCollapsedGraph :: Exts.Decl Exts.SrcSpanInfo -> AnnotatedFGR
@@ -480,4 +480,4 @@ visualTranslateTests = do
 
 textBox :: SpecialBackend b n =>
   String -> SpecialDiagram b n
-textBox t = coloredTextBox white t
+textBox t = multilineComment t
