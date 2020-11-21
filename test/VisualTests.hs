@@ -10,7 +10,7 @@ import qualified Data.Graph.Inductive.Graph as ING
 import Data.List(intercalate)
 import GHC.Stack(HasCallStack)
 import qualified Data.Set as Set
-import qualified Data.StringMap as SMap
+import qualified Data.Map as SMap
 
 import Types(SpecialDiagram, SpecialBackend, NodeName(..),TransformParams(..))
 

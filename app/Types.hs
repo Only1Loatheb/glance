@@ -53,6 +53,7 @@ module Types (
   , SgSink(..)
   , SyntaxGraph(..)
   , GraphAndRef(..)
+  , SgBindMap(..)
 ) where
 
 import Diagrams.Prelude(QDiagram, V2, Any, Renderable, Path, IsName)
@@ -61,7 +62,7 @@ import Control.Applicative(Applicative(..))
 import qualified Data.Graph.Inductive as ING
 import qualified Data.Graph.Inductive.PatriciaTree as FGR
 import qualified Data.IntMap as IMap
-import qualified Data.StringMap as SMap
+import qualified Data.Map as SMap
 import qualified Data.Set as Set
 import Data.Typeable(Typeable)
 import qualified Language.Haskell.Exts as Exts
@@ -287,7 +288,8 @@ type Reference = Either String NameAndPort
 
 type EvalContext = Set.Set String
 
-type SgBind = (SMap.Key, Reference)
+type SgBind = (String, Reference)
+type SgBindMap = SMap.Map String Reference
 
 data SgSink = SgSink String NameAndPort deriving (Eq, Ord, Show)
 
@@ -298,7 +300,7 @@ data SyntaxGraph = SyntaxGraph {
   sgEdges :: (Set.Set Edge),
   sgSinks :: (Set.Set SgSink), -- values that havent been used (unused bindings)
   -- TODO change to SMap.StringMap NameAndPort
-  sgBinds :: (SMap.StringMap Reference ), -- name form upper leval -> reference -- Reference -> Reference 
+  sgBinds :: (SgBindMap), -- name form upper leval -> reference -- Reference -> Reference 
   -- sgEmbedMap keeps track of nodes embedded in other nodes. If (child, parent)
   -- is in the Map, then child is embedded inside parent.
   sgEmbedMap :: IMap.IntMap NodeName -- NodeName -> NodeName

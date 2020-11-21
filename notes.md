@@ -1,4 +1,5 @@
-to run:
+# to run
+
 Using Atom, in a terminal run
 cd app
 stack exec glance-exe -- -l -s Main.hs -o ../output.svg

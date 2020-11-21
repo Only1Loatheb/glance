@@ -46,7 +46,6 @@ executable glance-exe
                      , svg-builder
                      , optparse-applicative
                      , filepath
-                     , data-stringmap
                      , diagrams-canvas
                      , blank-canvas
                      , diagrams-contrib
@@ -102,7 +101,6 @@ test-suite glance-test
                      , text
                      , svg-builder
                      , filepath
-                     , data-stringmap
                      , diagrams-canvas
                      , blank-canvas
                      , diagrams-contrib

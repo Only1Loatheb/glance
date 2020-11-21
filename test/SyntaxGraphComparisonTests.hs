@@ -6,7 +6,7 @@ import Test.HUnit
 
 import Data.List(foldl', sort, sortOn)
 import qualified Data.Set as Set
-import qualified Data.StringMap as SMap
+import qualified Data.Map as SMap
 import qualified Data.IntMap as IMap
 
 import SimpSyntaxToSyntaxGraph(translateStringToSyntaxGraph)

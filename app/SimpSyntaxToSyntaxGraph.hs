@@ -15,7 +15,7 @@ import Control.Monad(replicateM)
 import Control.Monad.State(State, evalState)
 import Data.List(unzip5, partition, intercalate)
 import qualified Data.Set as Set
-import qualified Data.StringMap as SMap
+import qualified Data.Map as SMap
 import qualified Data.IntMap as IMap
 import           Data.Either                    ( partitionEithers )
 import           Data.Maybe                     ( catMaybes
@@ -84,6 +84,7 @@ import           Types(
   , EdgeOption(..)
   , Connection(..)
   , FuncDefRegionInfo
+  , SgBindMap(..)
   )
 import Util(
   makeSimpleEdge
@@ -543,7 +544,7 @@ makeLambdaArgumentNode argPatternValsWithAsNames srcRef = node where
 
 
 makeLambdaOutputGraph :: (NodeName, SyntaxNode)
-  -> [Either Edge (SMap.Key, Reference)]
+  -> [Either Edge SgBind]
   -> String
   -> SyntaxGraph
 makeLambdaOutputGraph  (lambdaName ,lambdaNode) lambdaValueLink functionName = graph where
@@ -556,7 +557,7 @@ makeLambdaOutputGraph  (lambdaName ,lambdaNode) lambdaValueLink functionName = g
 
 
 makeLambdaArgGraph :: [Edge]
-                        -> [(SMap.Key, Reference)] -> (NodeName, SyntaxNode) -> SyntaxGraph
+                        -> [SgBind] -> (NodeName, SyntaxNode) -> SyntaxGraph
 makeLambdaArgGraph argPatternEdgesList binds (argNodeName, argNode) = graph where
   bindsSet = SMap.fromList binds
   argPatternEdges = Set.fromList argPatternEdgesList
@@ -880,7 +881,7 @@ evalPatBind _ c pat e = do
   pure (GraphAndRef (makeEdgesKeepBindings makeSimpleEdge combinedGraph) patRef)
 
 -- TODO refactor with similar pattern functions
-evalPatBindHelper :: Reference -> Reference -> (Set.Set Edge, Set.Set SgSink, SMap.StringMap Reference)
+evalPatBindHelper :: Reference -> Reference -> (Set.Set Edge, Set.Set SgSink, SgBindMap)
 evalPatBindHelper patRef rhsRef = case patRef of
   (Left s) -> (mempty, mempty, SMap.singleton s rhsRef)
   (Right (NameAndPort name _)) -> 

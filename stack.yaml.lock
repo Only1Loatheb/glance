@@ -5,22 +5,36 @@
 
 packages:
 - completed:
-    hackage: diagrams-graphviz-1.4.1@sha256:072c531d69822421cf318d80731c4f7b5e1b6e4d228db3507f84e9057e7a1f12,1400
+    hackage: blank-canvas-0.7.3@sha256:575c5e27632ce1e73cdc3bac00c520df4f3eeb400d26121ba30e66814af8234a,5093
+    pantry-tree:
+      size: 1495
+      sha256: 2b85e8588e98c8b2a04061c5a1cdda1e987ef31d8a3e21b18357e4de26c3e389
+  original:
+    hackage: blank-canvas-0.7.3
+- completed:
+    hackage: diagrams-canvas-1.4.1@sha256:bb4707ade5d7c79f93c34c959cce57ced9fa582ff7e1f28698afe915c57b318d,1840
+    pantry-tree:
+      size: 411
+      sha256: 2e6f8672b4baa538ab55c5a0777b69577a81dbae72192797117ae32ca0dc01d1
+  original:
+    hackage: diagrams-canvas-1.4.1
+- completed:
+    hackage: diagrams-graphviz-1.4.1.1@sha256:e71afa8f89904c2a6a2cb490dba7108c6425779c2174b90bd90dbaf507a9d3dc,1388
     pantry-tree:
       size: 343
-      sha256: 77cb8ad5184a53e8b58d0c3569373f8082443def4b9c59e0e1c5a7b8b091da1f
+      sha256: c7f310199441f885ec6063af6cf316130be4672170b9c258eab488496b55124b
   original:
-    hackage: diagrams-graphviz-1.4.1
+    hackage: diagrams-graphviz-1.4.1.1
 - completed:
-    hackage: data-stringmap-1.0.1.1@sha256:93261201485505eb8c1a4e5c76f7c16fb1bb6095d410af0e1ea9252629a27b70,3903
+    hackage: kansas-comet-0.4@sha256:72330f1953abed85fc306ace742d975296a3b3a806c9db90dc793161b60c2846,1737
     pantry-tree:
-      size: 1004
-      sha256: 5244803e68d3ab34e2d0c025d3111cf88bfa10c3235f7ec26a982b3a0ec90c65
+      size: 383
+      sha256: b93fb744a9979ae6e8638a02711f9222cfd1d0d7d8559a188ba8d87f80ec9313
   original:
-    hackage: data-stringmap-1.0.1.1
+    hackage: kansas-comet-0.4
 snapshots:
 - completed:
-    size: 504771
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/12/14.yaml
-    sha256: 3cbd6c83316dd5e2bbc756dc7a2a4e31a31859c3f8b5c720efb6850b08e42649
-  original: lts-12.14
+    size: 532383
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/16/10.yaml
+    sha256: 469d781ab6d2a4eceed6b31b6e4ec842dcd3cd1d11577972e86902603dce24df
+  original: lts-16.10

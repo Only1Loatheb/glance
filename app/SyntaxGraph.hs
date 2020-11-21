@@ -46,7 +46,7 @@ import           Data.Maybe(
   , catMaybes
   )
 import qualified Data.Set as Set
-import qualified Data.StringMap as SMap
+import qualified Data.Map as SMap
 import qualified Data.IntMap as IMap
 
 
@@ -80,6 +80,7 @@ import           Types(
   , SgSink(..)
   , SyntaxGraph(..)
   , GraphAndRef(..)
+  , SgBindMap(..)
   )
 import Util(
   makeSimpleEdge
@@ -114,7 +115,7 @@ syntaxGraphFromNodes icons = SyntaxGraph icons Set.empty Set.empty SMap.empty me
 syntaxGraphFromNodesEdges :: Set.Set SgNamedNode -> Set.Set Edge -> SyntaxGraph
 syntaxGraphFromNodesEdges icons edges = SyntaxGraph icons edges Set.empty SMap.empty mempty
 
-bindsToSyntaxGraph :: SMap.StringMap Reference -> SyntaxGraph
+bindsToSyntaxGraph :: SgBindMap -> SyntaxGraph
 bindsToSyntaxGraph binds = SyntaxGraph Set.empty Set.empty Set.empty binds mempty
 
 sinksToSyntaxGraph :: Set.Set SgSink -> SyntaxGraph
@@ -131,12 +132,12 @@ graphAndRefToRef (GraphAndRef _ r) = r
 
 graphToTuple ::
   SyntaxGraph
-  -> (Set.Set SgNamedNode, (Set.Set Edge), (Set.Set SgSink), (SMap.StringMap Reference), IMap.IntMap NodeName)
+  -> (Set.Set SgNamedNode, (Set.Set Edge), (Set.Set SgSink), (SgBindMap), IMap.IntMap NodeName)
 graphToTuple (SyntaxGraph a b c d e) = (a, b, c, d, e)
 
 graphsToComponents ::
   [SyntaxGraph]
-  -> (Set.Set SgNamedNode, (Set.Set Edge), (Set.Set SgSink), (SMap.StringMap Reference), IMap.IntMap NodeName)
+  -> (Set.Set SgNamedNode, (Set.Set Edge), (Set.Set SgSink), (SgBindMap), IMap.IntMap NodeName)
 graphsToComponents graphs = graphToTuple $ mconcat graphs
 
 -- END Constructors and Destructors
@@ -230,7 +231,7 @@ grNamePortToGrRef (graph, np) = GraphAndRef graph (Right np)
 
 -- | Recursivly find the matching reference in a list of bindings.
 -- TODO: Might want to present some indication if there is a reference cycle.
-lookupReference :: (SMap.StringMap Reference) -> Reference -> Reference
+lookupReference :: (SgBindMap) -> Reference -> Reference
 lookupReference _ ref@(Right _) = ref
 lookupReference bindings originalRef = lookupReference' originalRef where
   
@@ -264,7 +265,7 @@ makeEdges' edgeConstructor (SyntaxGraph icons edges sinks bindings eMap) = newGr
   (newSinks, newEdges) = makeEdgesCore edgeConstructor sinks bindings
   newGraph = SyntaxGraph icons (newEdges <> edges) newSinks bindings eMap
 
-makeEdgesCore :: (Connection -> Edge) -> (Set.Set SgSink) -> (SMap.StringMap Reference) -> ((Set.Set SgSink), (Set.Set Edge))
+makeEdgesCore :: (Connection -> Edge) -> (Set.Set SgSink) -> (SgBindMap) -> ((Set.Set SgSink), (Set.Set Edge))
 makeEdgesCore edgeConstructor sinks bindings = (Set.fromList newSinks,Set.fromList newEdge) where
   -- TODO check if set->list->set gives optimal performance
   (newSinks, newEdge) = partitionEithers $ fmap renameOrMakeEdge (Set.toList sinks)

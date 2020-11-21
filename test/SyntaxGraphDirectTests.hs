@@ -7,7 +7,7 @@ module SyntaxGraphDirectTests(
 import Test.HUnit
 import qualified Data.Set as Set
 import qualified Data.Map as Map
-import qualified Data.StringMap as SMap
+import qualified Data.Map as SMap
 import qualified Data.IntMap as IMap
 
 import qualified Language.Haskell.Exts as Exts
