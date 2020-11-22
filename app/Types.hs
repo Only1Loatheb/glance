@@ -21,8 +21,8 @@ module Types (
   , SpecialNum
   , SgNamedNode
   , IngSyntaxGraph
-  , LikeApplyFlavor(..)
-  , CaseOrMultiIfTag(..)
+  , ApplyFlavor(..)
+  , CaseFlavor(..)
   , Labeled(..)
   , EmbedDirection(..)
   , EmbedInfo(..)
@@ -55,6 +55,7 @@ module Types (
   , GraphAndRef(..)
   , SgBindMap(..)
   , Delimiters
+  , ListLitFlavor(..)
 ) where
 
 import Diagrams.Prelude(QDiagram, V2, Any, Renderable, Path, IsName)
@@ -116,28 +117,29 @@ data DiagramIcon =
     (Maybe NodeName) -- embeded body node
   | BindTextBoxIcon String
   | NestedApply
-    LikeApplyFlavor  -- apply or compose
+    ApplyFlavor  -- apply or compose
     (Maybe NodeName)  -- The function for apply, or the argument for compose
     [Maybe NodeName]  -- list of arguments or functions
   | NestedPatternApp
     (Labeled (Maybe NamedIcon))  -- Data constructor
     [Labeled (Maybe NamedIcon)]  -- Arguments
     (Maybe NodeName)  -- asigned value
-  | NestedCaseIcon CaseOrMultiIfTag [Maybe NodeName]
+  | NestedCaseIcon CaseFlavor [Maybe NodeName]
   | CaseResultIcon
   | ListCompIcon
     (Maybe NodeName) -- item constructor
     [Maybe NodeName] -- generators
     [Maybe NodeName] -- qualifiers
   | ListLitIcon
+    ListLitFlavor
     [Maybe NodeName]
     Delimiters 
   deriving (Show, Eq, Ord)
 
-data LikeApplyFlavor = ApplyNodeFlavor | ComposeNodeFlavor
-  deriving (Show, Eq, Ord)
+data ApplyFlavor = ApplyFlavor | ComposeFlavor deriving (Show, Eq, Ord)
 
-data CaseOrMultiIfTag = CaseTag | MultiIfTag deriving (Show, Eq, Ord)
+data CaseFlavor = CaseFlavor | MultiIfFlavor deriving (Show, Eq, Ord)
+data ListLitFlavor = ListFlavor | TupleFlavor deriving (Show, Eq, Ord)
 
 -- TODO The full edge does not need to be included, just the port.
 data Embedder a = Embedder {
@@ -163,7 +165,7 @@ data SyntaxNode = SyntaxNode {
 data SyntaxNodeCore = 
   -- Function application, composition, and applying to a composition
   -- The list of nodes is unordered (replace with a map?)
-  ApplyNode LikeApplyFlavor Int
+  ApplyNode ApplyFlavor Int
   | PatternApplyNode String [Labeled (Maybe SgNamedNode)]
   | BindNameNode String -- for top level bindings --TODO delete this
   | LiteralNode String -- Literal values like the string "Hello World"
@@ -173,11 +175,12 @@ data SyntaxNodeCore =
     String -- function name
     FuncDefRegionInfo
   | CaseResultNode -- if same icon is in condition statment and result value
-  | CaseOrMultiIfNode CaseOrMultiIfTag Int -- number of alternatives
+  | CaseNode CaseFlavor Int -- number of alternatives
   | ListCompNode
     Int -- number of generators
     Int -- number of qualifiers  
   | ListLitNode
+    ListLitFlavor
     Int -- number of literals
     Delimiters 
   deriving (Show, Eq, Ord)

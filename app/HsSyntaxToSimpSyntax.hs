@@ -27,6 +27,7 @@ import Data.Maybe(catMaybes, isJust)
 import Types (
   SrcRef
   , Delimiters
+  , ListLitFlavor(..)
   )
 
 
@@ -39,9 +40,9 @@ import StringSymbols(
   , thenOperatorStr
   , bindOperatorStr
   , actionOverParameterizedType
-  , nTupleString
-  , nTupleSectionString
-  , nListString
+  , nTuplePatternString
+  , nTupleSectionDelimiters
+  , nListDelimiters
   , showLiteral
   , nameToString
   , qNameToString
@@ -49,6 +50,8 @@ import StringSymbols(
   , enumFromToDelimiters
   , enumFromThenDelimiters
   , enumFromThenToDelimiters
+  , nListPatternString
+  , nTupleDelimiters
   )
 
 -- TODO use a data constructor for the special case instead of using string
@@ -92,7 +95,8 @@ data SimpExpCore =
     , qualifyingExpresion ::[SimpQStmt]} 
   | SeListLit
     { expList :: [SimpExp]
-    , seDelimiters :: Delimiters} 
+    , seDelimiters :: Delimiters
+    , seFlavor :: ListLitFlavor} 
   deriving (Show, Eq)
 
 data SimpStmt = SimpStmt SrcRef String deriving (Show, Eq)
@@ -210,13 +214,13 @@ hsPatToSimpPat p = SimpPat (srcRef $ Exts.ann p) simpPatCore where
     Exts.PInfixApp l p1 qName p2 -> patCore $ hsPatToSimpPat (Exts.PApp l qName [p1, p2])
     Exts.PApp _l name patts -> SpApp name (fmap hsPatToSimpPat patts)
     Exts.PTuple l _ patts -> SpApp
-                            ((strToQName l . nTupleString . length) patts)
+                            ((strToQName l . nTuplePatternString . length) patts)
                             (fmap hsPatToSimpPat patts)
     Exts.PParen _l pat -> patCore $ hsPatToSimpPat pat
     Exts.PAsPat _l name pat -> SpAsPat name (hsPatToSimpPat pat)
     Exts.PWildCard _l -> SpWildCard
     Exts.PList l patts -> SpApp
-                          ((strToQName l . nListString . length) patts)
+                          ((strToQName l . nListPatternString . length) patts)
                           (fmap hsPatToSimpPat patts)
     _ -> error $  "Unsupported syntax in hsPatToSimpPat: " <> show p
 
@@ -391,18 +395,6 @@ simplifyExp e = case e of
       arg)
   x -> x
 
-deListifyApp :: Show l => l -> Exts.Exp l -> [Exts.Exp l] -> Exts.Exp l
-deListifyApp l = foldl' (Exts.App l)
-
-rewriteTupleSection :: Show l => l -> [Maybe (Exts.Exp l)] -> Exts.Exp l
-rewriteTupleSection l mExprs = deListifyApp
-                               l
-                               (makeVarExp l $ nTupleSectionString expIsJustList)
-                               exprs
-  where
-    exprs = catMaybes mExprs
-    expIsJustList = fmap isJust mExprs
-
 -- Rewrite a right section as a lambda.
 -- TODO Simplify this type of lambda to use unused ports.
 rewriteRightSection :: Show l => l -> Exts.QOp l -> Exts.Exp l -> Exts.Exp l
@@ -425,12 +417,13 @@ desugarDo stmts = case stmts of
   (Exts.LetStmt l binds : stmtsTail)    -> Exts.Let l binds (desugarDo stmtsTail)
   _ -> error $ "Unsupported syntax in degugarDo: " <> show stmts
 
-desugarEnums :: Exts.SrcSpanInfo 
+listToSimpExp :: Exts.SrcSpanInfo 
   -> [Exts.Exp Exts.SrcSpanInfo]
   -> Delimiters
+  -> ListLitFlavor
   -> SimpExp
-desugarEnums l eList delimiters = SimpExp (srcRef l) 
-  $ SeListLit (fmap hsExpToSimpExp eList) delimiters
+listToSimpExp l eList delimiters flavor = SimpExp (srcRef l) 
+  $ SeListLit (fmap hsExpToSimpExp eList) delimiters flavor
   
 desugarListComp :: Exts.Stmt Exts.SrcSpanInfo ->  SimpQStmt
 desugarListComp qStmt = SimpQStmt (srcRef $ Exts.ann qStmt) simpQStmtCore where
@@ -455,22 +448,17 @@ hsExpToSimpExp x = simplifyExp $ case x of
   Exts.If l e1 e2 e3 -> ifToGuard (srcRef l) (hsExpToSimpExp e1) (hsExpToSimpExp e2) (hsExpToSimpExp e3)
   Exts.Case l e alts -> SimpExp (srcRef l) $ SeCase (hsExpToSimpExp e) (fmap hsAltToSimpAlt alts)
   Exts.Paren _l e -> hsExpToSimpExp e
-  Exts.List l exprs -> hsExpToSimpExp $ deListifyApp
-                      l
-                      (makeVarExp l $ nListString $ length exprs)
-                      exprs
-  Exts.Tuple l _ exprs -> hsExpToSimpExp $ deListifyApp
-                      l
-                      (makeVarExp l $ nTupleString $ length exprs)
-                      exprs
-  Exts.TupleSection l _ mExprs -> hsExpToSimpExp $ rewriteTupleSection l mExprs
+  Exts.List l exprs -> listToSimpExp l exprs (nListDelimiters $ length exprs) ListFlavor
+  Exts.Tuple l _ exprs -> listToSimpExp l exprs (nTupleDelimiters $ length exprs) TupleFlavor
+  Exts.TupleSection l _ mExprs -> listToSimpExp l exprs (nTupleSectionDelimiters mExprs) TupleFlavor where
+    exprs = catMaybes mExprs
   Exts.LeftSection l expr op -> hsExpToSimpExp $ Exts.App l (qOpToExp op) expr
   Exts.RightSection l op expr -> hsExpToSimpExp $ rewriteRightSection l op expr
   Exts.Do _ stmts -> hsExpToSimpExp $ desugarDo stmts
-  Exts.EnumFrom l e -> desugarEnums l [e] enumFromDelimiters
-  Exts.EnumFromTo l e1 e2 -> desugarEnums l [e1, e2] enumFromToDelimiters
-  Exts.EnumFromThen l e1 e2 -> desugarEnums l [e1, e2] enumFromThenDelimiters
-  Exts.EnumFromThenTo l e1 e2 e3 -> desugarEnums l [e1, e2, e3] enumFromThenToDelimiters
+  Exts.EnumFrom l e -> listToSimpExp l [e] enumFromDelimiters ListFlavor
+  Exts.EnumFromTo l e1 e2 -> listToSimpExp l [e1, e2] enumFromToDelimiters ListFlavor
+  Exts.EnumFromThen l e1 e2 -> listToSimpExp l [e1, e2] enumFromThenDelimiters ListFlavor
+  Exts.EnumFromThenTo l e1 e2 e3 -> listToSimpExp l [e1, e2, e3] enumFromThenToDelimiters ListFlavor
   Exts.MultiIf l rhss -> SimpExp (srcRef l) $ SeMultiIf (fmap guardedRhsToSelectorAndVal rhss)
   Exts.ListComp l e1 qStmts -> SimpExp (srcRef l) $ SeListComp (hsExpToSimpExp e1) (desugarListComp <$> filterQStmts qStmts)
   _ -> error $ "Unsupported syntax in hsExpToSimpExp: " ++ show x

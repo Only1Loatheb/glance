@@ -90,7 +90,7 @@ argumentPorts (SyntaxNode n _) = case n of
   ApplyNode {} -> argPortsConst
   PatternApplyNode {} -> resultPortsConst
   FunctionValueNode {} -> resultPortsConst
-  CaseOrMultiIfNode {} -> mixedPorts
+  CaseNode {} -> mixedPorts
   ListCompNode {} -> argPortsConst
   ListLitNode {} -> argPortsConst
   _ -> error "Node don't have argument ports. PortConstants argumentPorts"

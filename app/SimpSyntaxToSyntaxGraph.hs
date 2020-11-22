@@ -65,14 +65,15 @@ import HsSyntaxToSimpSyntax(
   , simpPatNameStr
   )
 import           Types(
-  NameAndPort(..)
+  ListLitFlavor
+  , NameAndPort(..)
   , IDState
   , SgNamedNode
   , SyntaxNode(..)
   , SyntaxNodeCore(..)
   , NodeName(..)
-  , LikeApplyFlavor(..)
-  , CaseOrMultiIfTag(..)
+  , ApplyFlavor(..)
+  , CaseFlavor(..)
   , Named(..)
   , mkEmbedder
   , Port(..)
@@ -174,13 +175,13 @@ evalExp c simpExp@(SimpExp l x) = case x of
   SeCase expr alts -> grNamePortToGrRef <$> evalCase c expr alts
   SeMultiIf selectorsAndVals -> grNamePortToGrRef <$> evalMultiIf c selectorsAndVals l
   SeListComp e eList -> evalListComp c l e eList
-  SeListLit expList seDelimiters -> grNamePortToGrRef <$> evalListLit c l expList seDelimiters
+  SeListLit expList seDelimiters flavor -> grNamePortToGrRef <$> evalListLit c l expList seDelimiters flavor
 
 -- BEGIN apply and compose helper functions
 
 evalFunExpAndArgs ::
   EvalContext
-  -> LikeApplyFlavor
+  -> ApplyFlavor
   -> (SimpExp, [SimpExp])
   -> State IDState (SyntaxGraph, NameAndPort)
 evalFunExpAndArgs c flavor (funExp@(SimpExp srcRef _), argExps) = do
@@ -201,7 +202,7 @@ evalFunctionComposition c srcRef functions = do
   pure $ makeApplyGraph
     srcRef
     (length evaluatedFunctions)
-    ComposeNodeFlavor
+    ComposeFlavor
     False
     applyIconName
     (GraphAndRef mempty neverUsedPort)
@@ -251,7 +252,7 @@ evalApp c expr = case expr of
       _))
     _))
     -> evalFunctionComposition c l (compositionToList expr)
-  _ -> evalFunExpAndArgs c ApplyNodeFlavor (appExpToFuncArgs expr)
+  _ -> evalFunExpAndArgs c ApplyFlavor (appExpToFuncArgs expr)
     
 -- END evaluateAppExpression
 
@@ -322,7 +323,7 @@ makeMultiIfGraph ::
 makeMultiIfGraph  numPairs srcRefs bools exps multiIfName
   = (newGraph, nameAndPort multiIfName (resultPort multiIfNode))
   where
-    multiIfNode = SyntaxNode (CaseOrMultiIfNode MultiIfTag numPairs) srcRefs
+    multiIfNode = SyntaxNode (CaseNode MultiIfFlavor numPairs) srcRefs
     expsWithPorts = zip exps $ map (nameAndPort multiIfName) multiIfValuePorts
     boolsWithPorts = zip bools $ map (nameAndPort multiIfName) multiIfBoolPorts
     combindedGraph = combineExpressions False $ expsWithPorts <> boolsWithPorts
@@ -388,7 +389,7 @@ evalCaseHelper numAlts context srcRef altsSrcRefs caseIconName resultIconNames (
   where
     (patRhsConnected, altGraphs, unpackingPatRef, rhsRefs, asNames) = unzip5 evaledAlts
     combindedAltGraph = mconcat altGraphs
-    caseNode = SyntaxNode (CaseOrMultiIfNode CaseTag numAlts) srcRef
+    caseNode = SyntaxNode (CaseNode CaseFlavor numAlts) srcRef
     caseNodeGraph = makeCaseNodeGraph caseIconName caseNode expRef
 
     bindGraph = makeAsBindGraph expRef asNames
@@ -581,7 +582,7 @@ patternValueInputPort name = NameAndPort name  PatternUnpackingPort
 makeApplyGraph ::
   SrcRef
   -> Int
-  -> LikeApplyFlavor
+  -> ApplyFlavor
   -> Bool
   -> NodeName
   -> GraphAndRef
@@ -729,12 +730,12 @@ makePatternResult
   = fmap (\(graph, namePort) -> (GraphAndRef graph (Right namePort), Nothing))
 
 -- END END END END END evalPattern
-evalListLit :: EvalContext -> SrcRef -> [SimpExp] -> Delimiters -> State IDState (SyntaxGraph, NameAndPort)
-evalListLit c l eList delimiters = do
+evalListLit :: EvalContext -> SrcRef -> [SimpExp] -> Delimiters -> ListLitFlavor -> State IDState (SyntaxGraph, NameAndPort)
+evalListLit c l eList delimiters flavor = do
   listGenName <- getUniqueName
   graphsAndRefs <- mapM (evalExp c) eList
   let 
-    listGenNode = SyntaxNode (ListLitNode (length eList) delimiters) l 
+    listGenNode = SyntaxNode (ListLitNode flavor (length eList) delimiters) l 
     edgesGraph = makeListLitEdges listGenName graphsAndRefs (argumentPorts listGenNode)
     resultNameAndPort = nameAndPort listGenName (resultPort listGenNode)
     listGenNodeGraph = syntaxGraphFromNodes (Set.singleton (Named listGenName (mkEmbedder listGenNode)))

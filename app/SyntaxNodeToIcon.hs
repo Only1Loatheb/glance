@@ -76,8 +76,8 @@ nodeToIcon (Embedder embeddedNodes node@(SyntaxNode (FunctionValueNode str regio
 nodeToIcon (Embedder _embeddedNodes (SyntaxNode CaseResultNode src))
   = Icon CaseResultIcon src
 
-nodeToIcon (Embedder embeddedNodes node@(SyntaxNode (CaseOrMultiIfNode styleTag numArgs) src))
-  = Icon (NestedCaseIcon styleTag argList) src
+nodeToIcon (Embedder embeddedNodes node@(SyntaxNode (CaseNode flavor numArgs) src))
+  = Icon (NestedCaseIcon flavor argList) src
   where
     argPorts = take (2 * numArgs) $ argumentPorts node
     argList = fmap (makeArg embeddedNodes) (inputPort node : argPorts)
@@ -93,8 +93,8 @@ nodeToIcon (Embedder embeddedNodes node@(SyntaxNode (ListCompNode genCount qualC
     
     icon = ListCompIcon item genList qualList
 
-nodeToIcon (Embedder embeddedNodes node@(SyntaxNode (ListLitNode litCount delimiters) src))
+nodeToIcon (Embedder embeddedNodes node@(SyntaxNode (ListLitNode flavor litCount delimiters) src))
   = Icon diagramIcon src where
-    diagramIcon = ListLitIcon maybeEmbeddedNodeNames delimiters
+    diagramIcon = ListLitIcon flavor maybeEmbeddedNodeNames delimiters
     maybeEmbeddedNodeNames = fmap (makeArg embeddedNodes) (take litCount $ argumentPorts node)
 

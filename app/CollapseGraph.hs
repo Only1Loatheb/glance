@@ -87,7 +87,7 @@ isSyntaxNodeEmbeddable parentType (SyntaxNode syntaxNode _) parentPort childPort
     (ListGenParent, LiteralNode {}) -> parentPortNotResult
 
     (LambdaParent fname, ApplyNode {}) -> lambdaEmbeddable fname
-    (LambdaParent fname, CaseOrMultiIfNode {}) -> lambdaEmbeddable fname
+    (LambdaParent fname, CaseNode {}) -> lambdaEmbeddable fname
     (LambdaParent fname, LiteralNode {}) -> lambdaEmbeddable fname
     (LambdaParent fname, ListLitNode {}) -> lambdaEmbeddable fname
     (LambdaParent fname, FunctionValueNode {}) -> lambdaEmbeddable fname
@@ -147,7 +147,7 @@ doesSyntaxNodeHaveToBeEmbeded parentType (SyntaxNode syntaxNode _) parentPort _c
 parentTypeForNode :: SyntaxNode -> ParentType
 parentTypeForNode (SyntaxNode n _) = case n of
   ApplyNode {} -> ApplyParent
-  CaseOrMultiIfNode {} -> CaseParent
+  CaseNode {} -> CaseParent
   FunctionValueNode fname _ -> LambdaParent fname
   PatternApplyNode {} -> PatternApplyParent
   ListLitNode {} -> ListGenParent

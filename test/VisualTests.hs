@@ -27,7 +27,7 @@ import Types(
   , SpecialNum
   , NodeName(..)
   , Port(..)
-  , LikeApplyFlavor(..)
+  , ApplyFlavor(..)
   , NamedIcon
   , Labeled(..)
   , IconInfo
@@ -35,7 +35,7 @@ import Types(
   , NameAndPort(..)
   , TransformParams(..)
   , TransformableDia
-  , CaseOrMultiIfTag(..)
+  , CaseFlavor(..)
   , AnnotatedFGR
   )
 
@@ -166,14 +166,15 @@ tupleTests = [
   "y = ()",
   "y = (1,2)",
   "y = (1,2,3)",
-  "y = (,x) 2",
-  "y = (x,) 2",
-  "y = (,,x) 2",
-  "y = (,x,) 2",
-  "y = (x,,) 2",
-  "y = (x,z,) 2",
-  "y = (x,,z) 2",
-  "y = (,x,z) 2"
+  "y = (,x)",
+  "y = (x,)",
+  "y = (,,x)",
+  "y = (,x,)",
+  "y = (x,,)",
+  "y = (x,z,)",
+  "y = (x,,z)",
+  "y = (,x,z)",
+  "y = (,,)"
   ]
 
 listTests :: [String]

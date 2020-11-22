@@ -56,7 +56,7 @@ import Types(
   , SpecialNum
   , NodeName(..)
   , Port(..)
-  , LikeApplyFlavor(..)
+  , ApplyFlavor(..)
   , NamedIcon
   , Labeled(..)
   , IconInfo
@@ -64,12 +64,13 @@ import Types(
   , NameAndPort(..)
   , TransformParams(..)
   , TransformableDia
-  , CaseOrMultiIfTag(..)
+  , CaseFlavor(..)
   , SpecialQDiagram 
   , Edge(..)
   , EdgeOption(..)
   , Connection
   , Delimiters
+  , ListLitFlavor(..)
   )
 
 import DiagramSymbols(
@@ -235,7 +236,7 @@ iconToDiagram iconInfo (Icon icon _) = case icon of
     (findMaybeIconFromName iconInfo itemName) 
     (findMaybeIconsFromNames iconInfo gensNames)
     (findMaybeIconsFromNames iconInfo qualsNames)
-  ListLitIcon args delimiters -> listLitDiagram iconInfo (findMaybeIconsFromNames iconInfo args) delimiters
+  ListLitIcon flavor args delimiters -> listLitDiagram iconInfo flavor (findMaybeIconsFromNames iconInfo args) delimiters
 
 caseResultDiagram :: SpecialBackend b n => TransformableDia b n
 caseResultDiagram transformParams = finalDia where
@@ -364,13 +365,14 @@ listCompDiagram
 
 listLitDiagram :: SpecialBackend b n
   => IconInfo
+  -> ListLitFlavor
   -> [Maybe NamedIcon]
   -> Delimiters
   -> TransformableDia b n
-listLitDiagram iconInfo literals delimiters transformParams = finalDia where
+listLitDiagram iconInfo flavor literals delimiters transformParams = finalDia where
   name = tpName transformParams
-  literalDias = alignB $ zipWith ( makeAppInnerIcon iconInfo transformParams False) argPortsConst (fmap pure literals)
-  delimitersDias = map listLitDelimiterDia delimiters
+  literalDias = map alignB $ zipWith ( makeAppInnerIcon iconInfo transformParams False) argPortsConst (fmap pure literals)
+  delimitersDias = map (listLitDelimiterDia flavor) delimiters
   litDiagram = concat . transpose $ [delimitersDias,literalDias]
   listDia = centerX $ hcat litDiagram
   resultDia = centerX $ makeResultDiagram name
@@ -378,14 +380,14 @@ listLitDiagram iconInfo literals delimiters transformParams = finalDia where
 
 nestedApplyDia :: SpecialBackend b n
   => IconInfo
-  -> LikeApplyFlavor
+  -> ApplyFlavor
   -> Maybe NamedIcon
   -> [Maybe NamedIcon]
   -> TransformableDia b n
 nestedApplyDia iconInfo flavor = case flavor of
-  ApplyNodeFlavor
+  ApplyFlavor
     -> generalNestedDia iconInfo (nestingC colorScheme)
-  ComposeNodeFlavor
+  ComposeFlavor
     -> generalNestedDia iconInfo (applyCompositionC colorScheme)
 
 
@@ -393,7 +395,7 @@ nestedApplyDia iconInfo flavor = case flavor of
 nestedCaseDia :: SpecialBackend b n
   => IconInfo
   -> [Maybe NamedIcon]
-  -> CaseOrMultiIfTag
+  -> CaseFlavor
   -> TransformableDia b n
 nestedCaseDia iconInfo
   = generalNestedCaseDia iconInfo (caseRhsC colorScheme) inCaseDecisionFrame
@@ -408,7 +410,7 @@ generalNestedCaseDia ::forall b n. SpecialBackend b n
                    -> Colour Double
                    -> (SpecialDiagram b n -> SpecialDiagram b n)
                    -> [Maybe NamedIcon]
-                   -> CaseOrMultiIfTag
+                   -> CaseFlavor
                    -> TransformableDia b n
 generalNestedCaseDia iconInfo symbolColor inConstBox inputAndArgs flavor
   tp@(TransformParams name _nestingLevel)
@@ -420,7 +422,7 @@ generalNestedCaseDia iconInfo symbolColor inConstBox inputAndArgs flavor
     resultDia = makeResultDiagram name
 
     inputDiagram
-      | flavor == MultiIfTag = alignBR 
+      | flavor == MultiIfFlavor = alignBR 
         $ coloredTextBox (textBoxTextC colorScheme) ifConditionConst
       | otherwise = makeInputDiagram iconInfo tp (pure input) name
 

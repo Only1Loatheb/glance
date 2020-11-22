@@ -12,9 +12,9 @@ module StringSymbols
   , patternWildCardStr
   , unusedArgumentStr
   , defaultPatternNameStr
-  , nTupleString
-  , nTupleSectionString
-  , nListString
+  , nTuplePatternString
+  , nTupleSectionDelimiters
+  , nListDelimiters
   , actionOverParameterizedType
   , patternSubscribedValueStr
   , fractionalSeparatorStr
@@ -30,11 +30,15 @@ module StringSymbols
   , enumFromToDelimiters
   , enumFromThenDelimiters
   , enumFromThenToDelimiters
+  , nListPatternString
+  , nTupleDelimiters
   ) where
 
 import qualified Language.Haskell.Exts as Exts
-import Data.List(isPrefixOf)
+import Data.List(groupBy, isPrefixOf)
+import Data.List.Split as Split
 import Types(Delimiters)
+import Data.Maybe (isJust)
 
 
 fractionalSeparatorStr :: String
@@ -132,23 +136,53 @@ unusedArgumentStr = "unused_argument"
 defaultPatternNameStr :: String
 defaultPatternNameStr = ""
 
-nTupleString :: Int -> String
-nTupleString n = '(' : replicate (n -1) ',' ++ ")"
+nTuplePatternString :: Int -> String
+nTuplePatternString n = concat $ nTupleDelimiters n
+
+nTupleDelimiters :: Int -> Delimiters
+nTupleDelimiters n =  "(" : replicate (n -1) "," ++ [")"]
 
 -- TODO Unit tests for this
-nTupleSectionString :: [Bool] -> String
-nTupleSectionString bools = '(' : (commas ++ ")") where
-  commas = case concatMap trueToUnderscore bools of
-    [] -> []
-    (_:xs) -> xs
+nTupleSectionDelimiters :: Eq a => [Maybe a] -> Delimiters
+nTupleSectionDelimiters maybeExp = delims where
+  groupsOfMaybe = groupBy isSameMaybe maybeExp
+  countsOfMaybe = map lengthOfGroup groupsOfMaybe
+  delims = getDelims countsOfMaybe
 
-  trueToUnderscore x = if x
-    then ",_"
-    else ","
+  isSameMaybe (Just _) (Just _) = True
+  isSameMaybe Nothing Nothing = True
+  isSameMaybe _ _ = False
 
-nListString :: Int -> String
-nListString 1 = "[•]"
-nListString n = '[' : replicate (n -1) ',' ++ "]"
+  lengthOfGroup :: [Maybe a] -> Either Int Int
+  lengthOfGroup xs = case head xs of
+    Just _ -> Left $ length xs
+    Nothing -> Right $ length xs
+
+  getDelims [] = ["()"]
+  getDelims [Left exprs] = "(" : expDelims exprs ++ [")"]
+  getDelims [Right exprs] = [concat ("(•" : replicate (exprs - 1) ",•") ++ ")"]
+  getDelims [Right n, Left exprs] = concat ("(" : replicate n "•,") : expDelims exprs ++ [")"]
+  getDelims [Left exprs, Right n] = "(" : expDelims exprs ++ [concat (replicate n ",•"), ")"]
+  getDelims (x:xs) = headDelims x ++ concatMap middleDelims (init xs) ++ lastDelims (last xs)
+
+  headDelims (Left exprs) = "(" : expDelims exprs
+  headDelims (Right n) = [concat ("(" : replicate n "•,")]
+
+  middleDelims (Left exprs) = expDelims exprs
+  middleDelims (Right n) = [concat ("," :replicate n "•,")]
+  
+  lastDelims (Left exprs) = expDelims exprs ++ [")"]
+  lastDelims (Right n) = [concat (replicate n ",•"), ")"]
+
+  expDelims exprs = replicate (exprs - 1) ","
+
+nListDelimiters :: Int -> Delimiters
+nListDelimiters n = "[" : replicate (n -1) "," ++ ["]"]
+
+nListPatternString :: Int -> String
+nListPatternString 1 = "[•]"
+nListPatternString n = concat $ nListDelimiters n
+
 
 actionOverParameterizedType :: String
 actionOverParameterizedType = "fmap"
@@ -172,7 +206,7 @@ qNameToString qName = case qName of
     Exts.UnitCon _ -> unitConstructorStr
     Exts.ListCon _ -> listTypeConstructorStr
     Exts.FunCon _ -> functionConstructor
-    Exts.TupleCon _ _ n -> nTupleString n
+    Exts.TupleCon _ _ n -> nTuplePatternString n
     Exts.Cons _ -> listDataConstructorStr
     -- unboxed singleton tuple constructor
     Exts.UnboxedSingleCon _ -> unboxedTupleConstructorStr

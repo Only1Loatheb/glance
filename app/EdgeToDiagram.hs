@@ -31,7 +31,7 @@ import Types(
   , SpecialNum
   , NodeName(..)
   , Port(..)
-  , LikeApplyFlavor(..)
+  , ApplyFlavor(..)
   , NamedIcon
   , Labeled(..)
   , IconInfo
@@ -39,7 +39,7 @@ import Types(
   , NameAndPort(..)
   , TransformParams(..)
   , TransformableDia
-  , CaseOrMultiIfTag(..)
+  , CaseFlavor(..)
   , SpecialQDiagram 
   , Edge(..)
   , EdgeOption(..)

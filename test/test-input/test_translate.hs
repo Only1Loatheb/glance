@@ -241,12 +241,12 @@ makeEdges (IconGraph icons edges c sinks bindings) = newGraph where
   (newSinks, newEdges) = makeEdgesCore sinks bindings
   newGraph = IconGraph icons (newEdges <> edges) c newSinks bindings
 
-nTupleString :: Int -> String
-nTupleString n = '(' : replicate (n -1) ',' ++ ")"
+nTuplePatternString :: Int -> String
+nTuplePatternString n = '(' : replicate (n -1) ',' ++ ")"
 
-nListString :: Int -> String
-nListString 1 = "[•]"
-nListString n = '[' : replicate (n -1) ',' ++ "]"
+nListDelimiters :: Int -> String
+nListDelimiters 1 = "[•]"
+nListDelimiters n = '[' : replicate (n -1) ',' ++ "]"
 
 
 rotateNodes ::

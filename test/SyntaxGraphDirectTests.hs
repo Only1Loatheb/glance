@@ -60,8 +60,8 @@ import Types(
   , SyntaxNode(..)
   , NodeName(..)
   , SgNamedNode
-  , LikeApplyFlavor(..)
-  , CaseOrMultiIfTag(..)
+  , ApplyFlavor(..)
+  , CaseFlavor(..)
   , Named(..)
   , EdgeOption(..)
   , mkEmbedder
@@ -168,7 +168,7 @@ evalExpAppTest = syntaxGraphTest expectedSyntaxGraph generatedSyntaxGraph where
     sgNodes = Set.fromList [
       Named {naName = NodeName 0, naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = LiteralNode "y", srcRef = dummySrcRef}}}
       , Named {naName = NodeName 1, naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = LiteralNode "x", srcRef = dummySrcRef }}}
-      , Named {naName = NodeName 2, naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = ApplyNode ApplyNodeFlavor 1, srcRef = dummySrcRef}}}]
+      , Named {naName = NodeName 2, naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = ApplyNode ApplyFlavor 1, srcRef = dummySrcRef}}}]
     , sgEdges = Set.fromList [
       Edge {edgeOption = DrawAndConstraint, edgeConnection = (NameAndPort (NodeName 0) (Port 1),NameAndPort (NodeName 2) (Port 0))}
       , Edge {edgeOption = DrawAndConstraint, edgeConnection = (NameAndPort (NodeName 1) (Port 1),NameAndPort (NodeName 2) (Port 2))}]
@@ -245,7 +245,7 @@ syntaxNodeCoreToMaybeStr (LiteralNode name) = [name]
 syntaxNodeCoreToMaybeStr (FunctionArgNode names) = names
 syntaxNodeCoreToMaybeStr (FunctionValueNode name _) = [name]
 syntaxNodeCoreToMaybeStr (CaseResultNode {}) = []
-syntaxNodeCoreToMaybeStr (CaseOrMultiIfNode {}) = []
+syntaxNodeCoreToMaybeStr (CaseNode {}) = []
 syntaxNodeCoreToMaybeStr (ListCompNode {}) = []
 -- end Nodes
 graphContainsNodesTests :: Test

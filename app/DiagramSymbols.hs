@@ -35,6 +35,7 @@ import DrawingColors(colorScheme, ColorStyle(..))
 import Types(
   SpecialDiagram
   , SpecialBackend
+  , ListLitFlavor(..)
   )
 
 import TextBox (
@@ -179,5 +180,6 @@ listCompPipe height = alignB $ centerX $ listCompLine pipe where
   line = vrule height
   pipe = hcat [line, strutX symbolSize, line]
 
-listLitDelimiterDia :: SpecialBackend b n => String -> SpecialDiagram b n
-listLitDelimiterDia str = alignB $ coloredTextBox (listC colorScheme) str
+listLitDelimiterDia :: SpecialBackend b n => ListLitFlavor -> String -> SpecialDiagram b n
+listLitDelimiterDia ListFlavor str = alignB $ coloredTextBox (listC colorScheme) str
+listLitDelimiterDia TupleFlavor str = alignB $ coloredTextBox (tupleC colorScheme) str

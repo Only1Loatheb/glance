@@ -68,8 +68,8 @@ import           Types(
   , SyntaxNode(..)
   , NodeName(..)
   , SgNamedNode
-  , LikeApplyFlavor(..)
-  , CaseOrMultiIfTag(..)
+  , ApplyFlavor(..)
+  , CaseFlavor(..)
   , Named(..)
   , EdgeOption(..)
   , mkEmbedder
