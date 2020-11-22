@@ -3,9 +3,6 @@ module ClusterNodesBy (
   , ClusterT
   ) where
 
-import qualified Diagrams.Prelude as Dia
-
-import Diagrams.TwoD.GraphViz(mkGraph, getGraph, layoutGraph')
 import qualified Data.GraphViz as GV
 import qualified Data.IntMap as IMap
 import qualified Data.IntSet as ISet
@@ -13,19 +10,14 @@ import qualified Data.Set as Set
 
 import qualified Data.Graph.Inductive as ING
 
+import Types(
+  NamedIcon
+  , Icon(..)
+  , DiagramIcon(..)
+  , IconInfo
+  )
 
-import SyntaxNodeToIcon(nodeToIcon)
-import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
-            , Drawing(..), NameAndPort(..)
-            , SpecialDiagram, SpecialBackend, SpecialNum, NodeName(..)
-            , NamedIcon
-            , Icon(..)
-            , DiagramIcon(..)
-            , NodeInfo(..), IconInfo
-            , Named(..)
-            , TransformParams(..))
-
-import Util(nodeNameToInt, fromMaybeError, namedToTuple)
+import Util(nodeNameToInt)
 
 type ClusterT = Int
 
@@ -39,10 +31,10 @@ clusterNodesBy iconInfo  = clusterBy where
     $ GV.N (nodeName,namedIcon)
     -- Also draw the region around the icon the lambda is in.
   clusterMap :: IMap.IntMap ClusterT
-  clusterMap = foldr combineClusterMaps IMap.empty $ map iconClusterMap (IMap.toList iconInfo)
+  clusterMap = foldr (combineClusterMaps . iconClusterMap) IMap.empty (IMap.toList iconInfo)
 
 iconClusterMap :: (IMap.Key, Icon) -> IMap.IntMap ClusterT
-iconClusterMap (name, (Icon (FunctionDefIcon _ (nodesInside,_) _) _) ) = lambdaClusterMap where
+iconClusterMap (name, Icon (FunctionDefIcon _ (nodesInside,_) _) _) = lambdaClusterMap where
   lambdaClusterMap = IMap.fromAscList $ map (\x -> (nodeNameToInt x, name)) (Set.toAscList nodesInside)
 iconClusterMap _ = IMap.empty -- TODO other nested nodes
 

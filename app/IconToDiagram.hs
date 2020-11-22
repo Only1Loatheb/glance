@@ -38,9 +38,6 @@ import PortConstants(
   , isArgPort
   , mixedPorts
   , pattern PatternUnpackingPort
-  , listFromPort
-  , listThenPort
-  , listToPort
   , listCompQualPorts
   )
 
@@ -72,6 +69,7 @@ import Types(
   , Edge(..)
   , EdgeOption(..)
   , Connection
+  , Delimiters
   )
 
 import DiagramSymbols(
@@ -90,12 +88,11 @@ import DiagramSymbols(
   , inFrame
   , memptyWithPosition
   , inItemFrame
-  , enumLeftBracket
-  , enumRightBracket
-  , enumComa
-  , enumDots
+  , listDots
   , listCompPipe
+  , listLitDelimiterDia
   )
+import Data.List (transpose)
 
 {-# ANN module "HLint: ignore Use record patterns" #-}
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
@@ -238,7 +235,7 @@ iconToDiagram iconInfo (Icon icon _) = case icon of
     (findMaybeIconFromName iconInfo itemName) 
     (findMaybeIconsFromNames iconInfo gensNames)
     (findMaybeIconsFromNames iconInfo qualsNames)
-  ListGenIcon from mThen mTo -> listGenDiagram iconInfo from mThen mTo
+  ListLitIcon args delimiters -> listLitDiagram iconInfo (findMaybeIconsFromNames iconInfo args) delimiters
 
 caseResultDiagram :: SpecialBackend b n => TransformableDia b n
 caseResultDiagram transformParams = finalDia where
@@ -365,26 +362,17 @@ listCompDiagram
     finalDia = vcat [argsDiagram, qualDiagramWithLine, listCompItemDiagram, resultDiagram]
     
 
-listGenDiagram :: SpecialBackend b n
+listLitDiagram :: SpecialBackend b n
   => IconInfo
-  -> (Maybe NodeName)
-  -> (Maybe (Maybe NodeName))
-  -> (Maybe (Maybe NodeName))
+  -> [Maybe NamedIcon]
+  -> Delimiters
   -> TransformableDia b n
-listGenDiagram iconInfo fromName maybeThenName maybeToName transformParams = finalDia where
+listLitDiagram iconInfo literals delimiters transformParams = finalDia where
   name = tpName transformParams
-
-  fromDia = alignB $ makeAppInnerIcon iconInfo transformParams False listFromPort (pure  (findMaybeIconFromName iconInfo fromName))
-  thenDia = case maybeThenName of
-    Nothing -> mempty
-    Just thenName -> enumComa ||| (alignB $ makeAppInnerIcon iconInfo transformParams False listThenPort (pure  (findMaybeIconFromName iconInfo thenName)))
-  toDia = case maybeToName of
-    Nothing -> mempty
-    Just toName -> enumDots ||| (alignB $ makeAppInnerIcon iconInfo transformParams False listToPort (pure  (findMaybeIconFromName iconInfo toName)))
-  
-  dotsIfNotTo = if isNothing maybeToName then  enumDots else mempty  
-
-  listDia = centerX $ hcat [enumLeftBracket, fromDia, thenDia, dotsIfNotTo, toDia, enumRightBracket]
+  literalDias = alignB $ zipWith ( makeAppInnerIcon iconInfo transformParams False) argPortsConst (fmap pure literals)
+  delimitersDias = map listLitDelimiterDia delimiters
+  litDiagram = concat . transpose $ [delimitersDias,literalDias]
+  listDia = centerX $ hcat litDiagram
   resultDia = centerX $ makeResultDiagram name
   finalDia = listDia === resultDia
 

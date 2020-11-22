@@ -20,9 +20,6 @@ import PortConstants(
   , isArgPort
   , mixedPorts
   , pattern PatternUnpackingPort
-  , listFromPort
-  , listThenPort
-  , listToPort
   , listCompQualPorts
   )
 

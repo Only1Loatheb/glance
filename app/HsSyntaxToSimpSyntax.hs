@@ -26,6 +26,7 @@ import Data.Maybe(catMaybes, isJust)
 
 import Types (
   SrcRef
+  , Delimiters
   )
 
 
@@ -44,6 +45,10 @@ import StringSymbols(
   , showLiteral
   , nameToString
   , qNameToString
+  , enumFromDelimiters
+  , enumFromToDelimiters
+  , enumFromThenDelimiters
+  , enumFromThenToDelimiters
   )
 
 -- TODO use a data constructor for the special case instead of using string
@@ -85,10 +90,9 @@ data SimpExpCore =
   | SeListComp
     { bodyExpresion :: SimpExp
     , qualifyingExpresion ::[SimpQStmt]} 
-  | SeListGen
-    { from :: SimpExp
-    , maybeThen :: Maybe SimpExp
-    , maybeTo :: Maybe SimpExp} 
+  | SeListLit
+    { expList :: [SimpExp]
+    , seDelimiters :: Delimiters} 
   deriving (Show, Eq)
 
 data SimpStmt = SimpStmt SrcRef String deriving (Show, Eq)
@@ -422,15 +426,12 @@ desugarDo stmts = case stmts of
   _ -> error $ "Unsupported syntax in degugarDo: " <> show stmts
 
 desugarEnums :: Exts.SrcSpanInfo 
-  -> Exts.Exp Exts.SrcSpanInfo 
-  -> Maybe (Exts.Exp Exts.SrcSpanInfo) 
-  -> Maybe (Exts.Exp Exts.SrcSpanInfo) 
+  -> [Exts.Exp Exts.SrcSpanInfo]
+  -> Delimiters
   -> SimpExp
-desugarEnums l eFrom eThen eTo = SimpExp (srcRef l) $ SeListGen
-  (hsExpToSimpExp eFrom)
-  (fmap hsExpToSimpExp eThen)
-  (fmap hsExpToSimpExp eTo)
-
+desugarEnums l eList delimiters = SimpExp (srcRef l) 
+  $ SeListLit (fmap hsExpToSimpExp eList) delimiters
+  
 desugarListComp :: Exts.Stmt Exts.SrcSpanInfo ->  SimpQStmt
 desugarListComp qStmt = SimpQStmt (srcRef $ Exts.ann qStmt) simpQStmtCore where
   simpQStmtCore = case qStmt of
@@ -466,10 +467,10 @@ hsExpToSimpExp x = simplifyExp $ case x of
   Exts.LeftSection l expr op -> hsExpToSimpExp $ Exts.App l (qOpToExp op) expr
   Exts.RightSection l op expr -> hsExpToSimpExp $ rewriteRightSection l op expr
   Exts.Do _ stmts -> hsExpToSimpExp $ desugarDo stmts
-  Exts.EnumFrom l e -> desugarEnums l e Nothing Nothing
-  Exts.EnumFromTo l e1 e2 -> desugarEnums l e1 Nothing (Just e2)
-  Exts.EnumFromThen l e1 e2 -> desugarEnums l e1 (Just e2) Nothing
-  Exts.EnumFromThenTo l e1 e2 e3 -> desugarEnums l e1 (Just e2) (Just e3)
+  Exts.EnumFrom l e -> desugarEnums l [e] enumFromDelimiters
+  Exts.EnumFromTo l e1 e2 -> desugarEnums l [e1, e2] enumFromToDelimiters
+  Exts.EnumFromThen l e1 e2 -> desugarEnums l [e1, e2] enumFromThenDelimiters
+  Exts.EnumFromThenTo l e1 e2 e3 -> desugarEnums l [e1, e2, e3] enumFromThenToDelimiters
   Exts.MultiIf l rhss -> SimpExp (srcRef l) $ SeMultiIf (fmap guardedRhsToSelectorAndVal rhss)
   Exts.ListComp l e1 qStmts -> SimpExp (srcRef l) $ SeListComp (hsExpToSimpExp e1) (desugarListComp <$> filterQStmts qStmts)
   _ -> error $ "Unsupported syntax in hsExpToSimpExp: " ++ show x
@@ -504,7 +505,7 @@ simpExpToHsExp (SimpExp s x) = case x of
   SeMultiIf selsAndVal ->
     Exts.MultiIf l (fmap (selAndValToGuardedRhs s) selsAndVal)
   SeListComp _e1 _me2 -> error "TODO simpExpToHsExp SeListComp l e1 me2 "
-  (SeListGen _ _ _) -> error "simpExpToHsExp SeListGen"
+  SeListLit {} -> error "simpExpToHsExp SeListLit"
   where 
     l = srcSpanInfo s
 

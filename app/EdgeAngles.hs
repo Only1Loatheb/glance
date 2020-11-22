@@ -139,4 +139,4 @@ getPortAngleHelper isEmbedded iconInfo (Icon icon _) port maybeNodeName = case i
       port
       maybeNodeName
   ListCompIcon {} -> listCompPortAngle port -- TODO better angles for ListCompIcon 
-  ListGenIcon {} -> applyPortAngle port -- TODO better angles for ListGenIcon 
+  ListLitIcon {} -> applyPortAngle port -- TODO better angles for ListLitIcon 

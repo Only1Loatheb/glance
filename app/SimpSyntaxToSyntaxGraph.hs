@@ -42,9 +42,6 @@ import           PortConstants (
   , pattern ResultPortConst
   , pattern InputPortConst
   , pattern PatternUnpackingPort
-  , listFromPort
-  , listThenPort
-  , listToPort
   , listCompQualPorts
   )
 
@@ -85,6 +82,7 @@ import           Types(
   , Connection(..)
   , FuncDefRegionInfo
   , SgBindMap(..)
+  , Delimiters
   )
 import Util(
   makeSimpleEdge
@@ -176,7 +174,7 @@ evalExp c simpExp@(SimpExp l x) = case x of
   SeCase expr alts -> grNamePortToGrRef <$> evalCase c expr alts
   SeMultiIf selectorsAndVals -> grNamePortToGrRef <$> evalMultiIf c selectorsAndVals l
   SeListComp e eList -> evalListComp c l e eList
-  SeListGen from mThen mTo -> grNamePortToGrRef <$> evalListGen c l from mThen mTo
+  SeListLit expList seDelimiters -> grNamePortToGrRef <$> evalListLit c l expList seDelimiters
 
 -- BEGIN apply and compose helper functions
 
@@ -731,26 +729,21 @@ makePatternResult
   = fmap (\(graph, namePort) -> (GraphAndRef graph (Right namePort), Nothing))
 
 -- END END END END END evalPattern
-evalListGen :: EvalContext -> SrcRef -> SimpExp -> Maybe SimpExp -> Maybe SimpExp -> State IDState (SyntaxGraph, NameAndPort)
-evalListGen c l from mThen mTo = do
+evalListLit :: EvalContext -> SrcRef -> [SimpExp] -> Delimiters -> State IDState (SyntaxGraph, NameAndPort)
+evalListLit c l eList delimiters = do
   listGenName <- getUniqueName
-  fromGraphAndRef <- evalExp c from
-  maybeThenGraphAndRef <- fmapMaybeM (evalExp c) mThen
-  maybeToGraphAndRef <- fmapMaybeM (evalExp c) mTo
+  graphsAndRefs <- mapM (evalExp c) eList
   let 
-    listGenNode = SyntaxNode (ListGenNode (isJust mThen) (isJust mTo)) l 
-    edgesGraph = makeListGenEdges listGenName fromGraphAndRef maybeThenGraphAndRef maybeToGraphAndRef
+    listGenNode = SyntaxNode (ListLitNode (length eList) delimiters) l 
+    edgesGraph = makeListLitEdges listGenName graphsAndRefs (argumentPorts listGenNode)
     resultNameAndPort = nameAndPort listGenName (resultPort listGenNode)
     listGenNodeGraph = syntaxGraphFromNodes (Set.singleton (Named listGenName (mkEmbedder listGenNode)))
-    thenToGraphs = mconcat $ catMaybes [(fmap graph maybeThenGraphAndRef), (fmap graph maybeToGraphAndRef)]
-    finalGraph = makeEdges makeSimpleEdge $ listGenNodeGraph <> edgesGraph <> graph fromGraphAndRef <> thenToGraphs
+    finalGraph = makeEdges makeSimpleEdge $ listGenNodeGraph <> edgesGraph <> mconcat (map graph graphsAndRefs)
   pure (finalGraph, resultNameAndPort)
 
-makeListGenEdges :: NodeName -> GraphAndRef -> Maybe GraphAndRef -> Maybe GraphAndRef -> SyntaxGraph
-makeListGenEdges listGenName (GraphAndRef _ refFrom) maybeThenGraphAndRef maybeToGraphAndRef = mconcat $ edgeFrom : edgeThen ++ edgeTo where
-  edgeFrom = edgeFromRefToPort makeSimpleEdge refFrom (nameAndPort listGenName listFromPort)
-  edgeThen = maybeToList $ fmap ((flip (edgeFromRefToPort makeSimpleEdge)) (nameAndPort listGenName listThenPort)) (fmap ref maybeThenGraphAndRef)
-  edgeTo = maybeToList $ fmap ((flip (edgeFromRefToPort makeSimpleEdge)) (nameAndPort listGenName listToPort)) (fmap ref maybeToGraphAndRef) 
+makeListLitEdges :: NodeName -> [GraphAndRef] -> [Port] -> SyntaxGraph
+makeListLitEdges listGenName graphsAndRefs ports = mconcat edges where
+  edges = zipWith (edgeFromRefToPort makeSimpleEdge) (map ref graphsAndRefs) (map (nameAndPort listGenName) ports)
 
 -- BEGIN BEGIN BEGIN BEGIN BEGIN list comp
 -- valus form ListCompNode are connected to item constructor

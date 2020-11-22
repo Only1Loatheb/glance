@@ -1,5 +1,4 @@
 {-# LANGUAGE MultiWayIf #-}
-{-# LANGUAGE PatternSynonyms #-}
 module CollapseGraph(
   syntaxGraphToCollapsedGraph
   , syntaxGraphToLessCollapsedGraph
@@ -10,7 +9,6 @@ module CollapseGraph(
   ) where
 
 import qualified Data.Graph.Inductive.PatriciaTree as FGR
-import qualified Language.Haskell.Exts as Exts
 import qualified Data.Graph.Inductive as ING
 import Data.List(foldl', find)
 import qualified Data.Set as Set
@@ -18,8 +16,7 @@ import Data.Tuple(swap)
 import GHC.Stack(HasCallStack)
 
 import PortConstants(
-  pattern ResultPortConst
-  , isInputPort
+  isInputPort
   , isPatternUnpackingPort
   , isArgPort
   , isQualPort
@@ -30,7 +27,6 @@ import Types(
   , SyntaxNodeCore(..)
   , IngSyntaxGraph
   , Edge(..)
-  , CaseOrMultiIfTag(..)
   , Port(..)
   , NameAndPort(..)
   , SgNamedNode
@@ -44,11 +40,7 @@ import Types(
   , NodeName(..)
   )
 import SyntaxGraph(SyntaxGraph(..), lookupInEmbeddingMap)
-import SimpSyntaxToSyntaxGraph(
-  translateDeclToSyntaxGraph
-  , customParseDecl
-  )
-import HsSyntaxToSimpSyntax(hsDeclToSimpDecl)
+
 import StringSymbols(isTempLabel)
 import Util(
   nodeNameToInt
@@ -97,7 +89,7 @@ isSyntaxNodeEmbeddable parentType (SyntaxNode syntaxNode _) parentPort childPort
     (LambdaParent fname, ApplyNode {}) -> lambdaEmbeddable fname
     (LambdaParent fname, CaseOrMultiIfNode {}) -> lambdaEmbeddable fname
     (LambdaParent fname, LiteralNode {}) -> lambdaEmbeddable fname
-    (LambdaParent fname, ListGenNode {}) -> lambdaEmbeddable fname
+    (LambdaParent fname, ListLitNode {}) -> lambdaEmbeddable fname
     (LambdaParent fname, FunctionValueNode {}) -> lambdaEmbeddable fname
 
     -- (ApplyParent, FunctionValueNode {})
@@ -112,7 +104,7 @@ isSyntaxNodeEmbeddable parentType (SyntaxNode syntaxNode _) parentPort childPort
     (ListCompParent, ApplyNode {}) -> listCompEmbeddable
     -- (ListCompParent, PatternApplyNode {}) -> parentPortNotInput
     (ListCompParent, LiteralNode {}) -> listCompEmbeddable
-    (ListCompParent, ListGenNode {}) -> listCompEmbeddable
+    (ListCompParent, ListLitNode {}) -> listCompEmbeddable
     (ListCompParent, ListCompNode {}) -> parentPortNotInput && parentPortIsArg && childPortIsResult
 
     _ -> False
@@ -123,13 +115,13 @@ isSyntaxNodeEmbeddable parentType (SyntaxNode syntaxNode _) parentPort childPort
     parentPortIsArg = isArgPort parentPort
     childPortIsResult = isResultPort childPort
 
-    parentPortNotInput = not $ parentPortIsInput
+    parentPortNotInput = not parentPortIsInput
     parentPortNotResult = not $ isResultPort parentPort
 
     listCompEmbeddable = isParentQualPort
       || parentPortIsArg && childPortIsResult
 
-    lambdaEmbeddable fname = parentPortIsInput && (isTempLabel fname) && childPortIsResult
+    lambdaEmbeddable fname = parentPortIsInput && isTempLabel fname && childPortIsResult
     
     caseEmbeddable = parentPortNotResult && parentPortNotInput && childPortIsResult
       || parentPortIsInput && childPortIsResult
@@ -139,7 +131,7 @@ doesSyntaxNodeHaveToBeEmbeded :: ParentType
     -> Port
     -> Port
     -> Bool
-doesSyntaxNodeHaveToBeEmbeded parentType (SyntaxNode syntaxNode _) parentPort childPort
+doesSyntaxNodeHaveToBeEmbeded parentType (SyntaxNode syntaxNode _) parentPort _childPort
   = case (parentType, syntaxNode) of
     (ApplyParent, ApplyNode {}) -> parentPortNotResult
     (ApplyParent, LiteralNode {}) -> parentPortNotResult
@@ -158,7 +150,7 @@ parentTypeForNode (SyntaxNode n _) = case n of
   CaseOrMultiIfNode {} -> CaseParent
   FunctionValueNode fname _ -> LambdaParent fname
   PatternApplyNode {} -> PatternApplyParent
-  ListGenNode {} -> ListGenParent
+  ListLitNode {} -> ListGenParent
   ListCompNode {} -> ListCompParent
   _ -> NotAParent
 
@@ -232,7 +224,10 @@ annotateGraph' embedingTest gr = ING.gmap edgeMapper gr
      = fmap (\(e, toNode)
               -> (EmbedInfo (findEmbedDir embedingTest gr fromNode toNode e) e, toNode))
 
+annotateGraph :: IngSyntaxGraph ING.Gr -> ING.Gr SgNamedNode (EmbedInfo Edge)
 annotateGraph = annotateGraph' isSyntaxNodeEmbeddable
+
+annotateGraphLessCollapsed :: IngSyntaxGraph ING.Gr -> ING.Gr  SgNamedNode (EmbedInfo Edge)
 annotateGraphLessCollapsed = annotateGraph' doesSyntaxNodeHaveToBeEmbeded
 -- END annotateGraph --
 -- START collapseAnnotatedGraph --

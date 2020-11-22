@@ -54,6 +54,7 @@ module Types (
   , SyntaxGraph(..)
   , GraphAndRef(..)
   , SgBindMap(..)
+  , Delimiters
 ) where
 
 import Diagrams.Prelude(QDiagram, V2, Any, Renderable, Path, IsName)
@@ -98,6 +99,8 @@ type IconInfo = IMap.IntMap Icon
 
 type SrcRef = Exts.SrcSpan
 
+type Delimiters = [String] 
+
 -- | A datatype that represents an icon.
 -- The TextBoxIcon's data is the text that appears in the text box.
 data Icon = Icon DiagramIcon SrcRef
@@ -126,10 +129,9 @@ data DiagramIcon =
     (Maybe NodeName) -- item constructor
     [Maybe NodeName] -- generators
     [Maybe NodeName] -- qualifiers
-  | ListGenIcon 
-    (Maybe NodeName) --from
-    (Maybe (Maybe NodeName)) -- maybe then
-    (Maybe (Maybe NodeName)) -- maybe to
+  | ListLitIcon
+    [Maybe NodeName]
+    Delimiters 
   deriving (Show, Eq, Ord)
 
 data LikeApplyFlavor = ApplyNodeFlavor | ComposeNodeFlavor
@@ -175,9 +177,9 @@ data SyntaxNodeCore =
   | ListCompNode
     Int -- number of generators
     Int -- number of qualifiers  
-  | ListGenNode
-    Bool -- has then
-    Bool -- has to 
+  | ListLitNode
+    Int -- number of literals
+    Delimiters 
   deriving (Show, Eq, Ord)
 
 newtype Port = Port Int deriving (Typeable, Eq, Ord, Show)

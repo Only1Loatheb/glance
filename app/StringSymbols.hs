@@ -3,8 +3,7 @@ module StringSymbols
   ifConditionConst
   , otherwiseExpStr
   , negateSymbolStr
-  , enumComaStr
-  , enumDotsStr
+  , listDotsStr
   , thenOperatorStr
   , bindOperatorStr
   , typeSignatureSeparatorStr
@@ -27,12 +26,15 @@ module StringSymbols
   , getTempVarLabel
   , getFuncDefLabel
   , sourceCodeDiagramLabel
-  , enumLBracketStr
-  , enumRBracketStr
+  , enumFromDelimiters
+  , enumFromToDelimiters
+  , enumFromThenDelimiters
+  , enumFromThenToDelimiters
   ) where
 
 import qualified Language.Haskell.Exts as Exts
 import Data.List(isPrefixOf)
+import Types(Delimiters)
 
 
 fractionalSeparatorStr :: String
@@ -89,17 +91,21 @@ otherwiseExpStr = "otherwise"
 negateSymbolStr :: String
 negateSymbolStr = "negate"
 
-enumComaStr :: String
-enumComaStr = ","
+listDotsStr :: String
+listDotsStr = ".."
 
-enumDotsStr :: String
-enumDotsStr = ".."
+enumFromDelimiters :: Delimiters
+enumFromDelimiters = ["[","..]"]
 
-enumLBracketStr :: String
-enumLBracketStr = "["
+enumFromToDelimiters :: Delimiters
+enumFromToDelimiters = ["[","..","]"]
 
-enumRBracketStr :: String
-enumRBracketStr = "]"
+enumFromThenDelimiters :: Delimiters
+enumFromThenDelimiters = ["[",",","..]"]
+
+enumFromThenToDelimiters :: Delimiters
+enumFromThenToDelimiters = ["[",",","..","]"]
+
 
 thenOperatorStr :: String
 thenOperatorStr = ">>"

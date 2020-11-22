@@ -14,9 +14,6 @@ module PortConstants
   , argPortsConst
   , mixedPorts
   , resultPortsConst
-  , listFromPort
-  , listThenPort
-  , listToPort
   , listCompQualPorts
   , isQualPort
   , isInputPort
@@ -55,15 +52,6 @@ pattern ResultPortConst = Port 1
 
 pattern PatternUnpackingPort :: Port
 pattern PatternUnpackingPort = Port 2
-
-listFromPort :: Port
-listFromPort = Port 2
-
-listThenPort :: Port
-listThenPort = Port 4
-
-listToPort :: Port
-listToPort = Port 6
 
 argPortsConst :: [Port]
 argPortsConst = fmap Port [2,4..]
@@ -104,4 +92,5 @@ argumentPorts (SyntaxNode n _) = case n of
   FunctionValueNode {} -> resultPortsConst
   CaseOrMultiIfNode {} -> mixedPorts
   ListCompNode {} -> argPortsConst
+  ListLitNode {} -> argPortsConst
   _ -> error "Node don't have argument ports. PortConstants argumentPorts"

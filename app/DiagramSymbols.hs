@@ -23,11 +23,9 @@ module DiagramSymbols(
   , inFrame
   , memptyWithPosition
   , inItemFrame
-  , enumLeftBracket
-  , enumRightBracket
-  , enumComa
-  , enumDots
+  , listDots
   , listCompPipe
+  , listLitDelimiterDia
   ) where
 
 import Diagrams.Prelude hiding ((&), (#), Name)
@@ -45,10 +43,7 @@ import TextBox (
   )
 
 import StringSymbols(
-  enumComaStr
-  , enumDotsStr
-  , enumLBracketStr
-  , enumRBracketStr
+  listDotsStr
   )
 
 -- CONSTANTS --
@@ -173,22 +168,16 @@ inItemFrame itemDiagram = finalDia where
   itemDiagramAligned = alignB itemDiagram
   finalDia = beside (-unitX) (itemDiagramAligned ||| rightListItemFrame) (leftListItemFrame ||| strutX defaultLineWidth)
   leftListItemFrame = alignBR $ listCompLine $ vrule  $ (max  letterHeight $ height  itemDiagram)
-  rightListItemFrame =  enumDots ||| leftListItemFrame
+  rightListItemFrame =  listDots ||| leftListItemFrame
 
 listCompLine = lwG defaultLineWidth $ lc (listC colorScheme)
 
-enumLeftBracket :: SpecialBackend b n => SpecialDiagram b n
-enumLeftBracket = alignB $ coloredTextBox (listC colorScheme) enumLBracketStr
-
-enumRightBracket :: SpecialBackend b n => SpecialDiagram b n
-enumRightBracket = alignB $ coloredTextBox (listC colorScheme) enumRBracketStr
-
-enumComa :: SpecialBackend b n => SpecialDiagram b n
-enumComa = alignB $ coloredTextBox (listC colorScheme) enumComaStr
-
-enumDots :: SpecialBackend b n => SpecialDiagram b n
-enumDots = alignB $ coloredTextBox (listC colorScheme) enumDotsStr
+listDots :: SpecialBackend b n => SpecialDiagram b n
+listDots = alignB $ coloredTextBox (listC colorScheme) listDotsStr
 
 listCompPipe height = alignB $ centerX $ listCompLine pipe where
   line = vrule height
   pipe = hcat [line, strutX symbolSize, line]
+
+listLitDelimiterDia :: SpecialBackend b n => String -> SpecialDiagram b n
+listLitDelimiterDia str = alignB $ coloredTextBox (listC colorScheme) str
