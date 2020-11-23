@@ -2,7 +2,7 @@
 
 module Main
   (main
-  , CmdLineOptions(..)) where
+  , CMD.CmdLineOptions(..)) where
 
 import Prelude hiding (return)
 import Data.Maybe()
@@ -14,6 +14,7 @@ import qualified Diagrams.Prelude as Dia hiding ((#), (&))
 
 import SVGrender(customRenderSVG')
 
+import Data.Maybe (fromJust, isJust)
 
 import Types (
   SpecialQDiagram
@@ -25,6 +26,7 @@ import Types (
   , CreateView
   , View
   )
+import DrawingColors (ColorSheme(..))
 
 import ModuleToGraphs(getModuleGraphs)
 
@@ -36,7 +38,7 @@ import ModuleGraphsToDiagram(
   , addSourceCodeDiagram
   )
 
-import CmdLineArgs as CMD
+import qualified CmdLineArgs as CMD
 
 import FrontendBlankCanvas( blankCanvasLoop )
 
@@ -52,17 +54,27 @@ passCmdArgs :: IO ()
 passCmdArgs = CMD.customExecParser CMD.parserPrefs  CMD.opts >>= prepareDiagram
 
 prepareDiagram :: CMD.CmdLineOptions -> IO ()
-prepareDiagram (CMD.CmdLineOptions
-  inputFilename
-  outputFilename
-  portNumber
-  imageScale
-  doIncludeComments
-  isInteractive)
+prepareDiagram (CMD.CmdLineOptions 
+    mode 
+    (CMD.BasicOptions 
+      inputFilename
+      portNumber
+      imageScale
+      doIncludeComments
+    )
+    colorSheme
+    )
   = do
   putStrLn $ "Opening file " ++ inputFilename ++ " for visualisation."
   moduleGraphs <- getModuleGraphs inputFilename
-  if isInteractive
+  if CMD.isBatch mode 
+  then do
+    let outputFilename = CMD.getFilename mode
+    diagram <- staticDiagramFromModule doIncludeComments moduleGraphs
+    customRenderSVG' outputFilename imageScale diagram
+    putStrLn $ "Saving file: " ++ outputFilename
+  else pure ()
+  if CMD.isInteractive mode
   then do
     source <- readFile inputFilename
     let
@@ -71,10 +83,7 @@ prepareDiagram (CMD.CmdLineOptions
       selectViewWithSourceCode' = selectViewWithSourceCode getCodeFragment
       loopControl = (selectViewWithSourceCode', sampleDiagram, progressView, withdrawView)
     blankCanvasLoop moduleDiagram portNumber loopControl imageScale
-  else do
-    diagram <- staticDiagramFromModule doIncludeComments moduleGraphs
-    customRenderSVG' outputFilename imageScale diagram
-    putStrLn $ "Saving file: " ++ outputFilename
+  else pure ()
 
 selectViewWithSourceCode :: SpecialBackend b Double =>
   (SrcRef -> SourceCode) -> SpecialQDiagram b Double -> View -> IO(SpecialQDiagram b Double)

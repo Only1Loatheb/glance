@@ -88,7 +88,7 @@ caseVarSymbol :: SpecialBackend b n
   => Colour Double
   ->  SpecialDiagram b n
 caseVarSymbol color = alignB coloredSymbol  where
-    symbol = vrule (2 * symbolSize)
+    symbol = vrule $ 2 * defaultLineWidth
     coloredSymbol
       = lwG defaultLineWidth $ lc color (strokeLine symbol)
 

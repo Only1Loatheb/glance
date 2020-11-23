@@ -417,14 +417,9 @@ generalNestedCaseDia iconInfo symbolColor inConstBox inputAndArgs flavor
   = case inputAndArgs of
   [] -> error "empty multiif"-- mempty
   input : subicons -> finalDia where
-    finalDia = vcat [inputDiagram, allCasesAtRight, resultDia]
+    finalDia = vcat [allCasesAtRight, resultDia]
 
     resultDia = makeResultDiagram name
-
-    inputDiagram
-      | flavor == MultiIfFlavor = alignBR 
-        $ coloredTextBox (textBoxTextC colorScheme) ifConditionConst
-      | otherwise = makeInputDiagram iconInfo tp (pure input) name
 
     (iFConstIcons, iFVarIcons)
       = partitionEithers $ zipWith iconMapper mixedPorts subicons
@@ -448,8 +443,15 @@ generalNestedCaseDia iconInfo symbolColor inConstBox inputAndArgs flavor
     multiIfDia = centerX $ hsep portSeparationSize  iFVarAndConstIcons
     decisionLine = lwG defaultLineWidth $ lc symbolColor $ hrule (width multiIfDia)
     allCases = multiIfDia <> decisionLine
-    inputLambdaLine = lwG defaultLineWidth $ lc symbolColor $ vrule (height allCases)
-    allCasesAtRight = alignT inputLambdaLine <> alignTL allCases
+
+    inputLambdaLine = alignT inputLine <> inputDiagram
+    inputLine = lwG defaultLineWidth $ lc symbolColor $ vrule (height allCases)
+    inputDiagram
+      | flavor == MultiIfFlavor = alignTR 
+        $ coloredTextBox (textBoxTextC colorScheme) ifConditionConst
+      | otherwise = centerX $ alignB $ makeInputDiagram iconInfo tp (pure input) name
+
+    allCasesAtRight = inputLambdaLine <> alignTL allCases
 
 functionArgDia :: SpecialBackend b n
   =>  [String]

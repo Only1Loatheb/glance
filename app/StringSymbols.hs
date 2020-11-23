@@ -36,7 +36,6 @@ module StringSymbols
 
 import qualified Language.Haskell.Exts as Exts
 import Data.List(groupBy, isPrefixOf)
-import Data.List.Split as Split
 import Types(Delimiters)
 import Data.Maybe (isJust)
 
@@ -149,9 +148,7 @@ nTupleSectionDelimiters maybeExp = delims where
   countsOfMaybe = map lengthOfGroup groupsOfMaybe
   delims = getDelims countsOfMaybe
 
-  isSameMaybe (Just _) (Just _) = True
-  isSameMaybe Nothing Nothing = True
-  isSameMaybe _ _ = False
+  isSameMaybe m1 m2 = isJust m1 == isJust m2
 
   lengthOfGroup :: [Maybe a] -> Either Int Int
   lengthOfGroup xs = case head xs of
@@ -161,8 +158,6 @@ nTupleSectionDelimiters maybeExp = delims where
   getDelims [] = ["()"]
   getDelims [Left exprs] = "(" : expDelims exprs ++ [")"]
   getDelims [Right exprs] = [concat ("(•" : replicate (exprs - 1) ",•") ++ ")"]
-  getDelims [Right n, Left exprs] = concat ("(" : replicate n "•,") : expDelims exprs ++ [")"]
-  getDelims [Left exprs, Right n] = "(" : expDelims exprs ++ [concat (replicate n ",•"), ")"]
   getDelims (x:xs) = headDelims x ++ concatMap middleDelims (init xs) ++ lastDelims (last xs)
 
   headDelims (Left exprs) = "(" : expDelims exprs

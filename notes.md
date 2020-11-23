@@ -32,10 +32,10 @@ examples to work with:
 
 ```bash
 stack build --test  --ghc-options -Wall
-stack exec glance-exe -- -c ./examples/tutorial.hs ./images/tutorial.svg
-stack exec glance-exe -- -c ./examples/advantages.hs ./images/advantages.svg
-stack exec glance-exe -- -c ./examples/lab1.hs ./images/lab1.svg
-stack exec glance-exe -- -c ./examples/lab2.hs ./images/lab2.svg
-stack exec glance-exe -- -c  ./examples/simpleFunctions.hs ./images/simpleFunctions.svg
+stack exec glance-exe -- -c ./examples/tutorial.hs -o ./images/tutorial.svg
+stack exec glance-exe -- -c ./examples/advantages.hs -o ./images/advantages.svg
+stack exec glance-exe -- -c ./examples/lab1.hs -o ./images/lab1.svg
+stack exec glance-exe -- -c ./examples/lab2.hs -o ./images/lab2.svg
+stack exec glance-exe -- -c  ./examples/simpleFunctions.hs -o ./images/simpleFunctions.svg
 firefox --new-window ./test/test-output/visual-tests.svg
 ```

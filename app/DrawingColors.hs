@@ -1,18 +1,19 @@
 module DrawingColors (
   ColorStyle(..)
   , colorScheme
-  , colorOnBlackScheme
-  , whiteOnBlackScheme
-  , randomColorScheme
+  , ColorSheme(..)
 ) where
 
 import Diagrams.Prelude hiding ((&), (#))
 
 {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
+data ColorSheme = ColorsOnBlack | ColorsOnWhite | WhiteOnBlack | BlackOnWhite
+  deriving (Show, Eq, Ord)
+
 -- COLO(U)RS --
 colorScheme :: ColorStyle Double
-colorScheme = colorOnBlackScheme
+colorScheme = colorsOnBlackScheme
 
 data ColorStyle a = ColorStyle {
   backgroundC :: Colour a,
@@ -29,8 +30,8 @@ data ColorStyle a = ColorStyle {
   tupleC :: Colour a
 }
 
-colorOnBlackScheme :: (Floating a, Ord a) => ColorStyle a
-colorOnBlackScheme = ColorStyle {
+colorsOnBlackScheme :: (Floating a, Ord a) => ColorStyle a
+colorsOnBlackScheme = ColorStyle {
   backgroundC = black,
   textBoxTextC = white,
   applyCompositionC = cycle [cyan,lightSlightlyPurpleBlue],
@@ -95,19 +96,18 @@ whiteOnBlackScheme = ColorStyle {
   tupleC = white
 }
 
--- Use this to test that all of the colors use the colorScheme
-randomColorScheme :: (Floating a, Ord a) => ColorStyle a
-randomColorScheme = ColorStyle {
-  backgroundC = darkorchid,
-  textBoxTextC = blue,
-  applyCompositionC = repeat green,
-  boolC = lightpink,
-  lambdaC = cyan,
-  caseRhsC = red,
-  patternC = olive,
-  bindTextBoxTextC = lime,
-  edgeListC = [wheat],
-  nestingC = cycle [red, yellow, purple, pink, lightblue, magenta],
-  listC = lightblue,
-  tupleC = lightPurple
+blackOnWhiteScheme :: (Floating a, Ord a) => ColorStyle a
+blackOnWhiteScheme = ColorStyle {
+  backgroundC = white,
+  textBoxTextC = black,
+  applyCompositionC = repeat black,
+  boolC = black,
+  lambdaC = black,
+  caseRhsC = black,
+  patternC = black,
+  bindTextBoxTextC = black,
+  edgeListC = [black],
+  nestingC = repeat black,
+  listC = black,
+  tupleC = black
 }
