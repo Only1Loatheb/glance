@@ -38,12 +38,12 @@ import           Options.Applicative (
 
 import Options.Applicative.Types(ParserPrefs, ParserInfo)
 
-import DrawingColors (ColorSheme(..))
+import DrawingColors (ColorStyleType(..))
 
 parserPrefs :: ParserPrefs
 parserPrefs = defaultPrefs{prefShowHelpOnError = True}
 
-data CmdLineOptions = CmdLineOptions Mode BasicOptions ColorSheme
+data CmdLineOptions = CmdLineOptions Mode BasicOptions ColorStyleType
 data BasicOptions = BasicOptions {
   inputFilenameOpt :: String
   , portNumberOpt :: Int
@@ -82,7 +82,7 @@ optionParser = BasicOptions
   <*> option auto (long "scale" <> short 's' <> value 1 <> metavar "IMAGE_SCALE" <> help "Output image scale")
   <*> switch (long "comments" <> short 'c' <> help "Include comments between top level declarations.")
   
-colorParser :: Parser ColorSheme
+colorParser :: Parser ColorStyleType
 colorParser = subparser (
   command "ColorsOnBlack" (info (pure ColorsOnBlack) (fullDesc <> progDesc "Good for screen")) 
   <> command "ColorsOnWhite" (info (pure ColorsOnWhite) (fullDesc <> progDesc "Good for digital documents"))

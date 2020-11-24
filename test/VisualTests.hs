@@ -12,35 +12,21 @@ import GHC.Stack(HasCallStack)
 import qualified Data.Set as Set
 import qualified Data.Map as SMap
 
-import Types(SpecialDiagram, SpecialBackend, NodeName(..),TransformParams(..))
-
 import HsSyntaxToSimpSyntax(stringToSimpDecl, hsDeclToSimpDecl)
 import SyntaxGraph( SyntaxGraph(..))
 import SimpSyntaxToSyntaxGraph(translateStringToSyntaxGraph, customParseDecl, translateDeclToSyntaxGraph)
 import CollapseGraph(syntaxGraphToCollapsedGraph, syntaxGraphToFglGraph)
 import Rendering(renderIngSyntaxGraph)
+import DrawingColors (dummyColorStyle)
+
 
 import Types(
-  Icon(..)
-  , SpecialDiagram
+  SpecialDiagram
   , SpecialBackend
-  , SpecialNum
-  , NodeName(..)
-  , Port(..)
-  , ApplyFlavor(..)
-  , NamedIcon
-  , Labeled(..)
-  , IconInfo
-  , Named(..)
-  , NameAndPort(..)
-  , TransformParams(..)
-  , TransformableDia
-  , CaseFlavor(..)
   , AnnotatedFGR
   )
 
 import TextBox(multilineComment)
-{-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
 translateDeclToCollapsedGraph :: Exts.Decl Exts.SrcSpanInfo -> AnnotatedFGR
 translateDeclToCollapsedGraph
@@ -164,7 +150,7 @@ doTests = [
 tupleTests :: [String]
 tupleTests = [
   "y = ()",
-  "y = (1,2)",
+  "y = (x,) 2",
   "y = (1,2,3)",
   "y = (,)",
   "y = (,x)",
@@ -481,7 +467,7 @@ translateStringToDrawing s = do
       ING.prettyPrint collapsedGraph
       putStr "\n\n"
   if False then printAction else pure ()  -- Supress unused printAction warning
-  declarationDiagrams <- renderIngSyntaxGraph s (collapsedGraph, collapsedGraph)
+  declarationDiagrams <- renderIngSyntaxGraph dummyColorStyle (collapsedGraph, collapsedGraph)
   pure $ clearValue declarationDiagrams
 
 visualTranslateTests :: (HasCallStack, SpecialBackend b Double)
@@ -495,4 +481,4 @@ visualTranslateTests = do
 
 textBox :: SpecialBackend b n =>
   String -> SpecialDiagram b n
-textBox t = multilineComment t
+textBox = multilineComment dummyColorStyle

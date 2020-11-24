@@ -1,4 +1,4 @@
-{-# LANGUAGE NoMonomorphismRestriction, TupleSections, PatternSynonyms #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 
 module SyntaxGraph(
     SyntaxGraph(..)
@@ -38,59 +38,33 @@ module SyntaxGraph(
 ) where
 
 import Control.Monad.State ( State, state )
-import Diagrams.Prelude((<>))
 import           Data.Either( partitionEithers, fromRight)
 import           Data.Maybe(
   fromMaybe
   , mapMaybe
-  , catMaybes
   )
 import qualified Data.Set as Set
 import qualified Data.Map as SMap
 import qualified Data.IntMap as IMap
 
 
-import           PortConstants(
-  inputPort
-  , resultPort
-  , argumentPorts
-  , argPortsConst
-  , multiIfValuePorts
-  , multiIfBoolPorts
-  , resultPortsConst
-  )
-
 import           Types(
-  Labeled(..)
-  , NameAndPort(..)
+  NameAndPort(..)
   , IDState(..)
   , Edge(..)
-  , SyntaxNode(..)
   , NodeName(..)
   , SgNamedNode
-  , ApplyFlavor(..)
-  , CaseFlavor(..)
-  , Named(..)
-  , EdgeOption(..)
-  , mkEmbedder
-  , Connection(..)
+  , Connection
   , Reference
   , EvalContext
   , SgBind
   , SgSink(..)
   , SyntaxGraph(..)
   , GraphAndRef(..)
-  , SgBindMap(..)
+  , SgBindMap
   )
-import Util(
-  makeSimpleEdge
-  , makeNotConstraintEdge
-  , makeInvisibleEdge
-  , nameAndPort
-  )
+import Util(makeSimpleEdge)
 import StringSymbols(defaultPatternNameStr)
-
-{-# ANN module "HLint: ignore Use list comprehension" #-}
 
 -- OVERVIEW --
 -- This module has the core functions and data types used by SimpSyntaxToSyntaxGraph.
@@ -130,11 +104,13 @@ graphAndRefToGraph (GraphAndRef g _) = g
 graphAndRefToRef :: GraphAndRef -> Reference
 graphAndRefToRef (GraphAndRef _ r) = r
 
+{-# ANN graphToTuple "HLint: ignore Redundant bracket" #-}
 graphToTuple ::
   SyntaxGraph
   -> (Set.Set SgNamedNode, (Set.Set Edge), (Set.Set SgSink), (SgBindMap), IMap.IntMap NodeName)
 graphToTuple (SyntaxGraph a b c d e) = (a, b, c, d, e)
 
+{-# ANN graphsToComponents "HLint: ignore Redundant bracket" #-}
 graphsToComponents ::
   [SyntaxGraph]
   -> (Set.Set SgNamedNode, (Set.Set Edge), (Set.Set SgSink), (SgBindMap), IMap.IntMap NodeName)
@@ -173,7 +149,7 @@ makeAsBindGraph ref asNames
   where
     makeBind mName = case mName of
       Nothing -> Nothing
-      Just asName -> Just $ (asName, ref)
+      Just asName -> Just (asName, ref)
 
 patternName :: (GraphAndRef, Maybe String) -> String
 patternName (GraphAndRef _ ref, mStr) = fromMaybe
@@ -231,7 +207,7 @@ grNamePortToGrRef (graph, np) = GraphAndRef graph (Right np)
 
 -- | Recursivly find the matching reference in a list of bindings.
 -- TODO: Might want to present some indication if there is a reference cycle.
-lookupReference :: (SgBindMap) -> Reference -> Reference
+lookupReference :: SgBindMap -> Reference -> Reference
 lookupReference _ ref@(Right _) = ref
 lookupReference bindings originalRef = lookupReference' originalRef where
   
@@ -265,6 +241,7 @@ makeEdges' edgeConstructor (SyntaxGraph icons edges sinks bindings eMap) = newGr
   (newSinks, newEdges) = makeEdgesCore edgeConstructor sinks bindings
   newGraph = SyntaxGraph icons (newEdges <> edges) newSinks bindings eMap
 
+{-# ANN makeEdgesCore "HLint: ignore Redundant bracket" #-}
 makeEdgesCore :: (Connection -> Edge) -> (Set.Set SgSink) -> (SgBindMap) -> ((Set.Set SgSink), (Set.Set Edge))
 makeEdgesCore edgeConstructor sinks bindings = (Set.fromList newSinks,Set.fromList newEdge) where
   -- TODO check if set->list->set gives optimal performance

@@ -47,8 +47,6 @@ import Util(
   , fromMaybeError
   )
 
-{-# ANN module "HLint: ignore Use record patterns" #-}
-
 data ParentType = ApplyParent
                 | CaseParent
                 | LambdaParent String

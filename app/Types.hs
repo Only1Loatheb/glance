@@ -53,7 +53,7 @@ module Types (
   , SgSink(..)
   , SyntaxGraph(..)
   , GraphAndRef(..)
-  , SgBindMap(..)
+  , SgBindMap
   , Delimiters
   , ListLitFlavor(..)
 ) where
@@ -93,7 +93,7 @@ instance Applicative Labeled where
   (Labeled f fStr) <*> (Labeled x xStr) = Labeled (f x) (fStr <> xStr)
 
 type FuncDefRegionInfo = (
-  (Set.Set NodeName)  -- Nodes inside the lambda
+  Set.Set NodeName  -- Nodes inside the lambda
   , Int) -- lambdaNestingLevel
 
 type IconInfo = IMap.IntMap Icon
@@ -265,10 +265,10 @@ data NodeQueryValue = NodeQueryValue {
   } deriving (Show, Eq, Ord)
 
 data DeclQueryValue = DeclQueryValue {
-  declSrcRef :: SrcRef
-  , declGraph :: SyntaxGraph
-  , commentsBefore :: [Exts.Comment]
-  , commentsAfter :: [Exts.Comment]
+  srcRefDQV :: SrcRef
+  , graphDQV :: SyntaxGraph
+  , commentsBeforeDQV :: [Exts.Comment]
+  , commentsAfterDQV :: [Exts.Comment]
   } deriving (Show)
 
 data QueryValue = 
@@ -301,11 +301,11 @@ data SgSink = SgSink String NameAndPort deriving (Eq, Ord, Show)
 -- | A SyntaxGraph is an abstract representation of Haskell syntax. SyntaxGraphs
 -- are generated from the Haskell syntax tree and are used to generate Drawings.
 data SyntaxGraph = SyntaxGraph {
-  sgNodes :: (Set.Set SgNamedNode),
-  sgEdges :: (Set.Set Edge),
-  sgSinks :: (Set.Set SgSink), -- values that havent been used (unused bindings)
+  sgNodes :: Set.Set SgNamedNode,
+  sgEdges :: Set.Set Edge,
+  sgSinks :: Set.Set SgSink, -- values that havent been used (unused bindings)
   -- TODO change to SMap.StringMap NameAndPort
-  sgBinds :: (SgBindMap), -- name form upper leval -> reference -- Reference -> Reference 
+  sgBinds :: SgBindMap, -- name form upper leval -> reference -- Reference -> Reference 
   -- sgEmbedMap keeps track of nodes embedded in other nodes. If (child, parent)
   -- is in the Map, then child is embedded inside parent.
   sgEmbedMap :: IMap.IntMap NodeName -- NodeName -> NodeName

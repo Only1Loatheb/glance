@@ -5,19 +5,15 @@ module NodePlacementMap (
   , getQueryRects
 ) where
 
-import qualified Data.Map as Map
 import qualified Diagrams.Prelude as Dia
-import qualified Diagrams.BoundingBox as Box
-import Data.Maybe(listToMaybe)
 
-import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
-  , Drawing(..), NameAndPort(..)
-  , SpecialDiagram, SpecialBackend, SpecialNum, NodeName(..)
+import Types(SpecialDiagram, SpecialBackend
   , SpecialQDiagram
-  , NamedIcon(..), Icon(..), NodeInfo(..), IconInfo
+  , NamedIcon
+  , Icon(..)
+  , IconInfo
   , Named(..)
   , TransformParams(..)
-  , EdgeOption(..)
   , QueryValue(..)
   , DiaQuery
   , NodeQueryValue(..)
@@ -26,22 +22,25 @@ import Types(EmbedInfo(..), AnnotatedGraph, Edge(..)
 import TextBox(transparentAlpha, letterHeight)
 
 import IconToDiagram(iconToDiagram)
+import DrawingColors (ColorStyle)
 
 placeNode :: SpecialBackend b Double
-  => IconInfo 
+  => IconInfo
+  -> ColorStyle Double 
   -> Double
   -> (NamedIcon, Dia.P2 Double) 
   -> (NamedIcon, SpecialDiagram b Double)
-placeNode iconInfo graphVizScale (namedIcon@(Named name icon), layoutPosition)
+placeNode iconInfo colorStyle graphVizScale (namedIcon@(Named name icon), layoutPosition)
   = (namedIcon, Dia.place transformedDia diaPosition) where
       origDia = iconToDiagram
                 iconInfo
+                colorStyle
                 icon
                 (TransformParams name 0)
       transformedDia = Dia.centerXY origDia
       diaPosition = getDiaPosition graphVizScale layoutPosition
 
--- getDiaPosition :: (Functor f, Fractional a) => f a -> f a
+getDiaPosition :: (Functor f, Num a) => a -> f a -> f a
 getDiaPosition graphVizScale layoutPosition = graphVizScale Dia.*^ layoutPosition
 
 
@@ -56,7 +55,7 @@ getQueryRects iconAndPlacedNodes
     let 
       box = Dia.value (queryValue icon) 
         $ Dia.opacity transparentAlpha 
-        -- $ Dia.lc Dia.blue
+        {-\$ Dia.lc Dia.blue -}
         $ Dia.boundingRect
         $ Dia.frame boundingBoxPadding diagram]
 

@@ -1,4 +1,3 @@
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -31,7 +30,7 @@ module DiagramSymbols(
 import Diagrams.Prelude hiding ((&), (#), Name)
 import Diagrams.TwoD.Combinators(strutR2)
 
-import DrawingColors(colorScheme, ColorStyle(..))
+import DrawingColors(ColorStyle(..))
 import Types(
   SpecialDiagram
   , SpecialBackend
@@ -121,8 +120,8 @@ inNoteFrame borderColor diagram
     coloredFrame = lwG (defaultLineWidth/2) $  lc borderColor decisionFrame
 
 inCaseDecisionFrame :: SpecialBackend b n
-  => SpecialDiagram b n -> SpecialDiagram b n
-inCaseDecisionFrame = inDecisionFrame (caseRhsC colorScheme)
+  => ColorStyle Double -> SpecialDiagram b n -> SpecialDiagram b n
+inCaseDecisionFrame colorStyle = inDecisionFrame (caseRhsC colorStyle)
 
 inDecisionFrame :: SpecialBackend b n
   => Colour Double
@@ -164,22 +163,24 @@ memptyWithPosition :: SpecialBackend b n => SpecialDiagram b n
 memptyWithPosition = strutR2 (V2 symbolSize 0)
 -- | Names the diagram and puts all sub-names in the namespace of the top level
 
-inItemFrame :: SpecialBackend b n => SpecialDiagram b n -> SpecialDiagram b n
-inItemFrame itemDiagram = finalDia where
+inItemFrame :: SpecialBackend b n => ColorStyle Double -> SpecialDiagram b n -> SpecialDiagram b n
+inItemFrame colorStyle itemDiagram = finalDia where
   itemDiagramAligned = alignB itemDiagram
   finalDia = beside (-unitX) (itemDiagramAligned ||| rightListItemFrame) (leftListItemFrame ||| strutX defaultLineWidth)
-  leftListItemFrame = alignBR $ listCompLine $ vrule  $ (max  letterHeight $ height  itemDiagram)
-  rightListItemFrame =  listDots ||| leftListItemFrame
+  leftListItemFrame = alignBR $ listCompLine colorStyle $ vrule $ max  letterHeight (height  itemDiagram)
+  rightListItemFrame =  listDots colorStyle ||| leftListItemFrame
 
-listCompLine = lwG defaultLineWidth $ lc (listC colorScheme)
+listCompLine :: SpecialBackend b n => ColorStyle Double -> (SpecialDiagram b n -> SpecialDiagram b n)
+listCompLine colorStyle = lwG defaultLineWidth $ lc (listC colorStyle)
 
-listDots :: SpecialBackend b n => SpecialDiagram b n
-listDots = alignB $ coloredTextBox (listC colorScheme) listDotsStr
+listDots :: SpecialBackend b n => ColorStyle Double -> SpecialDiagram b n
+listDots colorStyle = alignB $ coloredTextBox (listC colorStyle) listDotsStr
 
-listCompPipe height = alignB $ centerX $ listCompLine pipe where
-  line = vrule height
+listCompPipe :: SpecialBackend b n => ColorStyle Double -> n -> SpecialDiagram b n
+listCompPipe colorStyle pipeHeight = alignB $ centerX $ listCompLine colorStyle pipe where
+  line = vrule pipeHeight
   pipe = hcat [line, strutX symbolSize, line]
 
-listLitDelimiterDia :: SpecialBackend b n => ListLitFlavor -> String -> SpecialDiagram b n
-listLitDelimiterDia ListFlavor str = alignB $ coloredTextBox (listC colorScheme) str
-listLitDelimiterDia TupleFlavor str = alignB $ coloredTextBox (tupleC colorScheme) str
+listLitDelimiterDia :: SpecialBackend b n => ColorStyle Double -> ListLitFlavor -> String -> SpecialDiagram b n
+listLitDelimiterDia colorStyle ListFlavor str = alignB $ coloredTextBox (listC colorStyle) str
+listLitDelimiterDia colorStyle TupleFlavor str = alignB $ coloredTextBox (tupleC colorStyle) str

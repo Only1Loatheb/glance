@@ -8,22 +8,16 @@ where
 import qualified Diagrams.Prelude as Dia hiding ((#), (&))
 import Diagrams.Backend.Canvas as CV
 import qualified Graphics.Blank as BC hiding (rotate, scale, ( # ))
-import Data.Text (Text)
 
 import Types (
-  SpecialDiagram
-  ,SpecialQDiagram
+  SpecialQDiagram
   , SpecialBackend
   , DiaQuery
-  , ModuleGraphs
-  , SrcRef
-  , ViewGraphs
   , CreateView
-  , SourceCode
   , View
   )
 
-import IconToDiagram(ColorStyle(..), colorScheme)
+import DrawingColors(ColorStyle(..))
 
 getBlankCanvasOpts :: Int -> BC.Options
 getBlankCanvasOpts  portNumber =  BC.Options {
@@ -47,41 +41,51 @@ diagramForBlankCanvas moduleDiagram imageScale = (moduleDiagramAligned, pointToD
 bcDrawDiagram :: BC.DeviceContext
   -> Dia.SizeSpec Dia.V2 Double
   -> Dia.QDiagram Canvas Dia.V2 Double m
+  -> ColorStyle Double
   -> IO ()
-bcDrawDiagram context sizeSpec moduleDiagram = do
+bcDrawDiagram context sizeSpec moduleDiagram colorStyle = do
   BC.send context $ BC.clearRect (0,0,BC.width context, BC.height context)
-  let moduleDrawing = Dia.bg (backgroundC colorScheme) $ Dia.clearValue moduleDiagram
+  let moduleDrawing = Dia.bg (backgroundC colorStyle) $ Dia.clearValue moduleDiagram
   BC.send context $ Dia.renderDia CV.Canvas (CanvasOptions sizeSpec) moduleDrawing   
   
-blankCanvasLoop moduleDiagram portNumber loopControl imageScale = do
+blankCanvasLoop :: SpecialQDiagram Canvas Double 
+  -> Int 
+  -> (SpecialQDiagram Canvas Double -> View -> IO (SpecialQDiagram Canvas Double)
+    , SpecialQDiagram Canvas Double -> Dia.Point Dia.V2 Double  -> DiaQuery
+    , CreateView, View -> View) 
+  -> Double 
+  -> ColorStyle Double 
+  -> IO ()
+blankCanvasLoop moduleDiagram portNumber loopControl imageScale colorStyle = do
   let blankCanvasOpts  = getBlankCanvasOpts portNumber
-  BC.blankCanvas blankCanvasOpts $ \ context -> loop context (moduleDiagram, (Nothing, Nothing)) loopControl imageScale
+  BC.blankCanvas blankCanvasOpts $ \ context -> loop context (moduleDiagram, (Nothing, Nothing)) loopControl imageScale colorStyle
 
 loop ::
   BC.DeviceContext
   -> (SpecialQDiagram Canvas Double, View)
-  -> (
-    SpecialQDiagram Canvas Double -> View -> IO (SpecialQDiagram Canvas Double)
+  -> (SpecialQDiagram Canvas Double -> View -> IO (SpecialQDiagram Canvas Double)
     , SpecialQDiagram Canvas Double -> Dia.Point Dia.V2 Double -> DiaQuery
     , CreateView
-    , (View -> View)
+    , View -> View
   )
   -> Double
+  -> ColorStyle Double
   -> IO b
 loop 
   context 
   (moduleDiagram, view) 
   loopControl@(selectViewWithSourceCode, sampleDiagram, progressView, withdrawView) 
   imageScale
+  colorStyle
   = do
   diagram <- selectViewWithSourceCode moduleDiagram view
   -- print view
   let (moduleDiagramAligned, pointToDiaPoint, sizeSpec) = diagramForBlankCanvas diagram imageScale
-  bcDrawDiagram context sizeSpec moduleDiagramAligned
+  bcDrawDiagram context sizeSpec moduleDiagramAligned colorStyle
   event <- BC.wait context
   case BC.ePageXY event of
     -- if no mouse location, ignore, and redraw
-    Nothing -> loop context (moduleDiagram, withdrawView view) loopControl imageScale
+    Nothing -> loop context (moduleDiagram, withdrawView view) loopControl imageScale colorStyle
     Just point -> do
       let scaledPoint = pointToDiaPoint point
       let clicked = sampleDiagram moduleDiagramAligned scaledPoint
@@ -89,4 +93,4 @@ loop
         newView = if not $ null clicked 
           then progressView clicked view 
           else withdrawView view
-      loop context (moduleDiagram, newView) loopControl imageScale
+      loop context (moduleDiagram, newView) loopControl imageScale colorStyle

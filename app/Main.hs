@@ -5,7 +5,6 @@ module Main
   , CMD.CmdLineOptions(..)) where
 
 import Prelude hiding (return)
-import Data.Maybe()
 
 -- Note: (#) and (&) are hidden in all Glance source files, since they would
 -- require a special case when translating when Glance is run on its own source
@@ -13,8 +12,6 @@ import Data.Maybe()
 import qualified Diagrams.Prelude as Dia hiding ((#), (&))
 
 import SVGrender(customRenderSVG')
-
-import Data.Maybe (fromJust, isJust)
 
 import Types (
   SpecialQDiagram
@@ -26,7 +23,7 @@ import Types (
   , CreateView
   , View
   )
-import DrawingColors (ColorSheme(..))
+import DrawingColors (getColorStyle,ColorStyle)
 
 import ModuleToGraphs(getModuleGraphs)
 
@@ -46,7 +43,6 @@ import SrcRefToSourceCode (srcRefToSourceCode)
 
 import Util(showSrcInfo, hasSrcRef, getSrcRef)
 
--- {-# ANN module "HLint: ignore Unnecessary hiding" #-}
 main :: IO ()
 main = passCmdArgs
 
@@ -62,16 +58,17 @@ prepareDiagram (CMD.CmdLineOptions
       imageScale
       doIncludeComments
     )
-    colorSheme
+    colorStyleType
     )
   = do
   putStrLn $ "Opening file " ++ inputFilename ++ " for visualisation."
   moduleGraphs <- getModuleGraphs inputFilename
+  let colorStyle = getColorStyle colorStyleType
   if CMD.isBatch mode 
   then do
     let outputFilename = CMD.getFilename mode
-    diagram <- staticDiagramFromModule doIncludeComments moduleGraphs
-    customRenderSVG' outputFilename imageScale diagram
+    diagram <- staticDiagramFromModule doIncludeComments moduleGraphs colorStyle
+    customRenderSVG' outputFilename imageScale diagram colorStyle
     putStrLn $ "Saving file: " ++ outputFilename
   else pure ()
   if CMD.isInteractive mode
@@ -79,33 +76,33 @@ prepareDiagram (CMD.CmdLineOptions
     source <- readFile inputFilename
     let
       getCodeFragment = srcRefToSourceCode source
-      moduleDiagram = diagramFromModule getCodeFragment doIncludeComments moduleGraphs
-      selectViewWithSourceCode' = selectViewWithSourceCode getCodeFragment
+      moduleDiagram = diagramFromModule getCodeFragment colorStyle doIncludeComments moduleGraphs
+      selectViewWithSourceCode' = selectViewWithSourceCode getCodeFragment colorStyle
       loopControl = (selectViewWithSourceCode', sampleDiagram, progressView, withdrawView)
-    blankCanvasLoop moduleDiagram portNumber loopControl imageScale
+    blankCanvasLoop moduleDiagram portNumber loopControl imageScale colorStyle
   else pure ()
 
 selectViewWithSourceCode :: SpecialBackend b Double =>
-  (SrcRef -> SourceCode) -> SpecialQDiagram b Double -> View -> IO(SpecialQDiagram b Double)
-selectViewWithSourceCode getCodeFragment moduleDiagram view = do
-  diagram <- selectView moduleDiagram view
+  (SrcRef -> SourceCode) -> ColorStyle Double -> SpecialQDiagram b Double -> View -> IO(SpecialQDiagram b Double)
+selectViewWithSourceCode getCodeFragment colorStyle moduleDiagram view = do
+  diagram <- selectView colorStyle moduleDiagram view
   if hasSrcRef view
   then do
     let srcRef = getSrcRef view
     putStrLn $ showSrcInfo srcRef
-    let diagramWithSourceCode = addSourceCodeDiagram diagram $ getCodeFragment srcRef
-    pure (diagramWithSourceCode)
-  else pure(diagram) 
+    let diagramWithSourceCode = addSourceCodeDiagram colorStyle diagram $ getCodeFragment srcRef
+    pure diagramWithSourceCode
+  else pure diagram 
 
 
-selectView :: SpecialBackend b Double => SpecialQDiagram b Double -> View -> IO (SpecialQDiagram b Double)
-selectView moduleDiagram (maybeDeclQV, maybeNodeQV) = do
+selectView :: SpecialBackend b Double => ColorStyle Double -> SpecialQDiagram b Double -> View -> IO (SpecialQDiagram b Double)
+selectView colorStyle moduleDiagram (maybeDeclQV, maybeNodeQV) = do
   case maybeDeclQV of
-    Nothing -> pure(moduleDiagram)
+    Nothing -> pure moduleDiagram
     Just declQueryValue -> do
       case maybeNodeQV of
-        Nothing -> declDiagram declQueryValue
-        Just nodeQueryValue -> nodeDiagram declQueryValue nodeQueryValue
+        Nothing -> declDiagram colorStyle declQueryValue
+        Just nodeQueryValue -> nodeDiagram colorStyle declQueryValue nodeQueryValue
 
 sampleDiagram :: SpecialBackend b Double =>
   SpecialQDiagram b Double -> Dia.Point Dia.V2 Double -> DiaQuery

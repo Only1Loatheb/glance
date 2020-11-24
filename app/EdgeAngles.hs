@@ -30,9 +30,6 @@ import PortConstants(
   , isQualPort
   )
 
-{-# ANN module "HLint: ignore Use record patterns" #-}
-{-# ANN module "HLint: ignore Unnecessary hiding" #-}
-
 applyPortAngle :: Floating n => Port -> Angle n
 applyPortAngle InputPortConst = 1/2 @@ turn -- input function
 applyPortAngle ResultPortConst = 3/4 @@ turn
@@ -124,7 +121,7 @@ getPortAngleHelper isEmbedded iconInfo (Icon icon _) port maybeNodeName = case i
       (findMaybeIconsFromNames iconInfo args)
       port
       maybeNodeName
-  NestedPatternApp headIcon args rhsNodeName
+  NestedPatternApp headIcon args _rhsNodeName
     -> generalNestedPortAngle
       iconInfo
       patternAppPortAngle

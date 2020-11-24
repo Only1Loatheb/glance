@@ -1,19 +1,24 @@
 module DrawingColors (
   ColorStyle(..)
-  , colorScheme
-  , ColorSheme(..)
-) where
+  , ColorStyleType(..)
+  , getColorStyle
+  , dummyColorStyle
+  ) where
 
 import Diagrams.Prelude hiding ((&), (#))
-
-{-# ANN module "HLint: ignore Unnecessary hiding" #-}
-
-data ColorSheme = ColorsOnBlack | ColorsOnWhite | WhiteOnBlack | BlackOnWhite
+data ColorStyleType = ColorsOnBlack | ColorsOnWhite | WhiteOnBlack | BlackOnWhite
   deriving (Show, Eq, Ord)
 
+getColorStyle :: (Floating a, Ord a) => ColorStyleType -> ColorStyle a
+getColorStyle colorStyleType = case colorStyleType of
+  ColorsOnBlack -> colorsOnBlackScheme
+  ColorsOnWhite -> colorsOnWhiteScheme
+  WhiteOnBlack -> whiteOnBlackScheme
+  BlackOnWhite -> blackOnWhiteScheme
+
 -- COLO(U)RS --
-colorScheme :: ColorStyle Double
-colorScheme = colorsOnBlackScheme
+dummyColorStyle :: ColorStyle Double
+dummyColorStyle = colorsOnBlackScheme
 
 data ColorStyle a = ColorStyle {
   backgroundC :: Colour a,

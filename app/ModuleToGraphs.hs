@@ -8,20 +8,9 @@ module ModuleToGraphs(
 -- Note: (#) and (&) are hidden in all Glance source files, since they would
 -- require a special case when translating when Glance is run on its own source
 -- code.
-import qualified Diagrams.Prelude as Dia hiding ((#), (&))
-import           Data.Maybe
 import qualified Language.Haskell.Exts as Exts
 
-import           Types  (
-  SpecialDiagram
-  , SpecialQDiagram
-  , SpecialBackend
-  , NamedIcon
-  , SrcRef
-  , NodeQueryValue(..)
-  , ModuleGraphs
-  , ViewGraphs
-  )
+import Types(ModuleGraphs)
 import SimpSyntaxToSyntaxGraph(translateDeclToSyntaxGraph)
 import HsSyntaxToSimpSyntax(hsDeclToSimpDecl)
 

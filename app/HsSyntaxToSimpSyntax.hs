@@ -21,9 +21,7 @@ module HsSyntaxToSimpSyntax (
   , simpPatNameStr
   ) where
 
-import Data.List(foldl')
-import Data.Maybe(catMaybes, isJust)
-
+import Data.Maybe(catMaybes)
 import Types (
   SrcRef
   , Delimiters
@@ -81,7 +79,7 @@ data SimpExpCore =
   | SeLambda
     { patAplications :: [SimpPat]
     , bodyExpresion :: SimpExp
-    , laNameStr :: (Maybe String)}
+    , laNameStr :: Maybe String}
   | SeLet
     { declarations :: [SimpDecl]
     , bodyExpresion :: SimpExp}
@@ -177,8 +175,8 @@ srcRef = Exts.srcInfoSpan
 srcSpanInfo :: SrcRef -> Exts.SrcSpanInfo
 srcSpanInfo srcSpan = Exts.infoSpan srcSpan []
 
-nameToQname :: Exts.SrcSpanInfo -> Exts.Name Exts.SrcSpanInfo -> Exts.QName Exts.SrcSpanInfo
-nameToQname l name = strToQName l $ nameToString name  
+-- nameToQname :: Exts.SrcSpanInfo -> Exts.Name Exts.SrcSpanInfo -> Exts.QName Exts.SrcSpanInfo
+-- nameToQname l name = strToQName l $ nameToString name  
 
 strToQName :: l -> String -> Exts.QName l
 strToQName l = Exts.UnQual l . Exts.Ident l
@@ -255,7 +253,7 @@ matchToAlt (Exts.Match l _ mtaPats rhs binds)
 matchToAlt match = error $ "Unsupported syntax in matchToAlt: " <> show match
   
 matchesToFunBind :: Exts.SrcSpanInfo -> [Exts.Match Exts.SrcSpanInfo] -> Exts.Match Exts.SrcSpanInfo
-matchesToFunBind _l [] = error $ "Empty matches in matchesToFunBind."
+matchesToFunBind _l [] = error "Empty matches in matchesToFunBind."
 matchesToFunBind _l [match] = match 
 matchesToFunBind l allMatches@(firstMatch : _) = multipleMatchesToCase l firstMatch allMatches
 

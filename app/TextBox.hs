@@ -16,11 +16,9 @@ import Diagrams.Prelude hiding ((&), (#), Name)
 
 import Types(SpecialDiagram, SpecialBackend)
 
-import DrawingColors(ColorStyle(..), colorScheme)
+import DrawingColors(ColorStyle(..))
 
 import StringSymbols(sourceCodeDiagramLabel)
-{-# ANN module "HLint: ignore Use record patterns" #-}
-{-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
 -- Text constants --
 textBoxFontSize :: (Num a) => a
@@ -71,8 +69,8 @@ textSizeDiagram t = invisibleRect
 -- END Text helper functions
 
 multilineComment :: SpecialBackend b n 
-  => String -> SpecialDiagram b n
-multilineComment = multilineComment' (textBoxTextC colorScheme)
+  => ColorStyle Double -> String -> SpecialDiagram b n
+multilineComment colorStyle = multilineComment' (textBoxTextC colorStyle)
 
 multilineComment' :: SpecialBackend b n =>
   Colour Double -> String -> SpecialDiagram b n
@@ -106,8 +104,8 @@ coloredTextBox' textColor objectWithSize textDiagram = objectWithSize <> textLab
 
 
 sourceCodeDiagram :: SpecialBackend b n
-  => String -> SpecialDiagram b n
-sourceCodeDiagram s = label === sourceCode  ||| padding where
-  sourceCode = multilineComment s
-  label = multilineComment sourceCodeDiagramLabel
+  => String -> ColorStyle Double -> SpecialDiagram b n
+sourceCodeDiagram s colorStyle = label === sourceCode  ||| padding where
+  sourceCode = multilineComment colorStyle s
+  label = multilineComment colorStyle sourceCodeDiagramLabel
   padding = strut $ 10 * unitX  

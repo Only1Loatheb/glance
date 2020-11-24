@@ -20,20 +20,16 @@ module Util (
 
 import qualified Language.Haskell.Exts.SrcLoc as SrcLoc
 import Data.Maybe(fromMaybe)
-import qualified Data.Set as Set
 import qualified Debug.Trace
 
 import           Types (
   Edge(..)
-  , Icon(..)
-  , NamedIcon(..)
   , NameAndPort(..)
   , Connection
   , NodeName(..)
   , Port
   , Named(..)
   , EdgeOption(..)
-  , DiaQuery
   , NodeQueryValue(..)
   , DeclQueryValue(..)
   , SrcRef
@@ -61,7 +57,7 @@ fromMaybeError s = fromMaybe (error s)
 printSelf :: (Show a) => a -> a
 printSelf a = Debug.Trace.trace ("\nPrinted\n" ++ show a ++ "\n") a
 
--- printSelf :: (Show a) => a -> a
+printSelfM :: (Applicative f, Show a) => a -> f ()
 printSelfM a = Debug.Trace.traceM ("\nPrinted\n" ++ show a ++ "\n")
 
 -- | (Just True) = True, Nothing = False
@@ -90,7 +86,7 @@ getSrcRef :: View -> SrcRef
 getSrcRef (_, Just nodeQV) = srcRef where
   srcRef = nodeSrcRef nodeQV
 getSrcRef (Just declQV, _) = srcRef where
-  srcRef = declSrcRef declQV
+  srcRef = srcRefDQV declQV
 getSrcRef _ = error "No source in View"
 
 fmapMaybeM :: (Monad m) => (a -> m b) -> Maybe a -> m (Maybe b)

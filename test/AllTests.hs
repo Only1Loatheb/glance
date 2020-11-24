@@ -14,8 +14,7 @@ import VisualGraphAlgorithmTests(visualCollapseTests)
 
 import SyntaxGraphComparisonTests(syntaxGraphComparisonTests)
 import SyntaxGraphDirectTests(syntaxGraphDirectTests)
-
-{-# ANN module "HLint: ignore Unnecessary hiding" #-}
+import DrawingColors (dummyColorStyle)
 
 drawingsAndNames :: [(String, IO (Diagram B))]
 drawingsAndNames =
@@ -28,7 +27,7 @@ renderDrawings = mapM_ saveDrawing where
   saveDrawing (name, drawingMaker) = do
     dia <- drawingMaker
     -- TODO Replace string concatenation with proper path manipulation functions.
-    customRenderSVG ("test/test-output/" ++ name ++ ".svg") widthScale dia 
+    customRenderSVG ("test/test-output/" ++ name ++ ".svg") widthScale dia dummyColorStyle
       where widthScale = 1
 
 main :: HasCallStack => IO ()

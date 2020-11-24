@@ -7,43 +7,24 @@ module EdgeToDiagram(
   ) where
 
 import Diagrams.Prelude hiding ((&), (#), Name)
-import Data.Maybe(fromMaybe, isNothing)
+import Data.Maybe(fromMaybe)
 import Data.Typeable(Typeable)
 
-import DrawingColors(colorScheme, ColorStyle(..))
+import DrawingColors(ColorStyle(..))
 
 import PortConstants(
   pattern InputPortConst
   , pattern ResultPortConst
-  , argPortsConst
-  , resultPortsConst
-  , isArgPort
-  , mixedPorts
-  , pattern PatternUnpackingPort
-  , listCompQualPorts
   )
 
 import Types(
   Icon(..)
   , DiagramIcon(..)
-  , SpecialDiagram
-  , SpecialBackend
-  , SpecialNum
   , NodeName(..)
   , Port(..)
-  , ApplyFlavor(..)
   , NamedIcon
-  , Labeled(..)
-  , IconInfo
   , Named(..)
   , NameAndPort(..)
-  , TransformParams(..)
-  , TransformableDia
-  , CaseFlavor(..)
-  , SpecialQDiagram 
-  , Edge(..)
-  , EdgeOption(..)
-  , Connection
   )
 
 import DiagramSymbols(
@@ -61,43 +42,47 @@ getArrowShadowOpts :: (RealFloat n, Typeable n)
   -> (Point V2 n, Point V2 n)
   -> (Maybe (Angle n), Maybe (Angle n))
   -> (NamedIcon,NamedIcon)
+  -> ColorStyle Double 
   -> ArrowOpts n
 getArrowShadowOpts 
   (_, namedPortTo)
-  points maybeAngles iconPair
+  points maybeAngles iconPair colorStyle
   = shaftStyle %~ (lwG arrowShadowWidth .
                 lcA $ withOpacity shaftColor defaultShadowOpacity)
   $ headStyle %~ fc shaftColor
   $ getArrowOpts points maybeAngles iconPair namedPortTo where
-    shaftColor = backgroundC colorScheme
+    shaftColor = backgroundC colorStyle
 
 getArrowBaseOpts :: (RealFloat n, Typeable n)
   => (NameAndPort,NameAndPort)
   -> (Point V2 n, Point V2 n)
   -> (Maybe (Angle n), Maybe (Angle n))
   -> (NamedIcon, NamedIcon)
+  -> ColorStyle Double
   -> ArrowOpts n
 getArrowBaseOpts 
   namesAndPorts@(_, namedPortTo)
   points maybeAngles 
   iconPair
+  colorStyle
   = shaftStyle %~ (lwG arrowLineWidth {-- )-- -} . lc shaftColor) 
   $ headStyle %~ fc shaftColor
   $ getArrowOpts points maybeAngles iconPair namedPortTo where
-    shaftColor = getShaftColor namesAndPorts iconPair
+    shaftColor = getShaftColor colorStyle namesAndPorts iconPair
 
-getShaftColor :: (NameAndPort,NameAndPort) -> (NamedIcon, NamedIcon) -> Colour Double
-getShaftColor = getShaftColor' edgeColors where
-  edgeColors = edgeListC colorScheme
+getShaftColor :: ColorStyle Double -> (NameAndPort,NameAndPort) -> (NamedIcon, NamedIcon) -> Colour Double
+getShaftColor colorStyle = getShaftColor' colorStyle edgeColors where
+  edgeColors = edgeListC colorStyle
 
-getShaftColor' :: [Colour Double]
+getShaftColor' :: ColorStyle Double -> [Colour Double]
   -> (NameAndPort,NameAndPort)-> (NamedIcon, NamedIcon) -> Colour Double
-getShaftColor' _ (NameAndPort _ ResultPortConst,_) (Named _ (Icon FunctionDefIcon {} _), _) = lambdaC colorScheme
-getShaftColor' _ (_, NameAndPort _ InputPortConst) (_, Named _ (Icon FunctionDefIcon {} _)) = lambdaC colorScheme
-getShaftColor' edgeColors (NameAndPort (NodeName nodeNum) (Port portNum),_) (Named _ (Icon ListCompIcon {} _), _) = hashedShaftColor nodeNum portNum edgeColors
-getShaftColor' edgeColors (_, NameAndPort (NodeName nodeNum) (Port portNum)) (_, Named _ (Icon ListCompIcon {} _)) = hashedShaftColor nodeNum (portNum + 1) edgeColors
-getShaftColor' edgeColors (NameAndPort (NodeName nodeNum) (Port portNum),_) _ = hashedShaftColor nodeNum portNum edgeColors
+getShaftColor' colorStyle _ (NameAndPort _ ResultPortConst,_) (Named _ (Icon FunctionDefIcon {} _), _) = lambdaC colorStyle
+getShaftColor' colorStyle _ (_, NameAndPort _ InputPortConst) (_, Named _ (Icon FunctionDefIcon {} _)) = lambdaC colorStyle
+getShaftColor' _ edgeColors (NameAndPort (NodeName nodeNum) (Port portNum),_) (Named _ (Icon ListCompIcon {} _), _) = hashedShaftColor nodeNum portNum edgeColors
+getShaftColor' _ edgeColors (_, NameAndPort (NodeName nodeNum) (Port portNum)) (_, Named _ (Icon ListCompIcon {} _)) = hashedShaftColor nodeNum (portNum + 1) edgeColors
+getShaftColor' _ edgeColors (NameAndPort (NodeName nodeNum) (Port portNum),_) _ = hashedShaftColor nodeNum portNum edgeColors
 
+hashedShaftColor :: Int -> Int -> [a] -> a
 hashedShaftColor nodeNum portNum edgeColors = shaftColor where
   namePortHash = mod (portNum + (503 * nodeNum)) (length edgeColors)
   shaftColor = edgeColors !! namePortHash

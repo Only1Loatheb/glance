@@ -20,8 +20,6 @@ import CollapseGraph(annotateGraph, collapseAnnotatedGraph, syntaxGraphToFglGrap
 import Rendering(customLayoutParams)
 import TextBox(coloredTextBox)
 
-{-# ANN module "HLint: ignore Unnecessary hiding" #-}
-
 prettyPrintSyntaxNode :: SyntaxNode -> String
 -- TODO Re-enable
 -- prettyPrintSyntaxNode (Embedder namedNodesAndEdges _)

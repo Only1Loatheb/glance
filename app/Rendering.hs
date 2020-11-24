@@ -1,14 +1,13 @@
 {-# LANGUAGE NoMonomorphismRestriction, FlexibleContexts, TypeFamilies, PartialTypeSignatures, ScopedTypeVariables #-}
 
 module Rendering (
-  renderDrawing
-  , customLayoutParams
+  customLayoutParams
   , renderIngSyntaxGraph
 ) where
 
 import qualified Diagrams.Prelude as Dia
 
-import Diagrams.TwoD.GraphViz(mkGraph, getGraph, layoutGraph')
+import Diagrams.TwoD.GraphViz(getGraph, layoutGraph')
 import qualified Data.GraphViz as GV
 import qualified Data.GraphViz.Attributes.Complete as GVA
 import qualified Data.IntMap as IMap
@@ -28,15 +27,10 @@ import GHC.Stack(HasCallStack)
 import Icons(findMaybeIconFromName)
 import IconToDiagram( iconToDiagram, lambdaRegionToDiagram, lambdaRegionPadding)
 
-import TextBox(letterHeight)
-
 import SyntaxNodeToIcon(nodeToIcon)
 import           Types (
   EmbedInfo(..)
-  , AnnotatedGraph
   , Edge(..)
-  , Drawing(..)
-  , NameAndPort(..)
   , SpecialDiagram
   , SpecialBackend
   , NodeName(..)
@@ -51,7 +45,7 @@ import           Types (
   , AnnotatedFGR
   )
 
-import Util(nodeNameToInt, fromMaybeError, namedToTuple)
+import Util(nodeNameToInt, namedToTuple)
 import ClusterNodesBy (
   clusterNodesBy
   , ClusterT
@@ -62,35 +56,16 @@ import NodePlacementMap (
   placeNode
   , getQueryRects
   ) 
+import DrawingColors (ColorStyle,dummyColorStyle)
 -- If the inferred types for these functions becomes unweildy,
 -- try using PartialTypeSignitures.
 
--- TODO Refactor with syntaxGraphToFglGraph in SyntaxNodeToIcon
--- TODO Make this work with nested icons now that names are not qualified.
-drawingToIconGraph :: Drawing -> Gr NamedIcon (EmbedInfo Edge)
-drawingToIconGraph (Drawing nodes edges) =
-  mkGraph nodes labeledEdges where
-    labeledEdges = fmap makeLabeledEdge (Set.toList edges)
-
-    makeLabeledEdge :: Edge -> (NamedIcon, NamedIcon, EmbedInfo Edge)
-    makeLabeledEdge e@(Edge _ (NameAndPort n1 _, NameAndPort n2 _))
-      = (Named n1 (lookupInNodes n1)
-        , Named n2 (lookupInNodes n2)
-        , EmbedInfo Nothing e)
-      where
-        lookupInNodes name = fromMaybeError
-                             errorString
-                             (lookup name (fmap namedToTuple nodes))
-          where
-            errorString =
-              "syntaxGraphToFglGraph edge connects to non-existent node. Node NodeName ="
-              ++ show name ++ " Edge=" ++ show e
-
 drawLambdaRegions :: forall b . SpecialBackend b Double =>
-  IconInfo
+  ColorStyle Double 
+  -> IconInfo
   -> [(NamedIcon, SpecialDiagram b Double)]
   -> SpecialDiagram b Double
-drawLambdaRegions iconInfo placedNodes
+drawLambdaRegions colorStyle iconInfo placedNodes
   = mconcat $ fmap (drawRegion Set.empty . fst) placedNodes
   where
     findDia :: NodeName -> SpecialDiagram b Double
@@ -104,7 +79,7 @@ drawLambdaRegions iconInfo placedNodes
     drawRegion parentNames (Named name (Icon diagramIcon _)) = case diagramIcon of
       (FunctionDefIcon _ (enclosedNames,level) maybeEmbededNode)
         -> thisRegionDiagram <> innerRegionDiagram where
-          thisRegionDiagram = lambdaRegionToDiagram enclosed name level
+          thisRegionDiagram = lambdaRegionToDiagram colorStyle enclosed name level
           enclosed = findDia <$> (name : Set.toList (parentNames <> enclosedNames))
           innerRegionDiagram = case findMaybeIconFromName iconInfo maybeEmbededNode of
             Nothing -> mempty
@@ -145,30 +120,31 @@ drawingToGraphvizScaleFactor = 0.13
 minialGVADimention :: Double
 minialGVADimention = 0.01
 
+getDiagramWidthAndHeight :: forall b. SpecialBackend b Double => SpecialDiagram b Double -> (Double, Double)
 getDiagramWidthAndHeight dummyDiagram = (diaWidth, diaHeight) where
   diaWidth = max (drawingToGraphvizScaleFactor * Dia.width dummyDiagram) minialGVADimention
   diaHeight = max (drawingToGraphvizScaleFactor * Dia.height dummyDiagram) minialGVADimention    
 
 renderIconGraph :: forall b. SpecialBackend b Double
-  => String  -- ^ Debugging information
+  => ColorStyle Double
   -> Gr (NodeInfo NamedIcon) (EmbedInfo Edge)
   -> Gr (NodeInfo NamedIcon) (EmbedInfo Edge)
   -> IO (SpecialQDiagram b Double)
-renderIconGraph debugInfo fullGraphWithInfo viewGraph = do
+renderIconGraph colorStyle fullGraphWithInfo viewGraph = do
   layoutResult <- layoutGraph' layoutParams GVA.Dot parentGraph
   let
     iconAndPositions = Map.toList $  fst $ getGraph layoutResult
     iconAndPlacedNodes :: [(NamedIcon,SpecialDiagram b Double)]
-    iconAndPlacedNodes = map (placeNode iconInfo drawingToGraphvizScaleFactor) iconAndPositions
+    iconAndPlacedNodes = map (placeNode iconInfo colorStyle drawingToGraphvizScaleFactor) iconAndPositions
     placedNodes = mconcat $ fmap snd iconAndPlacedNodes
 
-    placedRegions = Dia.value mempty $ drawLambdaRegions iconInfo iconAndPlacedNodes
-    placedEdges = Dia.value mempty $ makeEdges debugInfo iconInfo parentGraph placedNodes
-    placedNodesAny = Dia.value mempty $ placedNodes
+    placedRegions = Dia.value mempty $ drawLambdaRegions colorStyle iconInfo iconAndPlacedNodes
+    placedEdges = Dia.value mempty $ makeEdges colorStyle iconInfo parentGraph placedNodes
+    placedNodesAny = Dia.value mempty placedNodes
 
     queryRects = mconcat $ getQueryRects iconAndPlacedNodes
     -- boxesDia = mconcat $ map (Dia.lc Dia.blue $ Dia.boundingRect . snd) iconAndBoudingRect
-  pure  ( (Dia.atop placedNodesAny placedEdges )  <> queryRects <> placedRegions )
+  pure  ( Dia.atop placedNodesAny placedEdges <> queryRects <> placedRegions )
   where
     parentGraph = ING.nmap niVal $ ING.labfilter (isNothing . niParent) viewGraph
     fullGraph = ING.nmap niVal fullGraphWithInfo
@@ -179,8 +155,8 @@ renderIconGraph debugInfo fullGraphWithInfo viewGraph = do
     layoutParams :: GV.GraphvizParams ING.Node NamedIcon (EmbedInfo Edge) ClusterT NamedIcon
     layoutParams = customLayoutParams{
       GV.fmtNode = nodeAttribute
-      , GV.clusterBy = (clusterNodesBy iconInfo)
-      , GV.fmtEdge = (edgeGraphVizAttrs iconInfo)
+      , GV.clusterBy = clusterNodesBy iconInfo
+      , GV.fmtEdge = edgeGraphVizAttrs iconInfo
       -- , GV.fmtCluster = (clusterAtributeList iconInfo)
       }
 
@@ -189,33 +165,16 @@ renderIconGraph debugInfo fullGraphWithInfo viewGraph = do
       [ GVA.Width diaWidth, GVA.Height diaHeight] where
         (diaWidth, diaHeight) = getDiagramWidthAndHeight dummyDiagram
         dummyDiagram :: SpecialDiagram b Double
-        dummyDiagram = iconToDiagram iconInfo nodeIcon (TransformParams (NodeName (-1)) 0)
-          
+        dummyDiagram = iconToDiagram iconInfo dummyColorStyle nodeIcon (TransformParams (NodeName (-1)) 0)
 
--- clusterAtributeList :: IconInfo -> ClusterT -> [GV.GlobalAttributes]
--- clusterAtributeList iconInfo m = [GV.GraphAttrs [ GVA.Rank rank]] where 
---   rank = case iconInfo IMap.! m of  
---     BindTextBoxIcon {} -> GVA.SinkRank
---     _ -> GVA.SameRank
+          
 --TODO add edge parameter constraint = false -- https://www.graphviz.org/doc/info/attrs.html#a:constraint 
 
--- | Given a Drawing, produce a Diagram complete with rotated/flipped icons and
--- lines connecting ports and icons. IO is needed for the GraphViz layout.
-renderDrawing :: SpecialBackend b Double
-  => String  -- ^ Debugging information
-  -> Drawing
-  -> IO (SpecialDiagram b Double)
-renderDrawing debugInfo drawing = do
-  diagram <- renderIconGraph debugInfo graph graph
-  pure $ Dia.clearValue diagram
-  where
-    graph = ING.nmap (NodeInfo Nothing) . drawingToIconGraph $ drawing
-
 renderIngSyntaxGraph :: (HasCallStack, SpecialBackend b Double)
-  => String 
+  => ColorStyle Double
   -> (AnnotatedFGR, AnnotatedFGR) 
   -> IO (SpecialQDiagram b Double)
-renderIngSyntaxGraph debugInfo (fullGr, viweGr) 
-  = renderIconGraph debugInfo fullGraph viewGraph where
+renderIngSyntaxGraph colorStyle (fullGr, viweGr) 
+  = renderIconGraph colorStyle fullGraph viewGraph where
     fullGraph = ING.nmap (fmap (fmap nodeToIcon)) fullGr
     viewGraph = ING.nmap (fmap (fmap nodeToIcon)) viweGr

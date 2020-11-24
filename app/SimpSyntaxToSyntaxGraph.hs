@@ -18,14 +18,11 @@ import qualified Data.Set as Set
 import qualified Data.Map as SMap
 import qualified Data.IntMap as IMap
 import           Data.Either                    ( partitionEithers )
-import           Data.Maybe                     ( catMaybes
-                                                , listToMaybe
-                                                , fromMaybe
-                                                , mapMaybe
-                                                , maybeToList
-                                                , isNothing
-                                                , isJust
-                                                )
+import           Data.Maybe( 
+  catMaybes
+  , mapMaybe
+  , isNothing
+  )
 import qualified Language.Haskell.Exts as Exts
 import qualified Language.Haskell.Exts.Pretty as PExts
 
@@ -57,8 +54,8 @@ import HsSyntaxToSimpSyntax(
   , SimpDeclCore(..)
   , SimpQStmt(..)
   , SimpQStmtCore(..)
-  , qNameToString
-  , nameToString
+  
+  
   , customParseDecl
   , SelectorAndVal(..)
   , pattern FunctionCompositionStr
@@ -79,10 +76,7 @@ import           Types(
   , Port(..)
   ,  Labeled(..)
   , Edge(..)
-  , EdgeOption(..)
-  , Connection(..)
-  , FuncDefRegionInfo
-  , SgBindMap(..)
+  , SgBindMap
   , Delimiters
   )
 import Util(
@@ -90,14 +84,13 @@ import Util(
   , makeNotConstraintEdge
   , makeInvisibleEdge
   , nameAndPort
-  , fmapMaybeM
+  
   )
 import SyntaxGraph( 
     SyntaxGraph(..)
   , patternName
   , syntaxGraphFromNodes
   , syntaxGraphFromNodesEdges
-  , bindsToSyntaxGraph
   , graphAndRefToGraph
   , getUniqueName
   , getUniqueString
@@ -108,7 +101,7 @@ import SyntaxGraph(
   , makeEdgesKeepBindings
   , asBindGraphZipper
   , GraphAndRef(..)
-  , Reference(..)
+  , Reference
   , SgSink(..)
   , SgBind
   , grNamePortToGrRef
@@ -116,31 +109,26 @@ import SyntaxGraph(
   , EvalContext
   , edgeFromPortToRef
   , edgeFromRefToPort
-  , syntaxGraphFromEdges
   , makeAsBindGraph
   , graphsToComponents
   , combineFromPortToGraph
   , deleteBindings
-  , graphAndRefToRef
-  , deleteBindingsWithRef
   , combineFromGraphToPort
   )
 import StringSymbols(
   typeSignatureSeparatorStr
   , typeNameSeparatorStr
-  , negativeLiteralStr
+  
   , patternWildCardStr
   , unusedArgumentStr
   , defaultPatternNameStr
-  , fractionalSeparatorStr
+  
   , showLiteral
   , showSignlessLit
   , getFuncDefLabel
   )
 import FuncDefRegionInfo(getFuncDefRegionInfo)
   
-{-# ANN module "HLint: ignore Use record patterns" #-}
-
 -- OVERVIEW --
 -- SimpSyntaxToSyntaxGraph SimpExp into subgraf of type SyntaxGraph
 -- Generated SyntaxGraph has sgNodes sgEdges sgSinks sgBinds sgEmbedMap
@@ -154,9 +142,10 @@ import FuncDefRegionInfo(getFuncDefRegionInfo)
 makeBox :: (String, SrcRef) -> State IDState (SyntaxGraph, NameAndPort)
 makeBox (str, s) = do
   name <- getUniqueName
-  let graph = syntaxGraphFromNodes (Set.singleton (Named name (mkEmbedder (SyntaxNode (LiteralNode str) s))))
-  pure (graph, nameAndPort name ResultPortConst)
+  let boxGraph = syntaxGraphFromNodes (Set.singleton (Named name (mkEmbedder (SyntaxNode (LiteralNode str) s))))
+  pure (boxGraph, nameAndPort name ResultPortConst)
 
+evalLit :: Exts.Literal l -> SrcRef -> State IDState (SyntaxGraph, NameAndPort)
 evalLit lit s = makeBox (showSignlessLit lit, s)
 
 -- evalExp :: Show l =>
@@ -175,7 +164,7 @@ evalExp c simpExp@(SimpExp l x) = case x of
   SeCase expr alts -> grNamePortToGrRef <$> evalCase c expr alts
   SeMultiIf selectorsAndVals -> grNamePortToGrRef <$> evalMultiIf c selectorsAndVals l
   SeListComp e eList -> evalListComp c l e eList
-  SeListLit expList seDelimiters flavor -> grNamePortToGrRef <$> evalListLit c l expList seDelimiters flavor
+  SeListLit exps delimiters flavor -> grNamePortToGrRef <$> evalListLit c l exps delimiters flavor
 
 -- BEGIN apply and compose helper functions
 
@@ -184,23 +173,23 @@ evalFunExpAndArgs ::
   -> ApplyFlavor
   -> (SimpExp, [SimpExp])
   -> State IDState (SyntaxGraph, NameAndPort)
-evalFunExpAndArgs c flavor (funExp@(SimpExp srcRef _), argExps) = do
+evalFunExpAndArgs c flavor (funExp@(SimpExp seSrcRef _), argExps) = do
   funVal <- evalExp c funExp
   argVals <- mapM (evalExp c) argExps
   applyIconName <- getUniqueName
   pure
-    $ makeApplyGraph srcRef (length argExps) flavor False applyIconName funVal argVals
+    $ makeApplyGraph seSrcRef (length argExps) flavor False applyIconName funVal argVals
 
 -- END apply and compose helper functions
 evalFunctionComposition ::
   EvalContext -> SrcRef-> [SimpExp] -> State IDState (SyntaxGraph, NameAndPort)
-evalFunctionComposition c srcRef functions = do
+evalFunctionComposition c seSrcRef functions = do
   let reversedFunctios = reverse functions
   evaluatedFunctions <- mapM (evalExp c) reversedFunctios
   neverUsedPort <- Left <$> getUniqueString unusedArgumentStr
   applyIconName <- getUniqueName
   pure $ makeApplyGraph
-    srcRef
+    seSrcRef
     (length evaluatedFunctions)
     ComposeFlavor
     False
@@ -259,7 +248,7 @@ evalApp c expr = case expr of
 -- BEGIN evalGeneralLet
 
 getBoundVarName :: SimpDecl -> EvalContext
-getBoundVarName (SimpDecl s d) = case d of
+getBoundVarName (SimpDecl _s d) = case d of
   SdPatBind pat _ -> namesInPattern
                      -- TODO Should evalState be used here?
                      $ evalState (evalPattern pat) initialIdState
@@ -304,12 +293,11 @@ evalSelectorAndVal c (SelectorAndVal s sel val)
 
 evalMultiIf ::
   EvalContext -> [SelectorAndVal] -> SrcRef -> State IDState (SyntaxGraph, NameAndPort)
-evalMultiIf c selectorsAndVals srcRef = do
+evalMultiIf c selectorsAndVals seSrcRef = do
   selAndValExps <- mapM (evalSelectorAndVal c) selectorsAndVals
   let (_srcRefs, selGraphAndRefs, valGraphAndRefs) = unzip3 selAndValExps
-  graphAndNamedPort <- makeMultiIfGraph (length selectorsAndVals) srcRef selGraphAndRefs valGraphAndRefs
-    <$>
-    getUniqueName
+  graphAndNamedPort <- makeMultiIfGraph (length selectorsAndVals) seSrcRef selGraphAndRefs valGraphAndRefs
+    <$> getUniqueName
   pure graphAndNamedPort
   
 
@@ -339,7 +327,7 @@ evalAlt ::
   EvalContext
   -> SimpAlt
   -> State IDState (Bool, SyntaxGraph, Reference, Reference, Maybe String)
-evalAlt c (SimpAlt s pat rhs) = do
+evalAlt c (SimpAlt _s pat rhs) = do
   ((GraphAndRef patGraph patRef, mPatAsName), GraphAndRef rhsGraph rhsRef) <-
     makePatternGraph c pat rhs
   let
@@ -349,7 +337,7 @@ evalAlt c (SimpAlt s pat rhs) = do
     -- the rhsRef refers to a source in the pattern.
     patRhsAreConnected
       = (rhsRef /= lookedUpRhsRef)
-        -- || ( length (sgEdges grWithEdges) > (length (sgEdges rhsGraph) + length (sgEdges patGraph)))
+        -- \|| ( length (sgEdges grWithEdges) > (length (sgEdges rhsGraph) + length (sgEdges patGraph)))
   pure (patRhsAreConnected
        , grWithEdges
        , makePatternRefForUnpacking patRef
@@ -359,12 +347,12 @@ evalAlt c (SimpAlt s pat rhs) = do
 evalCase ::
   EvalContext -> SimpExp -> [SimpAlt]
   -> State IDState (SyntaxGraph, NameAndPort)
-evalCase c simpExp@(SimpExp srcRef _) alts =
+evalCase c simpExp@(SimpExp seSrcRef _) alts =
   let
     numAlts = length alts
     altSrcRefs = map simpAltRef alts
   in
-    evalCaseHelper (length alts) c srcRef altSrcRefs
+    evalCaseHelper (length alts) c seSrcRef altSrcRefs
     <$>
     getUniqueName
     <*>
@@ -384,12 +372,12 @@ evalCaseHelper ::
   -> GraphAndRef
   -> [(Bool, SyntaxGraph, Reference, Reference, Maybe String)]
   -> (SyntaxGraph, NameAndPort)
-evalCaseHelper numAlts context srcRef altsSrcRefs caseIconName resultIconNames (GraphAndRef expGraph expRef) evaledAlts
+evalCaseHelper numAlts context seSrcRef altsSrcRefs caseIconName resultIconNames (GraphAndRef expGraph expRef) evaledAlts
   = result
   where
     (patRhsConnected, altGraphs, unpackingPatRef, rhsRefs, asNames) = unzip5 evaledAlts
     combindedAltGraph = mconcat altGraphs
-    caseNode = SyntaxNode (CaseNode CaseFlavor numAlts) srcRef
+    caseNode = SyntaxNode (CaseNode CaseFlavor numAlts) seSrcRef
     caseNodeGraph = makeCaseNodeGraph caseIconName caseNode expRef
 
     bindGraph = makeAsBindGraph expRef asNames
@@ -437,11 +425,11 @@ makeRhsGraph patRhsConnected rhsRefs caseIconName resultIconNames altsSrcRefs = 
   caseResultGraphs = caseEdgeGraph <> resultNodeGraph
 
 makeCaseResult :: NodeName -> (Reference, NameAndPort, SrcRef) -> SyntaxGraph
-makeCaseResult resultIconName (rhsRef, caseValueNamedPort, srcRef) = case rhsRef of
+makeCaseResult resultIconName (rhsRef, caseValueNamedPort, seSrcRef) = case rhsRef of
   Left _ -> mempty
   Right rhsPort -> syntaxGraphFromNodesEdges rhsNewIcons rhsNewEdges
     where
-      rhsNewIcons = Set.singleton (Named resultIconName (mkEmbedder $ SyntaxNode CaseResultNode srcRef))
+      rhsNewIcons = Set.singleton (Named resultIconName (mkEmbedder $ SyntaxNode CaseResultNode seSrcRef))
       rhsNewEdges = Set.fromList [
         makeSimpleEdge (rhsPort, nameAndPort resultIconName ResultPortConst)
         , makeNotConstraintEdge ( nameAndPort resultIconName (Port 1), caseValueNamedPort)
@@ -456,7 +444,7 @@ evalLambda ::
   -> SimpExp
   -> Maybe String
   -> State IDState (SyntaxGraph, NameAndPort)
-evalLambda srcRef context argPatterns expr functionName = do
+evalLambda seSrcRef context argPatterns expr functionName = do
   lambdaName <- getUniqueName
   argNodeName <- getUniqueName
   argPatternValsWithAsNames <- mapM evalPattern argPatterns
@@ -472,8 +460,8 @@ evalLambda srcRef context argPatterns expr functionName = do
     (outputReference,isOutputStraightFromInput) 
       = getOutputNameAndPort rhsRef  argPatternVals lambdaPorts  nodesGraph -- combinedGraph 
   
-    argNode = makeLambdaArgumentNode argPatternValsWithAsNames srcRef
-    lambdaNode = makeLambdaNode nodesGraph {- was combinedGraph -} lambdaLabel [lambdaName, argNodeName] srcRef
+    argNode = makeLambdaArgumentNode argPatternValsWithAsNames seSrcRef
+    lambdaNode = makeLambdaNode nodesGraph {- was combinedGraph -} lambdaLabel [lambdaName, argNodeName] seSrcRef
     lambdaPorts = map (nameAndPort argNodeName) $ argumentPorts lambdaNode
     lambdaValueLink =  makeEitherEdgeOrSgBind outputReference (nameAndPort lambdaName (inputPort lambdaNode))
   -- (valueGraph,outputNameAndPort) <- getValueGraphAndNamedPort outputReference
@@ -496,7 +484,7 @@ evalLambda srcRef context argPatterns expr functionName = do
 
     resultNameAndPort = nameAndPort lambdaName (resultPort lambdaNode)
   if isIdLambda isOutputStraightFromInput argPatterns functionName
-  then makeBox ( Set.elemAt 0 argPatternStrings, srcRef)
+  then makeBox ( Set.elemAt 0 argPatternStrings, seSrcRef)
   else pure (finalGraph, resultNameAndPort)
 
 constraintLambdaArgAboveValue :: Reference -> NodeName -> NodeName -> [Edge]
@@ -532,14 +520,14 @@ makeReferenceToArgument rhsRef (GraphAndRef _ ref) lamPort = if rhsRef == ref
       else Nothing
 
 makeLambdaNode :: SyntaxGraph -> String -> [NodeName] -> SrcRef -> SyntaxNode
-makeLambdaNode combinedGraph  functionName lambdaNames srcRef = node where
+makeLambdaNode combinedGraph  functionName lambdaNames seSrcRef = node where
   regionInfo = getFuncDefRegionInfo combinedGraph lambdaNames
-  node = SyntaxNode (FunctionValueNode functionName regionInfo) srcRef
+  node = SyntaxNode (FunctionValueNode functionName regionInfo) seSrcRef
 
 makeLambdaArgumentNode :: [(GraphAndRef, Maybe String)] -> SrcRef -> SyntaxNode
-makeLambdaArgumentNode argPatternValsWithAsNames srcRef = node where 
+makeLambdaArgumentNode argPatternValsWithAsNames seSrcRef = node where 
   paramNames = fmap patternName argPatternValsWithAsNames
-  node = SyntaxNode (FunctionArgNode paramNames) srcRef
+  node = SyntaxNode (FunctionArgNode paramNames) seSrcRef
 
 
 makeLambdaOutputGraph :: (NodeName, SyntaxNode)

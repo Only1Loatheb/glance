@@ -1,4 +1,3 @@
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -25,9 +24,6 @@ import           Types(
   , Named(..)
   , DiagramIcon(..)
   )
-
-{-# ANN module "HLint: ignore Use record patterns" #-}
-{-# ANN module "HLint: ignore Unnecessary hiding" #-}
 
 findMaybeIconsFromNames :: IconInfo -> [Maybe NodeName] -> [Maybe NamedIcon]
 findMaybeIconsFromNames iconInfo args = (fmap . fmap) (findIconFromName iconInfo) args
