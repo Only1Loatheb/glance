@@ -12,9 +12,9 @@ import Diagrams.Prelude hiding ((&), (#), Name)
 
 
 import Types  (
-  Icon(..)
+  NumericType
+  , Icon(..)
   , DiagramIcon(..) 
-  , SpecialNum
   , NodeName(..)
   , Port(..)
   , NamedIcon
@@ -30,38 +30,38 @@ import PortConstants(
   , isQualPort
   )
 
-applyPortAngle :: Floating n => Port -> Angle n
+applyPortAngle :: Port -> Angle NumericType
 applyPortAngle InputPortConst = 1/2 @@ turn -- input function
 applyPortAngle ResultPortConst = 3/4 @@ turn
 applyPortAngle _isInput = 1/4 @@ turn
 
-nestedApplyPortAngle :: Floating n => Port -> Angle n
+nestedApplyPortAngle :: Port -> Angle NumericType
 nestedApplyPortAngle InputPortConst = 1/2 @@ turn -- input function
 nestedApplyPortAngle ResultPortConst = 3/4 @@ turn
 nestedApplyPortAngle _isInput = 3/16 @@ turn
 
-lambdaPortAngle :: Floating n => Bool -> Port -> Angle n
+lambdaPortAngle :: Bool -> Port -> Angle NumericType
 lambdaPortAngle _ InputPortConst = 1/4 @@ turn
 lambdaPortAngle _ ResultPortConst = 3/4 @@ turn
 lambdaPortAngle isEmbedded port
   | isArgPort port = if isEmbedded then 1/2 @@ turn else 1/4 @@ turn
   | otherwise        = 3/4 @@ turn
 
-patternAppPortAngle :: Floating n => Port -> Angle n
+patternAppPortAngle :: Port -> Angle NumericType
 patternAppPortAngle InputPortConst = 1/4 @@ turn
 patternAppPortAngle ResultPortConst = 3/4 @@ turn
 patternAppPortAngle port
   | isArgPort port = 1/4 @@ turn
   | otherwise        = 3/4 @@ turn
 
-multiIfPortAngle :: Floating n => Port -> Angle n
+multiIfPortAngle :: Port -> Angle NumericType
 multiIfPortAngle InputPortConst = 1/4 @@ turn
 multiIfPortAngle ResultPortConst = 3/4 @@ turn
 multiIfPortAngle port
   | isArgPort port = 1/4 @@ turn
   | otherwise        = 3/4 @@ turn
 
-listCompPortAngle :: Floating n => Port -> Angle n
+listCompPortAngle :: Port -> Angle NumericType
 listCompPortAngle InputPortConst = 1/4 @@ turn
 listCompPortAngle ResultPortConst = 3/4 @@ turn
 listCompPortAngle port
@@ -69,12 +69,12 @@ listCompPortAngle port
   | isArgPort port  = 1/4 @@ turn
   | otherwise       = 3/4 @@ turn
 
-nestedMultiIfPortAngle :: SpecialNum n
-  => IconInfo
+nestedMultiIfPortAngle ::
+  IconInfo
   -> [Maybe NamedIcon]
   -> Port
   -> Maybe NodeName
-  -> Angle n
+  -> Angle NumericType
 nestedMultiIfPortAngle iconInfo args port maybeNodeName = case maybeNodeName of
   Nothing -> multiIfPortAngle port
   Just name -> case findIcon iconInfo name args of
@@ -85,14 +85,14 @@ nestedMultiIfPortAngle iconInfo args port maybeNodeName = case maybeNodeName of
         subAngle = getPortAngleHelper True iconInfo icon port Nothing
 
 
-generalNestedPortAngle :: SpecialNum n
-  => IconInfo
-  -> (Port -> Angle n)
+generalNestedPortAngle ::
+  IconInfo
+  -> (Port -> Angle NumericType)
   -> Maybe NamedIcon
   -> [Maybe NamedIcon]
   -> Port 
   -> Maybe NodeName 
-  -> Angle n
+  -> Angle NumericType
 generalNestedPortAngle iconInfo defaultAngle headIcon args port maybeNodeName =
   case maybeNodeName of
     Nothing -> defaultAngle port
@@ -100,12 +100,10 @@ generalNestedPortAngle iconInfo defaultAngle headIcon args port maybeNodeName =
       Nothing -> 1/8 @@ turn
       Just (_, icon) -> getPortAngleHelper True iconInfo icon port Nothing
 
-getPortAngle :: SpecialNum n
-  => IconInfo -> Icon -> Port -> Maybe NodeName -> Angle n
+getPortAngle :: IconInfo -> Icon -> Port -> Maybe NodeName -> Angle NumericType
 getPortAngle = getPortAngleHelper False
 
-getPortAngleHelper :: SpecialNum n
-  => Bool -> IconInfo -> Icon -> Port -> Maybe NodeName -> Angle n
+getPortAngleHelper :: Bool -> IconInfo -> Icon -> Port -> Maybe NodeName -> Angle NumericType
 getPortAngleHelper isEmbedded iconInfo (Icon icon _) port maybeNodeName = case icon of
   TextBoxIcon {} -> 3/4 @@ turn
   BindTextBoxIcon {} -> 1/4 @@ turn

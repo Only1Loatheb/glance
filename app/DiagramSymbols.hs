@@ -35,6 +35,7 @@ import Types(
   SpecialDiagram
   , SpecialBackend
   , ListLitFlavor(..)
+  , NumericType
   )
 
 import TextBox (
@@ -76,25 +77,25 @@ arrowShadowWidth = 1.9 * arrowLineWidth
 
 
 -- BEGIN diagram basic symbols --
-inputPortSymbol :: SpecialBackend b n => SpecialDiagram b n
+inputPortSymbol :: SpecialBackend b => SpecialDiagram b
 inputPortSymbol = memptyWithPosition 
 
-resultPortSymbol :: SpecialBackend b n
-  => SpecialDiagram b n
+resultPortSymbol :: SpecialBackend b
+  => SpecialDiagram b
 resultPortSymbol = memptyWithPosition
 
-caseVarSymbol :: SpecialBackend b n
+caseVarSymbol :: SpecialBackend b
   => Colour Double
-  ->  SpecialDiagram b n
+  ->  SpecialDiagram b
 caseVarSymbol color = alignB coloredSymbol  where
     symbol = vrule $ 2 * defaultLineWidth
     coloredSymbol
       = lwG defaultLineWidth $ lc color (strokeLine symbol)
 
-inNoteFrame :: SpecialBackend b n
+inNoteFrame :: SpecialBackend b
   => Colour Double
-  -> SpecialDiagram b n
-  -> SpecialDiagram b n
+  -> SpecialDiagram b
+  -> SpecialDiagram b
 inNoteFrame borderColor diagram
   = centerXY diagram <> coloredFrame where
   
@@ -119,14 +120,14 @@ inNoteFrame borderColor diagram
   
     coloredFrame = lwG (defaultLineWidth/2) $  lc borderColor decisionFrame
 
-inCaseDecisionFrame :: SpecialBackend b n
-  => ColorStyle Double -> SpecialDiagram b n -> SpecialDiagram b n
+inCaseDecisionFrame :: SpecialBackend b
+  => ColorStyle Double -> SpecialDiagram b -> SpecialDiagram b
 inCaseDecisionFrame colorStyle = inDecisionFrame (caseRhsC colorStyle)
 
-inDecisionFrame :: SpecialBackend b n
+inDecisionFrame :: SpecialBackend b
   => Colour Double
-  -> SpecialDiagram b n
-  -> SpecialDiagram b n
+  -> SpecialDiagram b
+  -> SpecialDiagram b
 inDecisionFrame borderColor diagram
   = centerXY diagram <> coloredFrame where
     boxHeight = boxPadding + max (height diagram) letterHeight
@@ -145,12 +146,12 @@ inDecisionFrame borderColor diagram
 
     coloredFrame = lwG defaultLineWidth $  lc borderColor decisionFrame
 
-inFrame :: SpecialBackend b n
-  => SpecialDiagram b n
+inFrame :: SpecialBackend b
+  => SpecialDiagram b
   -> Colour Double
-  -> n
-  -> n
-  -> SpecialDiagram b n
+  -> NumericType
+  -> NumericType
+  -> SpecialDiagram b
 inFrame diagram borderColor diagramWidth diagramHeight
   = centerXY diagram <> coloredArgBox where
     rectWidth = boxPadding + max diagramWidth letterHeight
@@ -159,28 +160,28 @@ inFrame diagram borderColor diagramWidth diagramHeight
     coloredArgBox = lwG defaultLineWidth $ lcA (withOpacity borderColor defaultOpacity) argBox
 
 -- BEGIN Diagram helper functions --
-memptyWithPosition :: SpecialBackend b n => SpecialDiagram b n
+memptyWithPosition :: SpecialBackend b => SpecialDiagram b
 memptyWithPosition = strutR2 (V2 symbolSize 0)
 -- | Names the diagram and puts all sub-names in the namespace of the top level
 
-inItemFrame :: SpecialBackend b n => ColorStyle Double -> SpecialDiagram b n -> SpecialDiagram b n
+inItemFrame :: SpecialBackend b => ColorStyle Double -> SpecialDiagram b -> SpecialDiagram b
 inItemFrame colorStyle itemDiagram = finalDia where
   itemDiagramAligned = alignB itemDiagram
   finalDia = beside (-unitX) (itemDiagramAligned ||| rightListItemFrame) (leftListItemFrame ||| strutX defaultLineWidth)
   leftListItemFrame = alignBR $ listCompLine colorStyle $ vrule $ max  letterHeight (height  itemDiagram)
   rightListItemFrame =  listDots colorStyle ||| leftListItemFrame
 
-listCompLine :: SpecialBackend b n => ColorStyle Double -> (SpecialDiagram b n -> SpecialDiagram b n)
+listCompLine :: SpecialBackend b => ColorStyle Double -> (SpecialDiagram b -> SpecialDiagram b)
 listCompLine colorStyle = lwG defaultLineWidth $ lc (listC colorStyle)
 
-listDots :: SpecialBackend b n => ColorStyle Double -> SpecialDiagram b n
+listDots :: SpecialBackend b => ColorStyle Double -> SpecialDiagram b
 listDots colorStyle = alignB $ coloredTextBox (listC colorStyle) listDotsStr
 
-listCompPipe :: SpecialBackend b n => ColorStyle Double -> n -> SpecialDiagram b n
+listCompPipe :: SpecialBackend b => ColorStyle Double -> NumericType -> SpecialDiagram b
 listCompPipe colorStyle pipeHeight = alignB $ centerX $ listCompLine colorStyle pipe where
   line = vrule pipeHeight
   pipe = hcat [line, strutX symbolSize, line]
 
-listLitDelimiterDia :: SpecialBackend b n => ColorStyle Double -> ListLitFlavor -> String -> SpecialDiagram b n
+listLitDelimiterDia :: SpecialBackend b => ColorStyle Double -> ListLitFlavor -> String -> SpecialDiagram b
 listLitDelimiterDia colorStyle ListFlavor str = alignB $ coloredTextBox (listC colorStyle) str
 listLitDelimiterDia colorStyle TupleFlavor str = alignB $ coloredTextBox (tupleC colorStyle) str

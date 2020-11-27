@@ -22,6 +22,7 @@ import Types (
   , QueryValue(..)
   , CreateView
   , View
+  , PointType
   )
 import DrawingColors (getColorStyle,ColorStyle)
 
@@ -82,8 +83,8 @@ prepareDiagram (CMD.CmdLineOptions
     blankCanvasLoop moduleDiagram portNumber loopControl imageScale colorStyle
   else pure ()
 
-selectViewWithSourceCode :: SpecialBackend b Double =>
-  (SrcRef -> SourceCode) -> ColorStyle Double -> SpecialQDiagram b Double -> View -> IO(SpecialQDiagram b Double)
+selectViewWithSourceCode :: SpecialBackend b =>
+  (SrcRef -> SourceCode) -> ColorStyle Double -> SpecialQDiagram b -> View -> IO(SpecialQDiagram b)
 selectViewWithSourceCode getCodeFragment colorStyle moduleDiagram view = do
   diagram <- selectView colorStyle moduleDiagram view
   if hasSrcRef view
@@ -95,7 +96,7 @@ selectViewWithSourceCode getCodeFragment colorStyle moduleDiagram view = do
   else pure diagram 
 
 
-selectView :: SpecialBackend b Double => ColorStyle Double -> SpecialQDiagram b Double -> View -> IO (SpecialQDiagram b Double)
+selectView :: SpecialBackend b => ColorStyle Double -> SpecialQDiagram b -> View -> IO (SpecialQDiagram b)
 selectView colorStyle moduleDiagram (maybeDeclQV, maybeNodeQV) = do
   case maybeDeclQV of
     Nothing -> pure moduleDiagram
@@ -104,8 +105,8 @@ selectView colorStyle moduleDiagram (maybeDeclQV, maybeNodeQV) = do
         Nothing -> declDiagram colorStyle declQueryValue
         Just nodeQueryValue -> nodeDiagram colorStyle declQueryValue nodeQueryValue
 
-sampleDiagram :: SpecialBackend b Double =>
-  SpecialQDiagram b Double -> Dia.Point Dia.V2 Double -> DiaQuery
+sampleDiagram :: SpecialBackend b =>
+  SpecialQDiagram b -> PointType -> DiaQuery
 sampleDiagram = Dia.sample
 
 progressView :: CreateView

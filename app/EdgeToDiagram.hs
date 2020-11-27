@@ -25,6 +25,7 @@ import Types(
   , NamedIcon
   , Named(..)
   , NameAndPort(..)
+  , NumericType
   )
 
 import DiagramSymbols(
@@ -34,16 +35,16 @@ import DiagramSymbols(
   , symbolSize
   )
 
-edgeControlVectorLen ::  Fractional a => a
+edgeControlVectorLen :: Fractional a => a
 edgeControlVectorLen = symbolSize * 4.0
 
-getArrowShadowOpts :: (RealFloat n, Typeable n)
-  => (NameAndPort,NameAndPort)
-  -> (Point V2 n, Point V2 n)
-  -> (Maybe (Angle n), Maybe (Angle n))
+getArrowShadowOpts ::
+  (NameAndPort,NameAndPort)
+  -> (Point V2 NumericType, Point V2 NumericType)
+  -> (Maybe (Angle NumericType), Maybe (Angle NumericType))
   -> (NamedIcon,NamedIcon)
   -> ColorStyle Double 
-  -> ArrowOpts n
+  -> ArrowOpts NumericType
 getArrowShadowOpts 
   (_, namedPortTo)
   points maybeAngles iconPair colorStyle
@@ -53,13 +54,13 @@ getArrowShadowOpts
   $ getArrowOpts points maybeAngles iconPair namedPortTo where
     shaftColor = backgroundC colorStyle
 
-getArrowBaseOpts :: (RealFloat n, Typeable n)
-  => (NameAndPort,NameAndPort)
-  -> (Point V2 n, Point V2 n)
-  -> (Maybe (Angle n), Maybe (Angle n))
+getArrowBaseOpts :: 
+  (NameAndPort,NameAndPort)
+  -> (Point V2 NumericType, Point V2 NumericType)
+  -> (Maybe (Angle NumericType), Maybe (Angle NumericType))
   -> (NamedIcon, NamedIcon)
   -> ColorStyle Double
-  -> ArrowOpts n
+  -> ArrowOpts NumericType
 getArrowBaseOpts 
   namesAndPorts@(_, namedPortTo)
   points maybeAngles 
@@ -87,12 +88,12 @@ hashedShaftColor nodeNum portNum edgeColors = shaftColor where
   namePortHash = mod (portNum + (503 * nodeNum)) (length edgeColors)
   shaftColor = edgeColors !! namePortHash
 
-getArrowOpts :: (RealFloat n, Typeable n)
-  => (Point V2 n, Point V2 n)
-  -> (Maybe (Angle n), Maybe (Angle n))
+getArrowOpts :: 
+  (Point V2 NumericType, Point V2 NumericType)
+  -> (Maybe (Angle NumericType), Maybe (Angle NumericType))
   -> (NamedIcon, NamedIcon)
   -> NameAndPort
-  -> ArrowOpts n
+  -> ArrowOpts NumericType
 getArrowOpts (formPoint, toPoint) (anglesFrom,anglesTo) (_,iconTo) namedPortTo
   = arrowOptions where
     arrowOptions =
@@ -105,7 +106,7 @@ getArrowOpts (formPoint, toPoint) (anglesFrom,anglesTo) (_,iconTo) namedPortTo
       $ with
 
 -- getArrowHead :: Icon -> 
-getArrowHead :: RealFloat n => NamedIcon -> NameAndPort -> ArrowHT n
+getArrowHead :: NamedIcon -> NameAndPort -> ArrowHT NumericType
 getArrowHead (Named iconName (Icon FunctionDefIcon {} _)) (NameAndPort nodeName InputPortConst) 
   = if nodeName == iconName then noHead else tri
 getArrowHead _ _ = tri

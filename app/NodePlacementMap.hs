@@ -24,12 +24,12 @@ import TextBox(transparentAlpha, letterHeight)
 import IconToDiagram(iconToDiagram)
 import DrawingColors (ColorStyle)
 
-placeNode :: SpecialBackend b Double
+placeNode :: SpecialBackend b
   => IconInfo
   -> ColorStyle Double 
   -> Double
   -> (NamedIcon, Dia.P2 Double) 
-  -> (NamedIcon, SpecialDiagram b Double)
+  -> (NamedIcon, SpecialDiagram b)
 placeNode iconInfo colorStyle graphVizScale (namedIcon@(Named name icon), layoutPosition)
   = (namedIcon, Dia.place transformedDia diaPosition) where
       origDia = iconToDiagram
@@ -47,9 +47,9 @@ getDiaPosition graphVizScale layoutPosition = graphVizScale Dia.*^ layoutPositio
 boundingBoxPadding :: Double
 boundingBoxPadding = 0.5 * letterHeight
 
-getQueryRects :: SpecialBackend b Double
-  =>[(NamedIcon, SpecialDiagram b Double)]
-  -> [SpecialQDiagram b Double]
+getQueryRects :: SpecialBackend b
+  =>[(NamedIcon, SpecialDiagram b)]
+  -> [SpecialQDiagram b]
 getQueryRects iconAndPlacedNodes 
   = [box | (icon, diagram) <- iconAndPlacedNodes,
     let 

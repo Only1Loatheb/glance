@@ -18,7 +18,7 @@ module Types (
   , SpecialDiagram
   , SpecialQDiagram
   , SpecialBackend
-  , SpecialNum
+  
   , SgNamedNode
   , IngSyntaxGraph
   , ApplyFlavor(..)
@@ -56,9 +56,11 @@ module Types (
   , SgBindMap
   , Delimiters
   , ListLitFlavor(..)
+  , NumericType
+  , PointType
 ) where
 
-import Diagrams.Prelude(QDiagram, V2, Any, Renderable, Path, IsName)
+import Diagrams.Prelude(QDiagram, V2, Any, Renderable, Path, IsName, Point)
 import Diagrams.TwoD.Text(Text)
 import Control.Applicative(Applicative(..))
 import qualified Data.Graph.Inductive as ING
@@ -214,16 +216,17 @@ data Drawing = Drawing [NamedIcon] (Set.Set Edge) deriving (Show, Eq)
 -- unique id.
 newtype IDState = IDState Int deriving (Eq, Show)
 
-type SpecialNum n
-  = (Floating n, RealFrac n, RealFloat n, Typeable n, Show n, Enum n)
+type NumericType = Double 
+
+type PointType = Point V2 NumericType
 
 -- Note that SpecialBackend is a constraint synonym, not a type synonym.
-type SpecialBackend b n
-  = (SpecialNum n, Renderable (Path V2 n) b, Renderable (Text n) b)
+type SpecialBackend b
+  = (Renderable (Path V2 NumericType) b, Renderable (Text NumericType) b)
 
-type SpecialDiagram b n = QDiagram b V2 n Any
+type SpecialDiagram b = QDiagram b V2 NumericType Any
 
-type SpecialQDiagram b n = QDiagram b V2 n DiaQuery
+type SpecialQDiagram b = QDiagram b V2 NumericType DiaQuery
 
 type IngSyntaxGraph gr = gr SgNamedNode Edge
 
@@ -251,13 +254,13 @@ data TransformParams n = TransformParams {
   tpName :: NodeName  -- The icon's name
   , tpNestingDepth :: Int  -- The icon's nesting depth
   -- , tpIsReflected :: Bool  -- If the icon will be reflected
-  -- , tpAngle :: Angle n  -- By what angle will the icon be rotated
+  -- , tpAngle :: Angle NumericType  -- By what angle will the icon be rotated
   }
 
 -- | A TransformableDia is a function that returns a diagram for an icon when
 -- given the icon's name, its nesting depth, whether it will be reflected, and
 -- by what angle it will be rotated.
-type TransformableDia b n = TransformParams n -> SpecialDiagram b n
+type TransformableDia b n = TransformParams n -> SpecialDiagram b
 
 data NodeQueryValue = NodeQueryValue {
   nodeSrcRef :: SrcRef

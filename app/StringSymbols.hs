@@ -208,7 +208,7 @@ qNameToString qName = case qName of
     -- Exts.ExprHole _ -> "_" -- TODO find out why it is not there
     _ -> error $ "Unsupported syntax in qNameToSrting: " <> show qName
 
-showFracLiteral ::  Rational -> String
+showFracLiteral :: Rational -> String
 showFracLiteral = concat . words . show
 
 -- TODO: Test the unboxed literals

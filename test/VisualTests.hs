@@ -442,9 +442,9 @@ testDecls = mconcat [
   ]
 
 
-translateStringToDrawing :: SpecialBackend b Double =>
+translateStringToDrawing :: SpecialBackend b =>
   String
-  -> IO (SpecialDiagram b Double)
+  -> IO (SpecialDiagram b)
 translateStringToDrawing s = do
   putStrLn $ "Translating string: " ++ s
   let
@@ -470,8 +470,8 @@ translateStringToDrawing s = do
   declarationDiagrams <- renderIngSyntaxGraph dummyColorStyle (collapsedGraph, collapsedGraph)
   pure $ clearValue declarationDiagrams
 
-visualTranslateTests :: (HasCallStack, SpecialBackend b Double)
-                     => IO (SpecialDiagram b Double)
+visualTranslateTests :: (HasCallStack, SpecialBackend b)
+                     => IO (SpecialDiagram b)
 visualTranslateTests = do
   drawings <- traverse translateStringToDrawing testDecls
   let
@@ -479,6 +479,6 @@ visualTranslateTests = do
     vCattedDrawings = vsep 1 $ zipWith (===) (fmap alignL drawings) textDrawings
   pure vCattedDrawings
 
-textBox :: SpecialBackend b n =>
-  String -> SpecialDiagram b n
+textBox :: SpecialBackend b =>
+  String -> SpecialDiagram b
 textBox = multilineComment dummyColorStyle

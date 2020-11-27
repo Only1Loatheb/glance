@@ -30,9 +30,9 @@ prettyPrintSyntaxNode :: SyntaxNode -> String
 --     printEdge (Edge _ (NameAndPort n1 _, NameAndPort n2 _)) = show (n1, n2)
 prettyPrintSyntaxNode = show
 
-renderFglGraph :: SpecialBackend b Double
+renderFglGraph :: SpecialBackend b
                => FGR.Gr SgNamedNode e
-               -> IO (SpecialDiagram b Double)
+               -> IO (SpecialDiagram b)
 renderFglGraph fglGraph = do
   layedOutGraph <- DiaGV.layoutGraph' layoutParams GVA.Neato fglGraph
   pure $ DiaGV.drawGraph
@@ -82,7 +82,7 @@ collapseTestStrings = [
   "y x = case x of {Just w -> (let (z,_) = w in z)}"
   ]
 
-makeCollapseTest :: SpecialBackend b Double => String -> IO (SpecialDiagram b Double)
+makeCollapseTest :: SpecialBackend b => String -> IO (SpecialDiagram b)
 makeCollapseTest str = do
   before <- renderFglGraph fglGraph
   afterCollapse <- renderFglGraph (ING.nmap niVal collapsedGraph)
@@ -101,7 +101,7 @@ makeCollapseTest str = do
     afterText = alignL $ customTextBox "After:" -- :: Diagram B
 
 -- TODO Make this work for many input strings
-visualCollapseTests :: SpecialBackend b Double => IO (SpecialDiagram b Double)
+visualCollapseTests :: SpecialBackend b => IO (SpecialDiagram b)
 visualCollapseTests = do
   drawings <- traverse makeCollapseTest collapseTestStrings
   pure $ vsep 1 drawings

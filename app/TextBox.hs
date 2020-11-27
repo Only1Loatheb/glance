@@ -52,13 +52,13 @@ textFont = "monospace"
 -- | Given the number of letters in a textbox string, make a rectangle that will
 -- enclose the text box. Since the normal SVG text has no size, some hackery is
 -- needed to determine the size of the text's bounding box.
--- textSizeDiagram ::  => Int -> t
+-- textSizeDiagram :: => Int -> t
 
 transparentAlpha :: Fractional a => a
 transparentAlpha = 0.0
 
-textSizeDiagram :: SpecialBackend b n 
-  => String -> SpecialDiagram b n
+textSizeDiagram :: SpecialBackend b 
+  => String -> SpecialDiagram b
 textSizeDiagram t = invisibleRect
   where
     n = length t
@@ -68,34 +68,34 @@ textSizeDiagram t = invisibleRect
 
 -- END Text helper functions
 
-multilineComment :: SpecialBackend b n 
-  => ColorStyle Double -> String -> SpecialDiagram b n
+multilineComment :: SpecialBackend b 
+  => ColorStyle Double -> String -> SpecialDiagram b
 multilineComment colorStyle = multilineComment' (textBoxTextC colorStyle)
 
-multilineComment' :: SpecialBackend b n =>
-  Colour Double -> String -> SpecialDiagram b n
+multilineComment' :: SpecialBackend b =>
+  Colour Double -> String -> SpecialDiagram b
 multilineComment' textColor t = textDia where
   textLines = lines t
   textAreas = map (coloredCommentBox textColor) textLines
   textsAlignd = map alignL textAreas
   textDia = vcat textsAlignd
 
-coloredCommentBox :: SpecialBackend b n =>
-  Colour Double -> String -> SpecialDiagram b n
+coloredCommentBox :: SpecialBackend b =>
+  Colour Double -> String -> SpecialDiagram b
 coloredCommentBox textColor t = coloredTextBox' textColor objectWithSize textDiagram where
     textDiagram = alignedText onLeftSide inTheMiddle t
     onLeftSide = 0
     inTheMiddle =  0.5
     objectWithSize = alignL $ textSizeDiagram t
 
-coloredTextBox :: SpecialBackend b n =>
-  Colour Double -> String -> SpecialDiagram b n
+coloredTextBox :: SpecialBackend b =>
+  Colour Double -> String -> SpecialDiagram b
 coloredTextBox textColor t = coloredTextBox' textColor objectWithSize textDiagram where 
   textDiagram = text t -- dont have size
   objectWithSize = textSizeDiagram t
 
-coloredTextBox' :: SpecialBackend b n =>
-  Colour Double -> SpecialDiagram b n -> SpecialDiagram b n -> SpecialDiagram b n
+coloredTextBox' :: SpecialBackend b =>
+  Colour Double -> SpecialDiagram b -> SpecialDiagram b -> SpecialDiagram b
 coloredTextBox' textColor objectWithSize textDiagram = objectWithSize <> textLabel where
   textLabel =
     fontSize
@@ -103,8 +103,8 @@ coloredTextBox' textColor objectWithSize textDiagram = objectWithSize <> textLab
     (font textFont $ fillColor textColor  textDiagram)
 
 
-sourceCodeDiagram :: SpecialBackend b n
-  => String -> ColorStyle Double -> SpecialDiagram b n
+sourceCodeDiagram :: SpecialBackend b
+  => String -> ColorStyle Double -> SpecialDiagram b
 sourceCodeDiagram s colorStyle = label === sourceCode  ||| padding where
   sourceCode = multilineComment colorStyle s
   label = multilineComment colorStyle sourceCodeDiagramLabel

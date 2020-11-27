@@ -493,7 +493,7 @@ constraintLambdaArgAboveValue outputReference argNodeName lambdaName = -- case o
       nameAndPort lambdaName InputPortConst)]
     
 
-isIdLambda ::  Bool -> [SimpPat] -> Maybe String -> Bool
+isIdLambda :: Bool -> [SimpPat] -> Maybe String -> Bool
 isIdLambda isOutputStraightFromInput argPatterns functionName
   = isOutputStraightFromInput && length argPatterns == 1 && isNothing functionName 
 
@@ -835,8 +835,8 @@ makeQstmtGraph qualGraphsAndRefs declGraphsAndRefs genGraphsAndRefs = genGraphs 
 
 data GraphInPatternRef = GraphInPatternRef{
   syntaxGraph :: SyntaxGraph
-  , valueReference ::  Reference
-  , inPatternRef ::  Reference
+  , valueReference :: Reference
+  , inPatternRef :: Reference
   }
 
 graphInPatternRefToGraph :: GraphInPatternRef -> SyntaxGraph

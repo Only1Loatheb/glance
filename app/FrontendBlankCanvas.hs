@@ -15,6 +15,8 @@ import Types (
   , DiaQuery
   , CreateView
   , View
+  , NumericType
+  , PointType
   )
 
 import DrawingColors(ColorStyle(..))
@@ -29,10 +31,10 @@ getBlankCanvasOpts  portNumber =  BC.Options {
   , BC.weak = False
   }
 
-diagramForBlankCanvas ::  SpecialBackend b Double 
-  => SpecialQDiagram b Double
+diagramForBlankCanvas :: SpecialBackend b
+  => SpecialQDiagram b
   -> Double
-  -> (SpecialQDiagram b Double, (Double, Double) -> Dia.Point Dia.V2 Double,  Dia.SizeSpec Dia.V2 Double)
+  -> (SpecialQDiagram b, (Double, Double) -> PointType,  Dia.SizeSpec Dia.V2 Double)
 diagramForBlankCanvas moduleDiagram imageScale = (moduleDiagramAligned, pointToDiaPoint, sizeSpec) where
   moduleDiagramAligned = Dia.alignTL moduleDiagram
   pointToDiaPoint _point@(x,y) = (1.0/imageScale) Dia.*^ Dia.p2 (x,-y)
@@ -48,10 +50,10 @@ bcDrawDiagram context sizeSpec moduleDiagram colorStyle = do
   let moduleDrawing = Dia.bg (backgroundC colorStyle) $ Dia.clearValue moduleDiagram
   BC.send context $ Dia.renderDia CV.Canvas (CanvasOptions sizeSpec) moduleDrawing   
   
-blankCanvasLoop :: SpecialQDiagram Canvas Double 
+blankCanvasLoop :: SpecialQDiagram Canvas 
   -> Int 
-  -> (SpecialQDiagram Canvas Double -> View -> IO (SpecialQDiagram Canvas Double)
-    , SpecialQDiagram Canvas Double -> Dia.Point Dia.V2 Double  -> DiaQuery
+  -> (SpecialQDiagram Canvas -> View -> IO (SpecialQDiagram Canvas)
+    , SpecialQDiagram Canvas -> PointType  -> DiaQuery
     , CreateView, View -> View) 
   -> Double 
   -> ColorStyle Double 
@@ -62,9 +64,9 @@ blankCanvasLoop moduleDiagram portNumber loopControl imageScale colorStyle = do
 
 loop ::
   BC.DeviceContext
-  -> (SpecialQDiagram Canvas Double, View)
-  -> (SpecialQDiagram Canvas Double -> View -> IO (SpecialQDiagram Canvas Double)
-    , SpecialQDiagram Canvas Double -> Dia.Point Dia.V2 Double -> DiaQuery
+  -> (SpecialQDiagram Canvas, View)
+  -> (SpecialQDiagram Canvas -> View -> IO (SpecialQDiagram Canvas)
+    , SpecialQDiagram Canvas -> PointType -> DiaQuery
     , CreateView
     , View -> View
   )

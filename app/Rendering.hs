@@ -60,22 +60,22 @@ import DrawingColors (ColorStyle,dummyColorStyle)
 -- If the inferred types for these functions becomes unweildy,
 -- try using PartialTypeSignitures.
 
-drawLambdaRegions :: forall b . SpecialBackend b Double =>
+drawLambdaRegions :: forall b . SpecialBackend b =>
   ColorStyle Double 
   -> IconInfo
-  -> [(NamedIcon, SpecialDiagram b Double)]
-  -> SpecialDiagram b Double
+  -> [(NamedIcon, SpecialDiagram b)]
+  -> SpecialDiagram b
 drawLambdaRegions colorStyle iconInfo placedNodes
   = mconcat $ fmap (drawRegion Set.empty . fst) placedNodes
   where
-    findDia :: NodeName -> SpecialDiagram b Double
+    findDia :: NodeName -> SpecialDiagram b
     findDia n1
       = maybe mempty snd
         (find (\(Named n2 _, _) -> n1 == n2) placedNodes)
 
     -- Also draw the region around the icon the lambda is in.
     -- Consult CollapseGraph to find out where FunctionDefIcon can be nested 
-    drawRegion :: Set.Set NodeName -> NamedIcon -> SpecialDiagram b Double
+    drawRegion :: Set.Set NodeName -> NamedIcon -> SpecialDiagram b
     drawRegion parentNames (Named name (Icon diagramIcon _)) = case diagramIcon of
       (FunctionDefIcon _ (enclosedNames,level) maybeEmbededNode)
         -> thisRegionDiagram <> innerRegionDiagram where
@@ -120,21 +120,21 @@ drawingToGraphvizScaleFactor = 0.13
 minialGVADimention :: Double
 minialGVADimention = 0.01
 
-getDiagramWidthAndHeight :: forall b. SpecialBackend b Double => SpecialDiagram b Double -> (Double, Double)
+getDiagramWidthAndHeight :: forall b. SpecialBackend b => SpecialDiagram b -> (Double, Double)
 getDiagramWidthAndHeight dummyDiagram = (diaWidth, diaHeight) where
   diaWidth = max (drawingToGraphvizScaleFactor * Dia.width dummyDiagram) minialGVADimention
   diaHeight = max (drawingToGraphvizScaleFactor * Dia.height dummyDiagram) minialGVADimention    
 
-renderIconGraph :: forall b. SpecialBackend b Double
+renderIconGraph :: forall b. SpecialBackend b
   => ColorStyle Double
   -> Gr (NodeInfo NamedIcon) (EmbedInfo Edge)
   -> Gr (NodeInfo NamedIcon) (EmbedInfo Edge)
-  -> IO (SpecialQDiagram b Double)
+  -> IO (SpecialQDiagram b)
 renderIconGraph colorStyle fullGraphWithInfo viewGraph = do
   layoutResult <- layoutGraph' layoutParams GVA.Dot parentGraph
   let
-    iconAndPositions = Map.toList $  fst $ getGraph layoutResult
-    iconAndPlacedNodes :: [(NamedIcon,SpecialDiagram b Double)]
+    iconAndPositions = (Map.toList . fst . getGraph)  layoutResult
+    iconAndPlacedNodes :: [(NamedIcon,SpecialDiagram b)]
     iconAndPlacedNodes = map (placeNode iconInfo colorStyle drawingToGraphvizScaleFactor) iconAndPositions
     placedNodes = mconcat $ fmap snd iconAndPlacedNodes
 
@@ -164,16 +164,16 @@ renderIconGraph colorStyle fullGraphWithInfo viewGraph = do
     nodeAttribute (_, Named _ nodeIcon) =
       [ GVA.Width diaWidth, GVA.Height diaHeight] where
         (diaWidth, diaHeight) = getDiagramWidthAndHeight dummyDiagram
-        dummyDiagram :: SpecialDiagram b Double
+        dummyDiagram :: SpecialDiagram b
         dummyDiagram = iconToDiagram iconInfo dummyColorStyle nodeIcon (TransformParams (NodeName (-1)) 0)
 
           
 --TODO add edge parameter constraint = false -- https://www.graphviz.org/doc/info/attrs.html#a:constraint 
 
-renderIngSyntaxGraph :: (HasCallStack, SpecialBackend b Double)
+renderIngSyntaxGraph :: (HasCallStack, SpecialBackend b)
   => ColorStyle Double
   -> (AnnotatedFGR, AnnotatedFGR) 
-  -> IO (SpecialQDiagram b Double)
+  -> IO (SpecialQDiagram b)
 renderIngSyntaxGraph colorStyle (fullGr, viweGr) 
   = renderIconGraph colorStyle fullGraph viewGraph where
     fullGraph = ING.nmap (fmap (fmap nodeToIcon)) fullGr
