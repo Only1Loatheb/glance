@@ -9,8 +9,6 @@ module PortConstants
   , argumentPorts
   , caseValuePorts
   , caseConditionPorts
-  , multiIfValuePorts
-  , multiIfBoolPorts
   , argPortsConst
   , mixedPorts
   , resultPortsConst
@@ -59,24 +57,21 @@ argPortsConst = fmap Port [2,4..]
 resultPortsConst :: [Port]
 resultPortsConst = fmap Port [3,5..]
 
-caseValuePorts :: [Port]
-caseValuePorts = resultPortsConst
+qualPortsConst :: [Port]
+qualPortsConst = fmap Port [-2,-4..]
 
 caseConditionPorts :: [Port]
-caseConditionPorts = argPortsConst
+caseConditionPorts = argPortsConst -- argPortsConst
 
-multiIfValuePorts :: [Port]
-multiIfValuePorts = resultPortsConst
-
-multiIfBoolPorts :: [Port]
-multiIfBoolPorts = argPortsConst
+caseValuePorts :: [Port]
+caseValuePorts =  qualPortsConst -- resultPortsConst 
 
 listCompQualPorts :: [Port]
-listCompQualPorts = fmap Port [-2,-4..]
+listCompQualPorts = qualPortsConst
 
 
-mixedPorts :: [Port]
-mixedPorts = fmap Port [2,3..]
+mixedPorts :: [(Port,Port)]
+mixedPorts = zip caseConditionPorts caseValuePorts
 
 -- TODO It's a bit strange that the parameter is a SyntaxNode, not an Icon.
 inputPort :: SyntaxNode -> Port
@@ -90,7 +85,7 @@ argumentPorts (SyntaxNode n _) = case n of
   ApplyNode {} -> argPortsConst
   PatternApplyNode {} -> resultPortsConst
   FunctionValueNode {} -> resultPortsConst
-  CaseNode {} -> mixedPorts
+  CaseNode {} -> caseConditionPorts
   ListCompNode {} -> argPortsConst
   ListLitNode {} -> argPortsConst
   _ -> error "Node don't have argument ports. PortConstants argumentPorts"

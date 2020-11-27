@@ -126,7 +126,10 @@ data DiagramIcon =
     (Labeled (Maybe NamedIcon))  -- Data constructor
     [Labeled (Maybe NamedIcon)]  -- Arguments
     (Maybe NodeName)  -- asigned value
-  | NestedCaseIcon CaseFlavor [Maybe NodeName]
+  | NestedCaseIcon 
+    CaseFlavor 
+    (Maybe NodeName) -- imput node name
+    [(Maybe NodeName,Maybe NodeName)]
   | CaseResultIcon
   | ListCompIcon
     (Maybe NodeName) -- item constructor

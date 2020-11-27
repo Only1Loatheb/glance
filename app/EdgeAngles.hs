@@ -78,7 +78,7 @@ nestedMultiIfPortAngle ::
 nestedMultiIfPortAngle iconInfo args port maybeNodeName = case maybeNodeName of
   Nothing -> multiIfPortAngle port
   Just name -> case findIcon iconInfo name args of
-    Nothing -> 3/4 @@ turn
+    Nothing -> 1/4 @@ turn
     -- TODO Don't use hardcoded numbers
     -- The arguments correspond to ports [0, 2, 3, 4 ...]
     Just (_, icon) -> subAngle where
@@ -107,7 +107,7 @@ getPortAngleHelper :: Bool -> IconInfo -> Icon -> Port -> Maybe NodeName -> Angl
 getPortAngleHelper isEmbedded iconInfo (Icon icon _) port maybeNodeName = case icon of
   TextBoxIcon {} -> 3/4 @@ turn
   BindTextBoxIcon {} -> 1/4 @@ turn
-  CaseResultIcon -> 3/4 @@ turn
+  CaseResultIcon -> 1/4 @@ turn
   FunctionArgIcon {} -> lambdaPortAngle isEmbedded port
   FunctionDefIcon {} -> lambdaPortAngle isEmbedded port
   NestedApply _ headIcon args
@@ -127,11 +127,10 @@ getPortAngleHelper isEmbedded iconInfo (Icon icon _) port maybeNodeName = case i
       (fmap laValue args)
       port
       maybeNodeName
-  NestedCaseIcon _styleTag args
-    -> nestedMultiIfPortAngle
-      iconInfo
-      (findMaybeIconsFromNames iconInfo args)
-      port
-      maybeNodeName
+  NestedCaseIcon _ arg condsAndVals ->
+    let 
+      (conds, vals) = unzip condsAndVals
+      subicons = findMaybeIconFromName iconInfo arg : findMaybeIconsFromNames iconInfo (conds ++ vals)
+    in nestedMultiIfPortAngle iconInfo subicons  port maybeNodeName
   ListCompIcon {} -> listCompPortAngle port -- TODO better angles for ListCompIcon 
   ListLitIcon {} -> applyPortAngle port -- TODO better angles for ListLitIcon 

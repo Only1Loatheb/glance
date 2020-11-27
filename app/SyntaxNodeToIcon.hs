@@ -12,6 +12,8 @@ import           PortConstants(
   , argumentPorts
   , pattern PatternUnpackingPort
   , listCompQualPorts
+  , caseValuePorts
+  , caseConditionPorts
   )
 import           Types(
   Icon(..)
@@ -77,10 +79,14 @@ nodeToIcon (Embedder _embeddedNodes (SyntaxNode CaseResultNode src))
   = Icon CaseResultIcon src
 
 nodeToIcon (Embedder embeddedNodes node@(SyntaxNode (CaseNode flavor numArgs) src))
-  = Icon (NestedCaseIcon flavor argList) src
+  = Icon (NestedCaseIcon flavor arg condsAndVals) src
   where
-    argPorts = take (2 * numArgs) $ argumentPorts node
-    argList = fmap (makeArg embeddedNodes) (inputPort node : argPorts)
+    argPorts = take  numArgs caseConditionPorts
+    valPorts = take  numArgs caseValuePorts
+    conds = fmap (makeArg embeddedNodes) argPorts
+    vals = fmap (makeArg embeddedNodes) valPorts
+    condsAndVals = zip conds vals
+    arg = makeArg embeddedNodes $ inputPort node
 
 nodeToIcon (Embedder embeddedNodes node@(SyntaxNode (ListCompNode genCount qualCount) src))
   = Icon icon src where

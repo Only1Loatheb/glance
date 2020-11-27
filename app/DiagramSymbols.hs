@@ -15,7 +15,7 @@ module DiagramSymbols(
   , arrowShadowWidth
   , inputPortSymbol
   , resultPortSymbol
-  , caseVarSymbol
+  , caseValSymbol
   , inNoteFrame
   , inCaseDecisionFrame
   , inDecisionFrame
@@ -84,10 +84,10 @@ resultPortSymbol :: SpecialBackend b
   => SpecialDiagram b
 resultPortSymbol = memptyWithPosition
 
-caseVarSymbol :: SpecialBackend b
+caseValSymbol :: SpecialBackend b
   => Colour Double
   ->  SpecialDiagram b
-caseVarSymbol color = alignB coloredSymbol  where
+caseValSymbol color = alignB coloredSymbol  where
     symbol = vrule $ 2 * defaultLineWidth
     coloredSymbol
       = lwG defaultLineWidth $ lc color (strokeLine symbol)

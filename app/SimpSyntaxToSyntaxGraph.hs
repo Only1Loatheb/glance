@@ -33,8 +33,7 @@ import           PortConstants (
   , caseValuePorts
   , caseConditionPorts
   , argPortsConst
-  , multiIfValuePorts
-  , multiIfBoolPorts
+  , caseConditionPorts
   , resultPortsConst
   , pattern ResultPortConst
   , pattern InputPortConst
@@ -312,8 +311,8 @@ makeMultiIfGraph  numPairs srcRefs bools exps multiIfName
   = (newGraph, nameAndPort multiIfName (resultPort multiIfNode))
   where
     multiIfNode = SyntaxNode (CaseNode MultiIfFlavor numPairs) srcRefs
-    expsWithPorts = zip exps $ map (nameAndPort multiIfName) multiIfValuePorts
-    boolsWithPorts = zip bools $ map (nameAndPort multiIfName) multiIfBoolPorts
+    expsWithPorts = zip exps $ map (nameAndPort multiIfName) caseValuePorts
+    boolsWithPorts = zip bools $ map (nameAndPort multiIfName) caseConditionPorts
     combindedGraph = combineExpressions False $ expsWithPorts <> boolsWithPorts
     icons = [Named multiIfName (mkEmbedder multiIfNode)]
     newGraph = (syntaxGraphFromNodes $ Set.fromList icons) <> combindedGraph

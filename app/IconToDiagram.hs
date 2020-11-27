@@ -16,7 +16,6 @@ import Diagrams.Prelude hiding ((&), (#), Name)
 
 import qualified Diagrams.TwoD.Path.Boolean as B
 
-import Data.Either(partitionEithers)
 import Data.List (transpose)
 
 import Icons(
@@ -73,7 +72,7 @@ import DiagramSymbols(
   , lambdaRegionPadding
   , inputPortSymbol
   , resultPortSymbol
-  , caseVarSymbol
+  , caseValSymbol
   , inCaseDecisionFrame
   , inFrame
   , memptyWithPosition
@@ -215,9 +214,10 @@ iconToDiagram iconInfo colorStyle (Icon icon _) = case icon of
        (findMaybeIconsFromNames iconInfo args)
   NestedPatternApp constructor args rhsNodeName
     -> nestedPatternAppDia iconInfo colorStyle (repeat $ patternC colorStyle) constructor args (findMaybeIconFromName iconInfo rhsNodeName)
-  NestedCaseIcon styleTag args -> nestedCaseDia iconInfo colorStyle
-                         (findMaybeIconsFromNames iconInfo args)
-                         styleTag
+  NestedCaseIcon styleTag arg condsAndVals -> nestedCaseDia iconInfo colorStyle
+                        (findMaybeIconFromName iconInfo arg)
+                        (map (bimap (findMaybeIconFromName iconInfo) (findMaybeIconFromName iconInfo)) condsAndVals)
+                        styleTag
   ListCompIcon itemName gensNames qualsNames -> listCompDiagram iconInfo colorStyle
     (findMaybeIconFromName iconInfo itemName) 
     (findMaybeIconsFromNames iconInfo gensNames)
@@ -384,58 +384,34 @@ nestedApplyDia iconInfo flavor colorStyle = case flavor of
   ApplyFlavor -> generalNestedDia iconInfo colorStyle (nestingC colorStyle)
   ComposeFlavor -> generalNestedDia iconInfo colorStyle (applyCompositionC colorStyle)
 
-
-
-nestedCaseDia :: SpecialBackend b
-  => IconInfo
-  -> ColorStyle Double
-  -> [Maybe NamedIcon]
-  -> CaseFlavor
-  -> TransformableDia b n
-nestedCaseDia iconInfo colorStyle
-  = generalNestedCaseDia iconInfo colorStyle (inCaseDecisionFrame colorStyle)
-
 -- | generalNestedCaseDia port layout:
 -- 0 -> top
 -- 1 -> bottom
 -- odds -> left
 -- evens -> right
-generalNestedCaseDia ::forall b n. SpecialBackend b
+nestedCaseDia ::forall b n. SpecialBackend b
   => IconInfo
   -> ColorStyle Double
-  -> (SpecialDiagram b -> SpecialDiagram b)
-  -> [Maybe NamedIcon]
+  -> Maybe NamedIcon
+  -> [(Maybe NamedIcon,Maybe NamedIcon)]
   -> CaseFlavor
   -> TransformableDia b n
-generalNestedCaseDia iconInfo colorStyle inConstBox inputAndArgs flavor
-  tp@(TransformParams name _nestingLevel)
-  = case inputAndArgs of
-  [] -> error "empty multiif"-- mempty
-  input : subicons -> finalDia where
+nestedCaseDia iconInfo colorStyle input condsAndVals flavor tp@(TransformParams name _)
+  = finalDia where
+
     symbolColor = caseRhsC colorStyle
-
-    finalDia = vcat [allCasesAtRight, resultDia]
-
     resultDia = makeResultDiagram name
 
-    (iFConstIcons, iFVarIcons)
-      = partitionEithers $ zipWith iconMapper mixedPorts subicons
+    iFVarAndConstIcons = zipWith iconMapper mixedPorts condsAndVals
 
-    iconMapper port subicon
-      | isArgPort port = Left $ inConstBox innerIcon{- middle -}
-      | otherwise = Right ${- middle -} vcat [caseVarSymbol symbolColor, innerIcon]
-      where
-        innerIcon = makeAppInnerIcon iconInfo colorStyle tp isSameNestingLevel port (Labeled subicon "")
-        isSameNestingLevel = True
-
-    iFVarAndConstIcons =
-      zipWith combineIfIcons iFVarIcons iFConstIcons
-
-    combineIfIcons iFVarIcon iFConstIcon
-      = decisionDiagram where
-        spaceForBigLine = strutY defaultLineWidth
-        ifConstDiagram = vcat [iFConstIcon,spaceForBigLine]
-        decisionDiagram = (alignB ifConstDiagram) <>  (alignT iFVarIcon)
+    iconMapper (condPort,valPort) (cond, val) = decisionDiagram where
+      condDia = inCaseDecisionFrame colorStyle condIcon
+      valDia = vcat [valIcon, caseValSymbol symbolColor]
+      condIcon = makeAppInnerIcon iconInfo colorStyle tp isSameNestingLevel condPort (Labeled cond "")
+      valIcon = makeAppInnerIcon iconInfo colorStyle tp isSameNestingLevel valPort (Labeled val "")
+      isSameNestingLevel = True
+      spaceForBigLine = strutY defaultLineWidth
+      decisionDiagram = alignB $ vcat [valDia, condDia,spaceForBigLine]
 
     multiIfDia = centerX $ hsep portSeparationSize  iFVarAndConstIcons
     decisionLine = lwG defaultLineWidth $ lc symbolColor $ hrule (width multiIfDia)
@@ -449,6 +425,7 @@ generalNestedCaseDia iconInfo colorStyle inConstBox inputAndArgs flavor
       | otherwise = centerX $ alignB $ makeInputDiagram iconInfo colorStyle tp (pure input) name
 
     allCasesAtRight = inputLambdaLine <> alignTL allCases
+    finalDia = vcat [allCasesAtRight, resultDia]
 
 functionArgDia :: SpecialBackend b
   => ColorStyle Double
