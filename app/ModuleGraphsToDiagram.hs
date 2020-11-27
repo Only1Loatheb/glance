@@ -38,7 +38,7 @@ import PartialView (neighborsSubgraph)
 
 import TextBox (multilineComment, sourceCodeDiagram)
 import CollapseGraph(syntaxGraphToCollapsedGraph, syntaxGraphToLessCollapsedGraph)
-import DrawingColors (ColorStyle)
+import DrawingColors (backgroundC, ColorStyle)
 -- before loop
 diagramFromModule :: SpecialBackend b Double =>
   (SrcRef -> SourceCode) -> ColorStyle Double -> Bool -> ModuleGraphs -> SpecialQDiagram b Double
@@ -147,8 +147,9 @@ staticDiagramFromModule includeComments (declSpansAndGraphs, comments) colorStyl
     spanAndcomments = map (commentToSpanAndDiagram colorStyle) selectedComments
     spanAndDiagrams = spanAndcomments ++ spanAndDeclarations
     moduleDiagram = composeDiagrams spanAndDiagrams
+    moduleDiagramWithBg = Dia.bg (backgroundC colorStyle) moduleDiagram
   --print comments
-  pure moduleDiagram
+  pure moduleDiagramWithBg
 
 composeDiagrams :: SpecialBackend b Double
   => [(Exts.SrcSpan, SpecialQDiagram b Double)]

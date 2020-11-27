@@ -14,7 +14,7 @@ import VisualGraphAlgorithmTests(visualCollapseTests)
 
 import SyntaxGraphComparisonTests(syntaxGraphComparisonTests)
 import SyntaxGraphDirectTests(syntaxGraphDirectTests)
-import DrawingColors (dummyColorStyle)
+import DrawingColors (backgroundC, dummyColorStyle)
 
 drawingsAndNames :: [(String, IO (Diagram B))]
 drawingsAndNames =
@@ -26,8 +26,9 @@ renderDrawings :: HasCallStack => [(String, IO (Diagram B))] -> IO ()
 renderDrawings = mapM_ saveDrawing where
   saveDrawing (name, drawingMaker) = do
     dia <- drawingMaker
+    let diaWithBg = bg (backgroundC dummyColorStyle) dia
     -- TODO Replace string concatenation with proper path manipulation functions.
-    customRenderSVG ("test/test-output/" ++ name ++ ".svg") widthScale dia dummyColorStyle
+    customRenderSVG ("test/test-output/" ++ name ++ ".svg") widthScale diaWithBg
       where widthScale = 1
 
 main :: HasCallStack => IO ()

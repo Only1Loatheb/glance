@@ -12,14 +12,12 @@ import System.FilePath(takeBaseName)
 import Data.Typeable(Typeable)
 import qualified Diagrams.Prelude as Dia
 
-import DrawingColors(ColorStyle(..))
 import Types (DiaQuery)
 
 customRenderSVG' :: (Typeable n, Show n, RealFloat n) =>
   FilePath
   -> n
   -> Dia.QDiagram SVG Dia.V2 n DiaQuery
-  -> ColorStyle Double
   -> IO ()
 customRenderSVG' outputFilename scale qDiagram = customRenderSVG outputFilename scale diagram where
   diagram = Dia.clearValue qDiagram
@@ -28,11 +26,9 @@ customRenderSVG :: (Typeable n, Show n, RealFloat n) =>
   FilePath
   -> n
   -> Dia.QDiagram SVG Dia.V2 n Dia.Any
-  -> ColorStyle Double
   -> IO ()
-customRenderSVG outputFilename scale diagram colorStyle
-  = renderSVG' outputFilename svgOptions diagramWithBackground where
-    diagramWithBackground = Dia.bg (backgroundC colorStyle) diagram
+customRenderSVG outputFilename scale diagram
+  = renderSVG' outputFilename svgOptions diagram where
     -- This xml:space attribute preserves the whitespace in the svg text.
     attributes = [bindAttr XmlSpace_ (pack "preserve")]
     -- https://github.com/diagrams/diagrams-svg/blob/master/src/Diagrams/Backend/SVG.hs#L367

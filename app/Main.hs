@@ -68,7 +68,7 @@ prepareDiagram (CMD.CmdLineOptions
   then do
     let outputFilename = CMD.getFilename mode
     diagram <- staticDiagramFromModule doIncludeComments moduleGraphs colorStyle
-    customRenderSVG' outputFilename imageScale diagram colorStyle
+    customRenderSVG' outputFilename imageScale diagram
     putStrLn $ "Saving file: " ++ outputFilename
   else pure ()
   if CMD.isInteractive mode

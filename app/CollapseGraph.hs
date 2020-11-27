@@ -52,7 +52,7 @@ data ParentType = ApplyParent
                 | LambdaParent String
                 | PatternApplyParent
                 | ListCompParent
-                | ListGenParent
+                | ListLitParent
                 | NotAParent
   deriving (Eq, Show)
 
@@ -81,8 +81,8 @@ isSyntaxNodeEmbeddable parentType (SyntaxNode syntaxNode _) parentPort childPort
     (ApplyParent, ApplyNode {}) -> parentPortNotResult
     (ApplyParent, LiteralNode {}) -> parentPortNotResult
 
-    (ListGenParent, ApplyNode {}) -> parentPortNotResult
-    (ListGenParent, LiteralNode {}) -> parentPortNotResult
+    (ListLitParent, ApplyNode {}) -> parentPortNotResult
+    (ListLitParent, LiteralNode {}) -> parentPortNotResult
 
     (LambdaParent fname, ApplyNode {}) -> lambdaEmbeddable fname
     (LambdaParent fname, CaseNode {}) -> lambdaEmbeddable fname
@@ -134,8 +134,8 @@ doesSyntaxNodeHaveToBeEmbeded parentType (SyntaxNode syntaxNode _) parentPort _c
     (ApplyParent, ApplyNode {}) -> parentPortNotResult
     (ApplyParent, LiteralNode {}) -> parentPortNotResult
 
-    (ListGenParent, ApplyNode {}) -> parentPortNotResult
-    (ListGenParent, LiteralNode {}) -> parentPortNotResult
+    (ListLitParent, ApplyNode {}) -> parentPortNotResult
+    (ListLitParent, LiteralNode {}) -> parentPortNotResult
 
     (CaseParent, CaseResultNode {}) -> True
     _ -> False
@@ -148,7 +148,7 @@ parentTypeForNode (SyntaxNode n _) = case n of
   CaseNode {} -> CaseParent
   FunctionValueNode fname _ -> LambdaParent fname
   PatternApplyNode {} -> PatternApplyParent
-  ListLitNode {} -> ListGenParent
+  ListLitNode {} -> ListLitParent
   ListCompNode {} -> ListCompParent
   _ -> NotAParent
 

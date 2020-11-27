@@ -46,7 +46,7 @@ ifThenElseExpression = if condition then consequent else alternative
     Let expression gets simplified -}
 letInExpression = let a = x in a
 {- whereDefinitions = f where 
-    f x = 3 * x
+  f = 3
 -}
 whereDefinitions = f where 
   f = 3
@@ -110,13 +110,6 @@ y = f (g x)
 y = (f . g) x
 -}
 y = (f . g) x
-{- Composition of three functions:
-y = f (g (h x)) -}
-y = f (g (h x))
-{- which is the same as
-y = (f . g . h) x
--}
-y = (f . g . h) x
 {- doNotation = do 
     item <- generator
     let localDefinition = item + 1
