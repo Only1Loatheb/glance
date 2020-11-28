@@ -31,7 +31,7 @@ module Types (
   , Embedder(..)
   , mkEmbedder
   , EmbedderSyntaxNode
-  , TransformParams(..)
+  , DrawingInfo(..)
   , TransformableDia
   , DiaQuery
   , NodeQueryValue(..)
@@ -58,9 +58,12 @@ module Types (
   , ListLitFlavor(..)
   , NumericType
   , PointType
+  , ColorStyle
+  , ColorStyle'(..)
+  , InCaseOrInApply(..)
 ) where
 
-import Diagrams.Prelude(QDiagram, V2, Any, Renderable, Path, IsName, Point)
+import Diagrams.Prelude(Colour, QDiagram, V2, Any, Renderable, Path, IsName, Point)
 import Diagrams.TwoD.Text(Text)
 import Control.Applicative(Applicative(..))
 import qualified Data.Graph.Inductive as ING
@@ -201,7 +204,8 @@ type Connection = (NameAndPort, NameAndPort)
 data EdgeOption =
   DrawAndConstraint
   | DrawAndNotConstraint
-  | DoNotDrawButConstraint deriving (Show, Eq, Ord)
+  | DoNotDrawButConstraint Int -- length in number of ranks 
+  deriving (Show, Eq, Ord)
 
 -- | An Edge has an name of the source icon, and its optional port number,
 -- and the name of the destination icon, and its optional port number.
@@ -253,17 +257,18 @@ data NodeInfo a = NodeInfo {
   }
   deriving (Show, Eq, Functor, Ord)
 
-data TransformParams n = TransformParams {
-  tpName :: NodeName  -- The icon's name
-  , tpNestingDepth :: Int  -- The icon's nesting depth
-  -- , tpIsReflected :: Bool  -- If the icon will be reflected
-  -- , tpAngle :: Angle NumericType  -- By what angle will the icon be rotated
+data DrawingInfo = DrawingInfo {
+  diName :: NodeName  -- The icon's name
+  , diNestingLevel :: Int  -- The icon's nesting depth
+  , diIsIn :: InCaseOrInApply  -- is inside case condition diagram for drawing upside down
+  , diColorStyle :: ColorStyle
   }
 
+data InCaseOrInApply = InApply | InCase | None deriving (Show, Eq)
 -- | A TransformableDia is a function that returns a diagram for an icon when
 -- given the icon's name, its nesting depth, whether it will be reflected, and
 -- by what angle it will be rotated.
-type TransformableDia b n = TransformParams n -> SpecialDiagram b
+type TransformableDia b = DrawingInfo -> SpecialDiagram b
 
 data NodeQueryValue = NodeQueryValue {
   nodeSrcRef :: SrcRef
@@ -336,3 +341,21 @@ data GraphAndRef = GraphAndRef {
   graph :: SyntaxGraph
   , ref :: Reference
   }
+
+type ColorStyle = ColorStyle' NumericType
+data ColorStyle' a = ColorStyle {
+    backgroundC :: Colour a,
+    textBoxTextC :: Colour a,
+    applyCompositionC :: [Colour a],
+    boolC :: Colour a,
+    lambdaC :: Colour a,
+    caseRhsC :: Colour a,
+    patternC :: Colour a,
+    bindTextBoxTextC :: Colour a,
+    edgeListC :: [Colour a],
+    nestingC :: [Colour a],
+    listC :: Colour a,
+    tupleC :: Colour a
+  }
+
+  

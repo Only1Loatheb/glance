@@ -15,11 +15,10 @@ import Types (
   , DiaQuery
   , CreateView
   , View
-  , NumericType
   , PointType
+  , ColorStyle
+  , ColorStyle'(..)
   )
-
-import DrawingColors(ColorStyle(..))
 
 getBlankCanvasOpts :: Int -> BC.Options
 getBlankCanvasOpts  portNumber =  BC.Options {
@@ -43,7 +42,7 @@ diagramForBlankCanvas moduleDiagram imageScale = (moduleDiagramAligned, pointToD
 bcDrawDiagram :: BC.DeviceContext
   -> Dia.SizeSpec Dia.V2 Double
   -> Dia.QDiagram Canvas Dia.V2 Double m
-  -> ColorStyle Double
+  -> ColorStyle
   -> IO ()
 bcDrawDiagram context sizeSpec moduleDiagram colorStyle = do
   BC.send context $ BC.clearRect (0,0,BC.width context, BC.height context)
@@ -56,7 +55,7 @@ blankCanvasLoop :: SpecialQDiagram Canvas
     , SpecialQDiagram Canvas -> PointType  -> DiaQuery
     , CreateView, View -> View) 
   -> Double 
-  -> ColorStyle Double 
+  -> ColorStyle 
   -> IO ()
 blankCanvasLoop moduleDiagram portNumber loopControl imageScale colorStyle = do
   let blankCanvasOpts  = getBlankCanvasOpts portNumber
@@ -71,7 +70,7 @@ loop ::
     , View -> View
   )
   -> Double
-  -> ColorStyle Double
+  -> ColorStyle
   -> IO b
 loop 
   context 

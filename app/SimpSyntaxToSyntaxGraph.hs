@@ -126,7 +126,7 @@ import StringSymbols(
   , showSignlessLit
   , getFuncDefLabel
   )
-import FuncDefRegionInfo(getFuncDefRegionInfo)
+import FuncDefRegionInfo(lambdaLevel, getFuncDefRegionInfo, FuncDefRegionInfo)
   
 -- OVERVIEW --
 -- SimpSyntaxToSyntaxGraph SimpExp into subgraf of type SyntaxGraph
@@ -330,7 +330,7 @@ evalAlt c (SimpAlt _s pat rhs) = do
   ((GraphAndRef patGraph patRef, mPatAsName), GraphAndRef rhsGraph rhsRef) <-
     makePatternGraph c pat rhs
   let
-    grWithEdges = makeEdgesKeepBindings makeSimpleEdge (rhsGraph <> patGraph)
+    grWithEdges = makeEdgesKeepBindings makeNotConstraintEdge (rhsGraph <> patGraph)
     lookedUpRhsRef = lookupReference (sgBinds grWithEdges) rhsRef
     -- The pattern and rhs are conneted if makeEdges added extra edges, or if
     -- the rhsRef refers to a source in the pattern.
@@ -460,14 +460,15 @@ evalLambda seSrcRef context argPatterns expr functionName = do
       = getOutputNameAndPort rhsRef  argPatternVals lambdaPorts  nodesGraph -- combinedGraph 
   
     argNode = makeLambdaArgumentNode argPatternValsWithAsNames seSrcRef
-    lambdaNode = makeLambdaNode nodesGraph {- was combinedGraph -} lambdaLabel [lambdaName, argNodeName] seSrcRef
+    regionInfo = getFuncDefRegionInfo combinedGraph [lambdaName, argNodeName]
+    lambdaNode = makeLambdaNode lambdaLabel  seSrcRef regionInfo
     lambdaPorts = map (nameAndPort argNodeName) $ argumentPorts lambdaNode
     lambdaValueLink =  makeEitherEdgeOrSgBind outputReference (nameAndPort lambdaName (inputPort lambdaNode))
   -- (valueGraph,outputNameAndPort) <- getValueGraphAndNamedPort outputReference
 
     -- lambdaValueEdge = makeSimpleEdge (outputNameAndPort,)
     -- TODO move adding drawing rank edge after graph simplification and collapsing
-    constraintEdgeList = constraintLambdaArgAboveValue outputReference argNodeName lambdaName
+    constraintEdgeList = constraintLambdaArgAboveValue outputReference argNodeName lambdaName regionInfo
 
     (argPatternEdges', newBinds') =
       partitionEithers $ zipWith makePatternEdgeInLambda argPatternVals lambdaPorts
@@ -478,7 +479,7 @@ evalLambda seSrcRef context argPatterns expr functionName = do
 
     asBindGraph = mconcat $ zipWith asBindGraphZipper (fmap snd argPatternValsWithAsNames) lambdaPorts
 
-    combinedGraph = makeEdges makeSimpleEdge (rhsRawGraph <> argPatternGraph <> lambdaArgGraph <> asBindGraph )
+    combinedGraph = makeEdgesKeepBindings makeSimpleEdge (rhsRawGraph <> argPatternGraph <> lambdaArgGraph <> asBindGraph )
     finalGraph = makeEdges makeNotConstraintEdge (combinedGraph <> lambdaIconAndOutputGraph)
 
     resultNameAndPort = nameAndPort lambdaName (resultPort lambdaNode)
@@ -486,10 +487,11 @@ evalLambda seSrcRef context argPatterns expr functionName = do
   then makeBox ( Set.elemAt 0 argPatternStrings, seSrcRef)
   else pure (finalGraph, resultNameAndPort)
 
-constraintLambdaArgAboveValue :: Reference -> NodeName -> NodeName -> [Edge]
-constraintLambdaArgAboveValue outputReference argNodeName lambdaName = -- case outputReference of 
-    [makeInvisibleEdge (nameAndPort argNodeName ResultPortConst,
-      nameAndPort lambdaName InputPortConst)]
+constraintLambdaArgAboveValue :: Reference -> NodeName -> NodeName -> FuncDefRegionInfo-> [Edge]
+constraintLambdaArgAboveValue outputReference argNodeName lambdaName regionInfo = -- case outputReference of 
+    [makeInvisibleEdge len (nameAndPort argNodeName ResultPortConst,
+      nameAndPort lambdaName InputPortConst)] where
+      len = 1 + lambdaLevel regionInfo
     
 
 isIdLambda :: Bool -> [SimpPat] -> Maybe String -> Bool
@@ -518,9 +520,8 @@ makeReferenceToArgument rhsRef (GraphAndRef _ ref) lamPort = if rhsRef == ref
       then Just  lamPort
       else Nothing
 
-makeLambdaNode :: SyntaxGraph -> String -> [NodeName] -> SrcRef -> SyntaxNode
-makeLambdaNode combinedGraph  functionName lambdaNames seSrcRef = node where
-  regionInfo = getFuncDefRegionInfo combinedGraph lambdaNames
+makeLambdaNode :: String  -> SrcRef -> FuncDefRegionInfo -> SyntaxNode
+makeLambdaNode  functionName seSrcRef regionInfo = node where
   node = SyntaxNode (FunctionValueNode functionName regionInfo) seSrcRef
 
 makeLambdaArgumentNode :: [(GraphAndRef, Maybe String)] -> SrcRef -> SyntaxNode
@@ -807,10 +808,12 @@ makeListCompGraph context listCompName listCompSrcRef listCompItemGraphAndRef
   combinedGraph = makeEdges makeSimpleEdge
     (listCompItemGraph  <> listCompNodeGraph <> qStmtGraph <> qualEdgeGraph <> listCompGenEdgeGraph) 
 
+makeListCompQualEdgeGraph :: NodeName -> [GraphAndRef] -> SyntaxGraph
 makeListCompQualEdgeGraph listCompName qualGraphsAndRefs = qualEdgeGraph where 
   listCompQualNamedPorts = map (nameAndPort listCompName) listCompQualPorts
   qualEdgeGraph = mconcat $ zipWith (combineFromGraphToPort makeSimpleEdge) qualGraphsAndRefs listCompQualNamedPorts
 
+makeListCompGenEdgeGraph :: NodeName -> [GraphInPatternRef] -> SyntaxGraph
 makeListCompGenEdgeGraph listCompName genGraphsAndRefs = inEdgeGraph <> outEdgeGraph where
   listCompInNamedPorts = map (nameAndPort listCompName) argPortsConst
   listCompOutNamedPorts = map (nameAndPort listCompName) resultPortsConst
@@ -822,12 +825,14 @@ makeListCompGenEdgeGraph listCompName genGraphsAndRefs = inEdgeGraph <> outEdgeG
   outEdgeGraph = mconcat $ zipWith (combineFromPortToGraph makeNotConstraintEdge) graphAndPatternRef listCompOutNamedPorts
 
 
+makeListCompNodeGraph :: NodeName -> Exts.SrcSpan -> Int -> Int -> (SyntaxNode, NameAndPort, SyntaxGraph)
 makeListCompNodeGraph listCompName listCompSrcRef genCount qualCount = (listCompNode, listCompNodeRef, listCompNodeGraph) where
   listCompNode = SyntaxNode (ListCompNode genCount qualCount) listCompSrcRef
   listCompNodeRef = nameAndPort listCompName (resultPort listCompNode)
   listCompNodeGraph = syntaxGraphFromNodes
     $ Set.singleton (Named listCompName (mkEmbedder listCompNode))
 
+makeQstmtGraph :: [GraphAndRef] -> [GraphAndRef] -> [GraphInPatternRef] -> SyntaxGraph
 makeQstmtGraph qualGraphsAndRefs declGraphsAndRefs genGraphsAndRefs = genGraphs <> qualGraphs where
   qualGraphs = mconcat $ fmap  graphAndRefToGraph (qualGraphsAndRefs ++ declGraphsAndRefs)
   genGraphs = mconcat $ fmap  graphInPatternRefToGraph genGraphsAndRefs
@@ -874,7 +879,7 @@ evalPatBindHelper patRef rhsRef = case patRef of
 -- Pretty printing the entire type sig results in extra whitespace in the middle
 evalTypeSig :: [Exts.Name Exts.SrcSpanInfo] -> Exts.Type Exts.SrcSpanInfo -> SrcRef
   -> State IDState (SyntaxGraph, NameAndPort)
-evalTypeSig names typeForNames srcRef= makeBox
+evalTypeSig names typeForNames srcRef = makeBox
   (intercalate typeNameSeparatorStr (fmap prettyPrintWithoutNewlines names)
    ++ typeSignatureSeparatorStr
    ++ prettyPrintWithoutNewlines typeForNames

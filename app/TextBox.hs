@@ -14,9 +14,7 @@ where
 
 import Diagrams.Prelude hiding ((&), (#), Name)
 
-import Types(SpecialDiagram, SpecialBackend)
-
-import DrawingColors(ColorStyle(..))
+import Types(SpecialDiagram, SpecialBackend, ColorStyle, ColorStyle'(..))
 
 import StringSymbols(sourceCodeDiagramLabel)
 
@@ -69,7 +67,7 @@ textSizeDiagram t = invisibleRect
 -- END Text helper functions
 
 multilineComment :: SpecialBackend b 
-  => ColorStyle Double -> String -> SpecialDiagram b
+  => ColorStyle -> String -> SpecialDiagram b
 multilineComment colorStyle = multilineComment' (textBoxTextC colorStyle)
 
 multilineComment' :: SpecialBackend b =>
@@ -104,7 +102,7 @@ coloredTextBox' textColor objectWithSize textDiagram = objectWithSize <> textLab
 
 
 sourceCodeDiagram :: SpecialBackend b
-  => String -> ColorStyle Double -> SpecialDiagram b
+  => String -> ColorStyle -> SpecialDiagram b
 sourceCodeDiagram s colorStyle = label === sourceCode  ||| padding where
   sourceCode = multilineComment colorStyle s
   label = multilineComment colorStyle sourceCodeDiagramLabel

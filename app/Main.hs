@@ -23,8 +23,9 @@ import Types (
   , CreateView
   , View
   , PointType
+  , ColorStyle
   )
-import DrawingColors (getColorStyle,ColorStyle)
+import DrawingColors (getColorStyle)
 
 import ModuleToGraphs(getModuleGraphs)
 
@@ -84,7 +85,7 @@ prepareDiagram (CMD.CmdLineOptions
   else pure ()
 
 selectViewWithSourceCode :: SpecialBackend b =>
-  (SrcRef -> SourceCode) -> ColorStyle Double -> SpecialQDiagram b -> View -> IO(SpecialQDiagram b)
+  (SrcRef -> SourceCode) -> ColorStyle -> SpecialQDiagram b -> View -> IO(SpecialQDiagram b)
 selectViewWithSourceCode getCodeFragment colorStyle moduleDiagram view = do
   diagram <- selectView colorStyle moduleDiagram view
   if hasSrcRef view
@@ -96,7 +97,7 @@ selectViewWithSourceCode getCodeFragment colorStyle moduleDiagram view = do
   else pure diagram 
 
 
-selectView :: SpecialBackend b => ColorStyle Double -> SpecialQDiagram b -> View -> IO (SpecialQDiagram b)
+selectView :: SpecialBackend b => ColorStyle -> SpecialQDiagram b -> View -> IO (SpecialQDiagram b)
 selectView colorStyle moduleDiagram (maybeDeclQV, maybeNodeQV) = do
   case maybeDeclQV of
     Nothing -> pure moduleDiagram
