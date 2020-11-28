@@ -14,7 +14,8 @@ import VisualGraphAlgorithmTests(visualCollapseTests)
 
 import SyntaxGraphComparisonTests(syntaxGraphComparisonTests)
 import SyntaxGraphDirectTests(syntaxGraphDirectTests)
-import DrawingColors (backgroundC, dummyColorStyle)
+import DrawingColors (dummyColorStyle)
+import Types (ColorStyle'(backgroundC))
 
 drawingsAndNames :: [(String, IO (Diagram B))]
 drawingsAndNames =

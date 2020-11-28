@@ -1,15 +1,19 @@
 module DrawingColors (
-  ColorStyle(..)
-  , ColorStyleType(..)
+  ColorStyleType(..)
   , getColorStyle
   , dummyColorStyle
   ) where
 
 import Diagrams.Prelude hiding ((&), (#))
+
+import Types(
+  ColorStyle
+  , ColorStyle'(..)
+  )
 data ColorStyleType = ColorsOnBlack | ColorsOnWhite | WhiteOnBlack | BlackOnWhite
   deriving (Show, Eq, Ord)
 
-getColorStyle :: (Floating a, Ord a) => ColorStyleType -> ColorStyle a
+getColorStyle :: ColorStyleType -> ColorStyle
 getColorStyle colorStyleType = case colorStyleType of
   ColorsOnBlack -> colorsOnBlackScheme
   ColorsOnWhite -> colorsOnWhiteScheme
@@ -17,25 +21,11 @@ getColorStyle colorStyleType = case colorStyleType of
   BlackOnWhite -> blackOnWhiteScheme
 
 -- COLO(U)RS --
-dummyColorStyle :: ColorStyle Double
+dummyColorStyle :: ColorStyle
 dummyColorStyle = colorsOnBlackScheme
 
-data ColorStyle a = ColorStyle {
-  backgroundC :: Colour a,
-  textBoxTextC :: Colour a,
-  applyCompositionC :: [Colour a],
-  boolC :: Colour a,
-  lambdaC :: Colour a,
-  caseRhsC :: Colour a,
-  patternC :: Colour a,
-  bindTextBoxTextC :: Colour a,
-  edgeListC :: [Colour a],
-  nestingC :: [Colour a],
-  listC :: Colour a,
-  tupleC :: Colour a
-}
 
-colorsOnBlackScheme :: (Floating a, Ord a) => ColorStyle a
+colorsOnBlackScheme :: (Floating a, Ord a) => ColorStyle' a
 colorsOnBlackScheme = ColorStyle {
   backgroundC = black,
   textBoxTextC = white,
@@ -45,7 +35,7 @@ colorsOnBlackScheme = ColorStyle {
   caseRhsC = orange,
   patternC = lightMagenta,
   bindTextBoxTextC = lightGreen,
-  edgeListC = [white, red, reddishOrange, lightPurple, yellow, lightBlue, cyan, coral,maroon,lightpink, olive, green],
+  edgeListC = [white, red, reddishOrange, lightPurple, yellow, lightBlue, cyan, coral,maroon,lightpink, green],
   nestingC = cycle [red, reddishOrange, yellow],
   listC = lightBlue,
   tupleC = lightPurple
@@ -69,7 +59,7 @@ lightGreen :: (Floating a, Ord a) => Colour a
 lightGreen = sRGB24 180 255 145
 
 
-colorsOnWhiteScheme :: (Floating a, Ord a) => ColorStyle a
+colorsOnWhiteScheme :: (Floating a, Ord a) => ColorStyle' a
 colorsOnWhiteScheme = ColorStyle {
   backgroundC = white,
   textBoxTextC = black,
@@ -79,13 +69,13 @@ colorsOnWhiteScheme = ColorStyle {
   caseRhsC = orange,
   patternC = lightMagenta,
   bindTextBoxTextC = lightGreen,
-  edgeListC = [black, red, reddishOrange, lightPurple, yellow, lightBlue, cyan, coral,maroon,lightpink, olive, green],
+  edgeListC = [black, red, reddishOrange, lightPurple, yellow, lightBlue, cyan, coral,maroon,lightpink, green],
   nestingC = cycle [red, reddishOrange, yellow],
   listC = lightBlue,
   tupleC = lightPurple
 }
 
-whiteOnBlackScheme :: (Floating a, Ord a) => ColorStyle a
+whiteOnBlackScheme :: (Floating a, Ord a) => ColorStyle' a
 whiteOnBlackScheme = ColorStyle {
   backgroundC = black,
   textBoxTextC = white,
@@ -101,7 +91,7 @@ whiteOnBlackScheme = ColorStyle {
   tupleC = white
 }
 
-blackOnWhiteScheme :: (Floating a, Ord a) => ColorStyle a
+blackOnWhiteScheme :: (Floating a, Ord a) => ColorStyle' a
 blackOnWhiteScheme = ColorStyle {
   backgroundC = white,
   textBoxTextC = black,

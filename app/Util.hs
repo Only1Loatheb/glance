@@ -43,8 +43,8 @@ makeSimpleEdge = Edge DrawAndConstraint
 makeNotConstraintEdge :: Connection -> Edge
 makeNotConstraintEdge = Edge DrawAndNotConstraint
 
-makeInvisibleEdge :: Connection -> Edge
-makeInvisibleEdge = Edge DoNotDrawButConstraint
+makeInvisibleEdge :: Int -> Connection -> Edge
+makeInvisibleEdge len = Edge (DoNotDrawButConstraint len)
 
 nameAndPort :: NodeName -> Port -> NameAndPort
 nameAndPort n p = NameAndPort n p

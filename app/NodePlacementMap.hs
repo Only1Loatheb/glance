@@ -7,26 +7,27 @@ module NodePlacementMap (
 
 import qualified Diagrams.Prelude as Dia
 
-import Types(SpecialDiagram, SpecialBackend
+import Types(InCaseOrInApply(..), SpecialDiagram, SpecialBackend
   , SpecialQDiagram
   , NamedIcon
   , Icon(..)
   , IconInfo
   , Named(..)
-  , TransformParams(..)
+  , DrawingInfo(..)
   , QueryValue(..)
   , DiaQuery
   , NodeQueryValue(..)
+  , ColorStyle
+  , ColorStyle'(..)
   )
 
 import TextBox(transparentAlpha, letterHeight)
 
 import IconToDiagram(iconToDiagram)
-import DrawingColors (ColorStyle)
 
 placeNode :: SpecialBackend b
   => IconInfo
-  -> ColorStyle Double 
+  -> ColorStyle 
   -> Double
   -> (NamedIcon, Dia.P2 Double) 
   -> (NamedIcon, SpecialDiagram b)
@@ -34,9 +35,8 @@ placeNode iconInfo colorStyle graphVizScale (namedIcon@(Named name icon), layout
   = (namedIcon, Dia.place transformedDia diaPosition) where
       origDia = iconToDiagram
                 iconInfo
-                colorStyle
                 icon
-                (TransformParams name 0)
+                (DrawingInfo name 0 None colorStyle)
       transformedDia = Dia.centerXY origDia
       diaPosition = getDiaPosition graphVizScale layoutPosition
 

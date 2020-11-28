@@ -32,16 +32,17 @@ import           Types  (
   , AnnotatedFGR
   , SourceCode
   , SyntaxGraph(..)
+  , backgroundC
+  , ColorStyle
   )
 
 import PartialView (neighborsSubgraph)
 
 import TextBox (multilineComment, sourceCodeDiagram)
 import CollapseGraph(syntaxGraphToCollapsedGraph, syntaxGraphToLessCollapsedGraph)
-import DrawingColors (backgroundC, ColorStyle)
 -- before loop
 diagramFromModule :: SpecialBackend b =>
-  (SrcRef -> SourceCode) -> ColorStyle Double -> Bool -> ModuleGraphs -> SpecialQDiagram b
+  (SrcRef -> SourceCode) -> ColorStyle -> Bool -> ModuleGraphs -> SpecialQDiagram b
 diagramFromModule getCodeFragment colorStyle includeComments (declSpansAndGraphs, comments) = moduleDiagram where
   selectedComments = selectComments includeComments comments
   moduleDiagram = getModuleDiagram getCodeFragment colorStyle declSpansAndGraphs selectedComments
@@ -50,7 +51,7 @@ selectComments :: Bool -> [Exts.Comment] -> [Exts.Comment]
 selectComments includeComments comments = if includeComments then comments else []
 
 getModuleDiagram :: SpecialBackend b
-  => (SrcRef -> SourceCode) -> ColorStyle Double -> [(SrcRef, SyntaxGraph)] -> [Exts.Comment] -> SpecialQDiagram b
+  => (SrcRef -> SourceCode) -> ColorStyle -> [(SrcRef, SyntaxGraph)] -> [Exts.Comment] -> SpecialQDiagram b
 getModuleDiagram getCodeFragment colorStyle declSpansAndGraphs selectedComments = diagram where
   chunks = getDeclChunks declSpansAndGraphs
   diagram = placeDiagrams $ map (declIconDiagram getCodeFragment colorStyle selectedComments) chunks 
@@ -66,7 +67,7 @@ placeDiagrams diagrams = finalDia where
 
 declIconDiagram :: SpecialBackend b
   => (Exts.SrcSpan -> String) 
-  -> ColorStyle Double 
+  -> ColorStyle 
   -> [Exts.Comment] 
   -> [(Exts.SrcSpan, SyntaxGraph)] 
   -> SpecialQDiagram b
@@ -102,7 +103,7 @@ filterComments comments (srcSpanBefore, srcSpanAfter) = nerbyComments where
   nerbyComments = filter (\((Exts.Comment _ srcSpan _))-> srcSpan > srcSpanBefore && srcSpan < srcSpanAfter) comments
 
 -- in loop 
-declDiagram :: SpecialBackend b => ColorStyle Double -> DeclQueryValue -> IO (SpecialQDiagram b)
+declDiagram :: SpecialBackend b => ColorStyle -> DeclQueryValue -> IO (SpecialQDiagram b)
 declDiagram colorStyle declQV@(DeclQueryValue _ declGraph _ _) = do
   let 
     (topComments, bottomComments) = viewDiagramBase colorStyle declQV
@@ -111,12 +112,12 @@ declDiagram colorStyle declQV@(DeclQueryValue _ declGraph _ _) = do
   let diagram = topComments Dia.=== Dia.alignL declDia Dia.=== bottomComments
   pure diagram
 
-viewDiagramBase :: SpecialBackend b => ColorStyle Double -> DeclQueryValue -> (SpecialQDiagram b, SpecialQDiagram b)
+viewDiagramBase :: SpecialBackend b => ColorStyle -> DeclQueryValue -> (SpecialQDiagram b, SpecialQDiagram b)
 viewDiagramBase colorStyle (DeclQueryValue _ _ commentsBefore commentsAfter) = (topComments, bottomComments) where
   topComments = placeDiagrams $ map (commentToDiagram colorStyle) commentsBefore
   bottomComments = placeDiagrams $ map (commentToDiagram colorStyle) commentsAfter
 
-nodeDiagram :: SpecialBackend b => ColorStyle Double -> DeclQueryValue -> NodeQueryValue -> IO (SpecialQDiagram b)
+nodeDiagram :: SpecialBackend b => ColorStyle -> DeclQueryValue -> NodeQueryValue -> IO (SpecialQDiagram b)
 nodeDiagram colorStyle declQV@(DeclQueryValue _ declGraph _ _) (NodeQueryValue _ name) = do
   let
     collapsedDeclGraph = syntaxGraphToLessCollapsedGraph declGraph
@@ -127,14 +128,14 @@ nodeDiagram colorStyle declQV@(DeclQueryValue _ declGraph _ _) (NodeQueryValue _
   pure diagram
 
 commentToDiagram :: SpecialBackend b
-  => ColorStyle Double
+  => ColorStyle
   -> Exts.Comment
   -> SpecialQDiagram b
 commentToDiagram colorStyle (Exts.Comment _ _ c) = Dia.value mempty $ multilineComment colorStyle c
 
 -- Not queryable diagram
 staticDiagramFromModule :: SpecialBackend b =>
-  Bool -> ModuleGraphs -> ColorStyle Double -> IO(SpecialQDiagram b)
+  Bool -> ModuleGraphs -> ColorStyle -> IO(SpecialQDiagram b)
 staticDiagramFromModule includeComments (declSpansAndGraphs, comments) colorStyle = do
   let 
     (declarationSpans, graphs) = unzip declSpansAndGraphs
@@ -159,7 +160,7 @@ composeDiagrams diagrams = finalDiagram where
   finalDiagram = placeDiagrams sortedDiagarms
 
 commentToSpanAndDiagram :: SpecialBackend b
-  => ColorStyle Double
+  => ColorStyle
   -> Exts.Comment
   -> (Exts.SrcSpan, SpecialQDiagram b)
 commentToSpanAndDiagram colorStyle comment@(Exts.Comment _ srcSpan _) = (srcSpan, commentToDiagram colorStyle comment)
@@ -168,7 +169,7 @@ moduleGraphsToViewGraphs :: AnnotatedFGR -> (AnnotatedFGR, AnnotatedFGR)
 moduleGraphsToViewGraphs graph = (graph, graph) 
 
 addSourceCodeDiagram :: SpecialBackend b
-  => ColorStyle Double
+  => ColorStyle
   -> SpecialQDiagram b
   -> SourceCode
   -> SpecialQDiagram b

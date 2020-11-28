@@ -1,4 +1,4 @@
-module FuncDefRegionInfo(getFuncDefRegionInfo) where
+module FuncDefRegionInfo(getFuncDefRegionInfo, lambdaLevel, FuncDefRegionInfo) where
 
 import qualified Data.Set as Set
 import Data.List(foldl')
@@ -11,10 +11,15 @@ import Types (
   )
 import SyntaxGraph(SyntaxGraph(..))
 
-getFuncDefRegionInfo :: SyntaxGraph -> [NodeName] -> (Set.Set NodeName, Int)
-getFuncDefRegionInfo combinedGraph lambdaNames = (enclosedNodeNames, lambdaLevel) where
+type FuncDefRegionInfo = (Set.Set NodeName, Int) 
+
+lambdaLevel :: FuncDefRegionInfo -> Int
+lambdaLevel = snd 
+
+getFuncDefRegionInfo :: SyntaxGraph -> [NodeName] -> FuncDefRegionInfo
+getFuncDefRegionInfo combinedGraph lambdaNames = (enclosedNodeNames, level) where
   innerNodes = sgNodes combinedGraph 
-  lambdaLevel = getLambdaLevel innerNodes 
+  level = getLambdaLevel innerNodes 
   enclosedNodeNames = getEnclosedNodeNames innerNodes lambdaNames  
 
 getEnclosedNodeNames :: Set.Set (Named a) -> [NodeName] -> Set.Set NodeName

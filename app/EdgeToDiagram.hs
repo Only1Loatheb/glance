@@ -10,8 +10,6 @@ import Diagrams.Prelude hiding ((&), (#), Name)
 import Data.Maybe(fromMaybe)
 import Data.Typeable(Typeable)
 
-import DrawingColors(ColorStyle(..))
-
 import PortConstants(
   pattern InputPortConst
   , pattern ResultPortConst
@@ -26,6 +24,8 @@ import Types(
   , Named(..)
   , NameAndPort(..)
   , NumericType
+  , ColorStyle
+  , ColorStyle'(..)
   )
 
 import DiagramSymbols(
@@ -43,7 +43,7 @@ getArrowShadowOpts ::
   -> (Point V2 NumericType, Point V2 NumericType)
   -> (Maybe (Angle NumericType), Maybe (Angle NumericType))
   -> (NamedIcon,NamedIcon)
-  -> ColorStyle Double 
+  -> ColorStyle 
   -> ArrowOpts NumericType
 getArrowShadowOpts 
   (_, namedPortTo)
@@ -59,7 +59,7 @@ getArrowBaseOpts ::
   -> (Point V2 NumericType, Point V2 NumericType)
   -> (Maybe (Angle NumericType), Maybe (Angle NumericType))
   -> (NamedIcon, NamedIcon)
-  -> ColorStyle Double
+  -> ColorStyle
   -> ArrowOpts NumericType
 getArrowBaseOpts 
   namesAndPorts@(_, namedPortTo)
@@ -71,11 +71,11 @@ getArrowBaseOpts
   $ getArrowOpts points maybeAngles iconPair namedPortTo where
     shaftColor = getShaftColor colorStyle namesAndPorts iconPair
 
-getShaftColor :: ColorStyle Double -> (NameAndPort,NameAndPort) -> (NamedIcon, NamedIcon) -> Colour Double
+getShaftColor :: ColorStyle -> (NameAndPort,NameAndPort) -> (NamedIcon, NamedIcon) -> Colour Double
 getShaftColor colorStyle = getShaftColor' colorStyle edgeColors where
   edgeColors = edgeListC colorStyle
 
-getShaftColor' :: ColorStyle Double -> [Colour Double]
+getShaftColor' :: ColorStyle -> [Colour Double]
   -> (NameAndPort,NameAndPort)-> (NamedIcon, NamedIcon) -> Colour Double
 getShaftColor' colorStyle _ (NameAndPort _ ResultPortConst,_) (Named _ (Icon FunctionDefIcon {} _), _) = lambdaC colorStyle
 getShaftColor' colorStyle _ (_, NameAndPort _ InputPortConst) (_, Named _ (Icon FunctionDefIcon {} _)) = lambdaC colorStyle

@@ -40,9 +40,12 @@ import           Types (
   , NodeInfo(..)
   , IconInfo
   , Named(..)
-  , TransformParams(..)
+  , DrawingInfo(..)
   , SpecialQDiagram
   , AnnotatedFGR
+  , ColorStyle
+  , ColorStyle'(..)
+  , InCaseOrInApply(..)
   )
 
 import Util(nodeNameToInt, namedToTuple)
@@ -56,12 +59,12 @@ import NodePlacementMap (
   placeNode
   , getQueryRects
   ) 
-import DrawingColors (ColorStyle,dummyColorStyle)
+import DrawingColors (dummyColorStyle)
 -- If the inferred types for these functions becomes unweildy,
 -- try using PartialTypeSignitures.
 
 drawLambdaRegions :: forall b . SpecialBackend b =>
-  ColorStyle Double 
+  ColorStyle 
   -> IconInfo
   -> [(NamedIcon, SpecialDiagram b)]
   -> SpecialDiagram b
@@ -91,7 +94,6 @@ customLayoutParams = GV.defaultParams{
   GV.globalAttributes = [
     GV.NodeAttrs [GVA.Shape GVA.BoxShape]
     , GV.EdgeAttrs [GVA.MinLen 1]
-    --GV.NodeAttrs [GVA.Shape GVA.Circle]
     , GV.GraphAttrs
       [
       --GVA.Overlap GVA.KeepOverlaps,
@@ -126,7 +128,7 @@ getDiagramWidthAndHeight dummyDiagram = (diaWidth, diaHeight) where
   diaHeight = max (drawingToGraphvizScaleFactor * Dia.height dummyDiagram) minialGVADimention    
 
 renderIconGraph :: forall b. SpecialBackend b
-  => ColorStyle Double
+  => ColorStyle
   -> Gr (NodeInfo NamedIcon) (EmbedInfo Edge)
   -> Gr (NodeInfo NamedIcon) (EmbedInfo Edge)
   -> IO (SpecialQDiagram b)
@@ -134,6 +136,7 @@ renderIconGraph colorStyle fullGraphWithInfo viewGraph = do
   layoutResult <- layoutGraph' layoutParams GVA.Dot parentGraph
   let
     iconAndPositions = (Map.toList . fst . getGraph)  layoutResult
+    
     iconAndPlacedNodes :: [(NamedIcon,SpecialDiagram b)]
     iconAndPlacedNodes = map (placeNode iconInfo colorStyle drawingToGraphvizScaleFactor) iconAndPositions
     placedNodes = mconcat $ fmap snd iconAndPlacedNodes
@@ -144,7 +147,8 @@ renderIconGraph colorStyle fullGraphWithInfo viewGraph = do
 
     queryRects = mconcat $ getQueryRects iconAndPlacedNodes
     -- boxesDia = mconcat $ map (Dia.lc Dia.blue $ Dia.boundingRect . snd) iconAndBoudingRect
-  pure  ( Dia.atop placedNodesAny placedEdges <> queryRects <> placedRegions )
+    -- gve = Dia.value mempty $ graphVizEdges layoutResult
+  pure  ( Dia.atop placedNodesAny placedEdges <> queryRects <> placedRegions)
   where
     parentGraph = ING.nmap niVal $ ING.labfilter (isNothing . niParent) viewGraph
     fullGraph = ING.nmap niVal fullGraphWithInfo
@@ -156,7 +160,7 @@ renderIconGraph colorStyle fullGraphWithInfo viewGraph = do
     layoutParams = customLayoutParams{
       GV.fmtNode = nodeAttribute
       , GV.clusterBy = clusterNodesBy iconInfo
-      , GV.fmtEdge = edgeGraphVizAttrs iconInfo
+      , GV.fmtEdge = edgeGraphVizAttrs
       -- , GV.fmtCluster = (clusterAtributeList iconInfo)
       }
 
@@ -165,16 +169,20 @@ renderIconGraph colorStyle fullGraphWithInfo viewGraph = do
       [ GVA.Width diaWidth, GVA.Height diaHeight] where
         (diaWidth, diaHeight) = getDiagramWidthAndHeight dummyDiagram
         dummyDiagram :: SpecialDiagram b
-        dummyDiagram = iconToDiagram iconInfo dummyColorStyle nodeIcon (TransformParams (NodeName (-1)) 0)
+        dummyDiagram = iconToDiagram iconInfo nodeIcon (DrawingInfo (NodeName (-1)) 0 None dummyColorStyle)
 
           
 --TODO add edge parameter constraint = false -- https://www.graphviz.org/doc/info/attrs.html#a:constraint 
 
 renderIngSyntaxGraph :: (HasCallStack, SpecialBackend b)
-  => ColorStyle Double
+  => ColorStyle
   -> (AnnotatedFGR, AnnotatedFGR) 
   -> IO (SpecialQDiagram b)
 renderIngSyntaxGraph colorStyle (fullGr, viweGr) 
   = renderIconGraph colorStyle fullGraph viewGraph where
     fullGraph = ING.nmap (fmap (fmap nodeToIcon)) fullGr
     viewGraph = ING.nmap (fmap (fmap nodeToIcon)) viweGr
+
+-- graphVizEdges layoutResult = Dia.scale drawingToGraphvizScaleFactor pathDia where
+--   pathDia = mconcat $ map (Dia.lwG 1 Dia.lc Dia.white . Dia.strokePath) edgePaths
+--   edgePaths = map (\(_,_,_,x) -> x) $ (snd . getGraph) layoutResult

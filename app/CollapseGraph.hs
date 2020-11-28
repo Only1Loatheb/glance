@@ -38,6 +38,7 @@ import Types(
   , Named(..)
   , EmbedderSyntaxNode
   , NodeName(..)
+  , CaseFlavor(..)
   )
 import SyntaxGraph(SyntaxGraph(..), lookupInEmbeddingMap)
 
@@ -90,11 +91,10 @@ isSyntaxNodeEmbeddable parentType (SyntaxNode syntaxNode _) parentPort childPort
     (LambdaParent fname, ListLitNode {}) -> lambdaEmbeddable fname
     (LambdaParent fname, FunctionValueNode {}) -> lambdaEmbeddable fname
 
-    -- (ApplyParent, FunctionValueNode {})
-    --   -> parentPortNotResult && childPortIsResult
-    (CaseParent, CaseResultNode {}) -> True
+    (CaseParent, CaseResultNode {}) -> isParentQualPort
+    (CaseParent, LiteralNode {}) -> parentPortNotResult
     (CaseParent, PatternApplyNode {}) -> caseEmbeddable || parentPortIsArg && isPatternUnpackingPort childPort
-    (CaseParent, LiteralNode {}) -> caseEmbeddable || parentPortIsArg && isPatternUnpackingPort childPort
+    (CaseParent, CaseNode {}) -> False 
     (CaseParent, _) -> caseEmbeddable
     
     (PatternApplyParent, _) -> isPatternUnpackingPort parentPort && childPortIsResult
