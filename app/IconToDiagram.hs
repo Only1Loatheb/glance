@@ -316,6 +316,7 @@ generalApplyDia
   di
   -- beside Place two monoidal objects (i.e. diagrams, paths, animations...) next to each other along the given vector.
   = finalDia where
+
     name = diName di 
     nestingLevel = diNestingLevel di
 
