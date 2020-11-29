@@ -60,7 +60,8 @@ mirrorTree (Node a l r) = Node a (mirrorTree r) (mirrorTree l)
 nodesAtLevel :: Tree a -> Int -> [a]
 nodesAtLevel Empty _ = []
 nodesAtLevel (Node a l r) 1 = [a]
-nodesAtLevel (Node a l r) i = (nodesAtLevel l (i-1)) ++ (nodesAtLevel r (i-1))
+nodesAtLevel (Node a l r) i = (nodesAtLevel l levelsToGo) ++ (nodesAtLevel r levelsToGo) where
+  levelsToGo = i-1
 
 data FSObject = 
   File {fileName::String} | Dir {dirName::String, files::[FSObject]}

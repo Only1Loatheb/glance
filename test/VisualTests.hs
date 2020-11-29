@@ -55,7 +55,6 @@ simpleTests = [
   , "f x = 1"
   , "y = \"foo\""
   , "y = f x"
-  -- TODO Fix y = f . g
   , "y = f . g"
   , "y = f . g . h"
   , "y = f . g . h . i"
@@ -90,7 +89,8 @@ composeTests = [
   "y = f3 . f2 . f1 $ x",
   -- TODO The nesting depth could be reduced if the composition is applied to
   -- both f3 and f4 instead of just f3.
-  "y = f1 $ f6 (f2 (f3 . f4)) (f5 x)"
+  "y = f1 $ f6 (f2 (f3 . f4)) (f5 x)",
+  "y = f x where f = g . h"
   ]
 
 -- | nestedTests / collapseTest

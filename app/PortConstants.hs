@@ -61,10 +61,10 @@ qualPortsConst :: [Port]
 qualPortsConst = fmap Port [-2,-4..]
 
 caseConditionPorts :: [Port]
-caseConditionPorts = argPortsConst -- argPortsConst
+caseConditionPorts = argPortsConst
 
 caseValuePorts :: [Port]
-caseValuePorts =  qualPortsConst -- resultPortsConst 
+caseValuePorts =  qualPortsConst
 
 listCompQualPorts :: [Port]
 listCompQualPorts = qualPortsConst

@@ -293,8 +293,8 @@ applyDiagram :: SpecialBackend b
 applyDiagram iconInfo flavor icon icons di =
   let colorStyle = diColorStyle di
   in case flavor of
-    ApplyFlavor -> generalApplyDia iconInfo (nestingC colorStyle) icon icons di
-    ComposeFlavor -> generalApplyDia iconInfo (applyCompositionC colorStyle) icon icons di
+    ApplyFlavor -> generalApplyDia iconInfo flavor (nestingC colorStyle) icon icons di
+    ComposeFlavor -> generalApplyDia iconInfo flavor (applyCompositionC colorStyle) icon icons di
 
 -- | apply port locations:
 -- InputPortConst: Function
@@ -302,19 +302,20 @@ applyDiagram iconInfo flavor icon icons di =
 -- Ports 2,3..: Arguments
 generalApplyDia :: SpecialBackend b
   => IconInfo
+  -> ApplyFlavor
   -> [Colour Double]
   -> Maybe NamedIcon
   -> [Maybe NamedIcon]
   -> TransformableDia b
 generalApplyDia
   iconInfo
+  flavor
   borderColors
   maybeFunText
   args
   di
   -- beside Place two monoidal objects (i.e. diagrams, paths, animations...) next to each other along the given vector.
   = finalDia where
-    colorStyle = diColorStyle di
     name = diName di 
     nestingLevel = diNestingLevel di
 
@@ -332,7 +333,11 @@ generalApplyDia
 
     functionDiagramInBox = inFrame transformedName borderColor boxWidth (height transformedName)
 
-    finalDia = vcat [ argsDiagram,functionDiagramInBox, resultDiagram]
+    argsAndFunctionDiagram = case flavor of 
+      ApplyFlavor -> [argsDiagram,functionDiagramInBox]
+      _ -> [functionDiagramInBox, argsDiagram]
+
+    finalDia = vcat $ argsAndFunctionDiagram ++ [resultDiagram]
 
 listCompDiagram :: SpecialBackend b
   => IconInfo

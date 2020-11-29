@@ -92,7 +92,7 @@ drawLambdaRegions colorStyle iconInfo placedNodes
 customLayoutParams :: GV.GraphvizParams ING.Node v e ClusterT v
 customLayoutParams = GV.defaultParams{
   GV.globalAttributes = [
-    GV.NodeAttrs [GVA.Shape GVA.BoxShape]
+    GV.NodeAttrs [GVA.Shape GVA.Record]
     , GV.EdgeAttrs [GVA.MinLen 1]
     , GV.GraphAttrs
       [
@@ -165,12 +165,16 @@ renderIconGraph colorStyle fullGraphWithInfo viewGraph = do
       }
 
     nodeAttribute :: (_, NamedIcon) -> [GV.Attribute]
-    nodeAttribute (_, Named _ nodeIcon) =
-      [ GVA.Width diaWidth, GVA.Height diaHeight] where
+    nodeAttribute (_, Named name nodeIcon) =
+      [ GVA.Width diaWidth
+      , GVA.Height diaHeight
+      -- , GVA.Label $ GVA.RecordLabel records
+      ] where
         (diaWidth, diaHeight) = getDiagramWidthAndHeight dummyDiagram
         dummyDiagram :: SpecialDiagram b
         dummyDiagram = iconToDiagram iconInfo nodeIcon (DrawingInfo (NodeName (-1)) 0 None dummyColorStyle)
 
+        -- records = [GVA.PortName $ nodeNameToInt name]  
           
 --TODO add edge parameter constraint = false -- https://www.graphviz.org/doc/info/attrs.html#a:constraint 
 
