@@ -44,6 +44,8 @@ import Types(
   )
 
 import Util(fromMaybeError)
+
+import NodeRecordLabels(showNamedPortRrecord)
   
   -- MinLen - Minimum edge length (rank difference between head and tail).
 dontConstrainAttrs :: [GVA.Attribute]
@@ -59,13 +61,13 @@ constrainAttrs DrawAndNotConstraint {} = dontConstrainAttrs
 constrainAttrs _  = []
 
 placementAttrs :: Connection -> [GVA.Attribute]
-placementAttrs (NameAndPort _ portFrom, NameAndPort _ portTo) = [
-    GVA.TailPort $ gvaEdgePort (portFrom, Nothing)
-  , GVA.HeadPort $ gvaEdgePort (portTo,   Nothing)
+placementAttrs (namedPortFrom, namedPortTo) = [
+    GVA.TailPort $ gvaEdgePort (namedPortFrom, Nothing)
+  , GVA.HeadPort $ gvaEdgePort (namedPortTo,   Nothing)
   ]
 
-gvaEdgePort :: (Port, Maybe GVA.CompassPoint) -> GVA.PortPos
-gvaEdgePort pair = uncurry GVA.LabelledPort $ first (GVA.PN . T.pack . show . Dia.toName) pair
+gvaEdgePort :: (NameAndPort, Maybe GVA.CompassPoint) -> GVA.PortPos
+gvaEdgePort pair = uncurry GVA.LabelledPort $ first (GVA.PN . T.pack . showNamedPortRrecord) pair
 
 -- | makeEdges draws the edges underneath the nodes.
 makeEdges :: (HasCallStack, SpecialBackend b, ING.Graph gr) =>
@@ -110,7 +112,7 @@ getPoints origDia (fromNamePort, toNamePort) = (pointFrom, pointTo) where
   pointTo = getPositionOfNamed origDia toNamePort
 
 getPositionOfNamed :: SpecialBackend b => SpecialDiagram b-> NameAndPort ->  Maybe PointType
-getPositionOfNamed origDia (NameAndPort name port) = case Dia.lookupName (name .> port) origDia of
+getPositionOfNamed origDia (Named name port) = case Dia.lookupName (name .> port) origDia of
   --Nothing -> Dia.r2 (0, 0)--error "Name does not exist!"
   Nothing -> Nothing -- error $ "Name does not exist! name=" <> show n -- <> "\neInfo=" <> show eInfo
   Just subDia -> Just $ Dia.location subDia
@@ -163,7 +165,7 @@ getArrowsOpts
 --   shaftColor _ = Dia.white
 
 findPortAngles :: IconInfo -> NamedIcon -> NameAndPort -> Maybe (Angle NumericType)
-findPortAngles iconInfo (Named nodeName nodeIcon) (NameAndPort diaName port)
+findPortAngles iconInfo (Named nodeName nodeIcon) (Named diaName port)
   = foundAngles where
     mName = if nodeName == diaName then Nothing else Just diaName
     foundAngles = Just $ getPortAngle iconInfo nodeIcon port mName

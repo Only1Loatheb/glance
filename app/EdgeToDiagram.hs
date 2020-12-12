@@ -77,11 +77,11 @@ getShaftColor colorStyle = getShaftColor' colorStyle edgeColors where
 
 getShaftColor' :: ColorStyle -> [Colour Double]
   -> (NameAndPort,NameAndPort)-> (NamedIcon, NamedIcon) -> Colour Double
-getShaftColor' colorStyle _ (NameAndPort _ ResultPortConst,_) (Named _ (Icon FunctionDefIcon {} _), _) = lambdaC colorStyle
-getShaftColor' colorStyle _ (_, NameAndPort _ InputPortConst) (_, Named _ (Icon FunctionDefIcon {} _)) = lambdaC colorStyle
-getShaftColor' _ edgeColors (NameAndPort (NodeName nodeNum) (Port portNum),_) (Named _ (Icon ListCompIcon {} _), _) = hashedShaftColor nodeNum portNum edgeColors
-getShaftColor' _ edgeColors (_, NameAndPort (NodeName nodeNum) (Port portNum)) (_, Named _ (Icon ListCompIcon {} _)) = hashedShaftColor nodeNum (portNum + 1) edgeColors
-getShaftColor' _ edgeColors (NameAndPort (NodeName nodeNum) (Port portNum),_) _ = hashedShaftColor nodeNum portNum edgeColors
+getShaftColor' colorStyle _ (Named _ ResultPortConst,_) (Named _ (Icon FunctionDefIcon {} _), _) = lambdaC colorStyle
+getShaftColor' colorStyle _ (_, Named _ InputPortConst) (_, Named _ (Icon FunctionDefIcon {} _)) = lambdaC colorStyle
+getShaftColor' _ edgeColors (Named (NodeName nodeNum) (Port portNum),_) (Named _ (Icon ListCompIcon {} _), _) = hashedShaftColor nodeNum portNum edgeColors
+getShaftColor' _ edgeColors (_, Named (NodeName nodeNum) (Port portNum)) (_, Named _ (Icon ListCompIcon {} _)) = hashedShaftColor nodeNum (portNum + 1) edgeColors
+getShaftColor' _ edgeColors (Named (NodeName nodeNum) (Port portNum),_) _ = hashedShaftColor nodeNum portNum edgeColors
 
 hashedShaftColor :: Int -> Int -> [a] -> a
 hashedShaftColor nodeNum portNum edgeColors = shaftColor where
@@ -107,7 +107,7 @@ getArrowOpts (formPoint, toPoint) (anglesFrom,anglesTo) (_,iconTo) namedPortTo
 
 -- getArrowHead :: Icon -> 
 getArrowHead :: NamedIcon -> NameAndPort -> ArrowHT NumericType
-getArrowHead (Named iconName (Icon FunctionDefIcon {} _)) (NameAndPort nodeName InputPortConst) 
+getArrowHead (Named iconName (Icon FunctionDefIcon {} _)) (Named nodeName InputPortConst) 
   = if nodeName == iconName then noHead else tri
 getArrowHead _ _ = tri
 -- https://archives.haskell.org/projects.haskell.org/diagrams/doc/arrow.html

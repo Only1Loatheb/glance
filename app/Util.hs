@@ -47,7 +47,7 @@ makeInvisibleEdge :: Int -> Connection -> Edge
 makeInvisibleEdge len = Edge (DoNotDrawButConstraint len)
 
 nameAndPort :: NodeName -> Port -> NameAndPort
-nameAndPort n p = NameAndPort n p
+nameAndPort n p = Named n p
 
 -- END Edge constructors --
 

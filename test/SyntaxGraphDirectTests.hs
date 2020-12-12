@@ -170,8 +170,8 @@ evalExpAppTest = syntaxGraphTest expectedSyntaxGraph generatedSyntaxGraph where
       , Named {_naName = NodeName 1, _naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = LiteralNode "x", srcRef = dummySrcRef }}}
       , Named {_naName = NodeName 2, _naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = ApplyNode ApplyFlavor 1, srcRef = dummySrcRef}}}]
     , sgEdges = Set.fromList [
-      Edge {edgeOption = DrawAndConstraint, edgeConnection = (NameAndPort (NodeName 0) (Port 1),NameAndPort (NodeName 2) (Port 0))}
-      , Edge {edgeOption = DrawAndConstraint, edgeConnection = (NameAndPort (NodeName 1) (Port 1),NameAndPort (NodeName 2) (Port 2))}]
+      Edge {edgeOption = DrawAndConstraint, edgeConnection = (Named (NodeName 0) (Port 1),Named (NodeName 2) (Port 0))}
+      , Edge {edgeOption = DrawAndConstraint, edgeConnection = (Named (NodeName 1) (Port 1),Named (NodeName 2) (Port 2))}]
     , sgSinks = Set.fromList []
     , sgBinds = SMap.empty
     , sgEmbedMap = IMap.fromList []
@@ -186,7 +186,7 @@ evalExpAppTest = syntaxGraphTest expectedSyntaxGraph generatedSyntaxGraph where
 --       ,Named {_naName = NodeName 1, _naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = FunctionArgNode ["x"], srcRef = Exts.SrcSpan "<unknown>.hs" 1 1 1 8}}}
 --       ,Named {_naName = NodeName 3, _naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = BindNameNode "f", srcRef = Exts.SrcSpan "<unknown>.hs" 1 1 1 8}}}]
 --     , sgEdges = Set.fromList [
---       Edge {edgeOption = DrawAndConstraint, edgeConnection = (NameAndPort (NodeName 0) (Port 1),NameAndPort (NodeName 3) (Port 0))}
+--       Edge {edgeOption = DrawAndConstraint, edgeConnection = (Named 0) (Port 1),NameAndPort (NodeName 3) (Port 0))}
 --       ,Edge {edgeOption = DrawAndConstraint, edgeConnection = (NameAndPort (NodeName 1) (Port 3),NameAndPort (NodeName 0) (Port 0))}
 --       ,Edge {edgeOption = DoNotDrawButConstraint, edgeConnection = (NameAndPort (NodeName 1) (Port 1),NameAndPort (NodeName 0) (Port 0))}]
 --     , sgSinks = Set.fromList []
@@ -239,7 +239,7 @@ getNodeNames codeString
 
 syntaxNodeCoreToMaybeStr  :: SyntaxNodeCore -> [String]
 syntaxNodeCoreToMaybeStr (ApplyNode {}) = []
-syntaxNodeCoreToMaybeStr (PatternApplyNode name labeledList) = name : map _laLabel labeledList
+syntaxNodeCoreToMaybeStr (PatternApplyNode name labeledList) = name : labeledList
 syntaxNodeCoreToMaybeStr (BindNameNode name) = [name]
 syntaxNodeCoreToMaybeStr (LiteralNode name) = [name]
 syntaxNodeCoreToMaybeStr (FunctionArgNode names) = names

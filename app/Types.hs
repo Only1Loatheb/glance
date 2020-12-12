@@ -10,7 +10,7 @@ module Types (
   , SyntaxNode(..)
   , NodeName(..)
   , Port(..)
-  , NameAndPort(..)
+  , NameAndPort
   , Connection
   , Edge(..)
   , EdgeOption(..)
@@ -91,16 +91,17 @@ data Named a = Named {
 type NamedIcon = Named Icon
 
 data Labeled a = Labeled {
-  _laValue :: a
-  , _laLabel :: String}
+    _laLabel :: String  
+  , _laValue :: a
+  }
   deriving (Show, Eq, Ord)
 
 instance Functor Labeled where
-  fmap f (Labeled value str) = Labeled (f value) str
+  fmap f (Labeled str value ) = Labeled str (f value)
 
 instance Applicative Labeled where
-  pure x = Labeled x ""
-  (Labeled f fStr) <*> (Labeled x xStr) = Labeled (f x) (fStr <> xStr)
+  pure x = Labeled "" x
+  (Labeled fStr f) <*> (Labeled xStr x) = Labeled (fStr <> xStr) (f x)
 
 type FuncDefRegionInfo = (
   Set.Set NodeName  -- Nodes inside the lambda
@@ -131,8 +132,8 @@ data DiagramIcon =
     (Maybe NodeName)  -- The function for apply, or the argument for compose
     [Maybe NodeName]  -- list of arguments or functions
   | NestedPatternApp
-    (Labeled (Maybe NamedIcon))  -- Data constructor
-    [Labeled (Maybe NamedIcon)]  -- Arguments
+    String  -- Data constructor
+    [Labeled (Maybe NodeName)]  -- Arguments
     (Maybe NodeName)  -- asigned value
   | NestedCaseIcon 
     CaseFlavor 
@@ -179,7 +180,7 @@ data SyntaxNodeCore =
   -- Function application, composition, and applying to a composition
   -- The list of nodes is unordered (replace with a map?)
   ApplyNode ApplyFlavor Int
-  | PatternApplyNode String [Labeled (Maybe SgNamedNode)]
+  | PatternApplyNode String [String]
   | BindNameNode String -- for top level bindings --TODO delete this
   | LiteralNode String -- Literal values like the string "Hello World"
   | FunctionArgNode
@@ -201,7 +202,7 @@ data SyntaxNodeCore =
 newtype Port = Port Int deriving (Typeable, Eq, Ord, Show)
 instance IsName Port
 
-data NameAndPort = NameAndPort NodeName Port deriving (Show, Eq, Ord)
+type NameAndPort = Named Port -- deriving (Show, Eq, Ord) -- there is NamedPort already
 
 type Connection = (NameAndPort, NameAndPort)
 

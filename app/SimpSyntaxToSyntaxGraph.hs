@@ -559,12 +559,12 @@ makeEitherEdgeOrSgBind ref lamPort = case ref of
 
 makePatternEdgeInLambda ::GraphAndRef -> NameAndPort -> Either Edge SgBind
 makePatternEdgeInLambda (GraphAndRef _ ref) lamPort = case ref of
-  Right (NameAndPort name _) 
+  Right (Named name _) 
     -> Left $ makeSimpleEdge (lamPort, patternValueInputPort name )
   Left str -> Right (str, Right lamPort)
 
 patternValueInputPort :: NodeName -> NameAndPort
-patternValueInputPort name = NameAndPort name  PatternUnpackingPort
+patternValueInputPort name = Named name  PatternUnpackingPort
 -- END END END END END evalLambda 
 
 makeApplyGraph ::
@@ -660,8 +660,8 @@ makeNestedPatternGraph applyIconName funStr argVals srcRef = nestedApplyResult
       = graphsToComponents $ fmap snd nestedNamedNodesAndGraphs
 
     argListMapper (str, arg) = case arg of
-      Left _ -> Labeled Nothing str
-      Right (namedNode, _) -> Labeled (Just namedNode) str
+      Left _ -> str
+      Right (namedNode, _) -> str
 
     argList = fmap argListMapper mappedArgs
 
@@ -784,7 +784,7 @@ evalSqGen context (l, (SqGen values itemPat)) = do
 evalSqGen _ _ = error "SimpQStmt must be SqGen" 
 
 makePatternRefForUnpacking :: Reference -> Reference
-makePatternRefForUnpacking (Right (NameAndPort name ResultPortConst)) = Right (NameAndPort name PatternUnpackingPort)
+makePatternRefForUnpacking (Right (Named name ResultPortConst)) = Right (Named name PatternUnpackingPort)
 makePatternRefForUnpacking ref = ref
 
 makeListCompGraph :: EvalContext -> NodeName -> SrcRef -> GraphAndRef
@@ -797,7 +797,7 @@ makeListCompGraph context listCompName listCompSrcRef listCompItemGraphAndRef
     = makeListCompNodeGraph listCompName listCompSrcRef (length genGraphsAndRefs) (length qualGraphsAndRefs)
 
   listCompItemGraph = combineFromGraphToPort makeSimpleEdge
-    listCompItemGraphAndRef ( NameAndPort listCompName  (inputPort listCompNode))
+    listCompItemGraphAndRef ( Named listCompName  (inputPort listCompNode))
 
   qStmtGraph = makeQstmtGraph qualGraphsAndRefs declGraphsAndRefs genGraphsAndRefs 
 
@@ -870,7 +870,7 @@ evalPatBind _ c pat e = do
 evalPatBindHelper :: Reference -> Reference -> (Set.Set Edge, Set.Set SgSink, SgBindMap)
 evalPatBindHelper patRef rhsRef = case patRef of
   (Left s) -> (mempty, mempty, SMap.singleton s rhsRef)
-  (Right (NameAndPort name _)) -> 
+  (Right (Named name _)) -> 
     let patternValuePort = patternValueInputPort name in
       case rhsRef of
       (Left rhsStr) -> (mempty, Set.singleton (SgSink rhsStr patternValuePort), SMap.empty)

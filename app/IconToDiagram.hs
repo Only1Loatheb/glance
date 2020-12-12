@@ -158,12 +158,12 @@ makeAppInnerIcon :: SpecialBackend b
   -> Labeled (Maybe NamedIcon) -- The icon 
   -> SpecialDiagram b
 makeAppInnerIcon _iconInfo di inType  port
-  (Labeled Nothing str)
+  (Labeled str Nothing)
   = makeLabelledPort inType colorStyle name port str where
     name = diName di
     colorStyle = diColorStyle di
 makeAppInnerIcon iconInfo di inType _port
-  (Labeled (Just (Named iconNodeName icon)) _)
+  (Labeled _ (Just (Named iconNodeName icon)))
   = iconToDiagram
     iconInfo
     icon
@@ -211,16 +211,18 @@ iconToDiagram iconInfo (Icon icon _) = case icon of
   FunctionArgIcon argumentNames -> functionArgDia argumentNames
   FunctionDefIcon funcName _ inputNode -> functionDefDia iconInfo funcName (findMaybeIconFromName iconInfo inputNode)
   BindTextBoxIcon s -> bindDiagram s
-  NestedApply flavor headIcon args
-    -> applyDiagram iconInfo flavor
-       (findMaybeIconFromName iconInfo headIcon)
-       (findMaybeIconsFromNames iconInfo args)
-  NestedPatternApp constructor args rhsNodeName
-    -> patternDiagram iconInfo patternC constructor args (findMaybeIconFromName iconInfo rhsNodeName) where
+  NestedApply flavor headIcon args -> applyDiagram
+    iconInfo flavor
+    (findMaybeIconFromName iconInfo headIcon)
+    (findMaybeIconsFromNames iconInfo args)
+  NestedPatternApp constructor args rhsNodeName -> patternDiagram
+    iconInfo patternC constructor 
+    (over (mapped . laValue) (findMaybeIconFromName iconInfo) args)
+    (findMaybeIconFromName iconInfo rhsNodeName)
   NestedCaseIcon styleTag arg condsAndVals -> caseDiagram iconInfo
-                        (findMaybeIconFromName iconInfo arg)
-                        (map (bimap (findMaybeIconFromName iconInfo) (findMaybeIconFromName iconInfo)) condsAndVals)
-                        styleTag
+    (findMaybeIconFromName iconInfo arg)
+    (map (bimap (findMaybeIconFromName iconInfo) (findMaybeIconFromName iconInfo)) condsAndVals)
+    styleTag
   CaseResultIcon -> caseResultDiagram
   ListCompIcon itemName gensNames qualsNames -> listCompDiagram iconInfo
     (findMaybeIconFromName iconInfo itemName) 
@@ -256,30 +258,31 @@ literalDiagram t drawingInfo = finalDia where
 patternDiagram :: forall b. SpecialBackend b
   => IconInfo
   -> (ColorStyle -> Colour NumericType)
-  -> Labeled (Maybe NamedIcon)
+  -> String
   -> [Labeled (Maybe NamedIcon)]
   -> Maybe NamedIcon
   -> TransformableDia b
 patternDiagram
   iconInfo
   getBorderColor
-  maybeConstructorName
+  constructorName
   subIcons
   rhsNodeName
   di
   = centerY finalDia where
-    borderColor = (getBorderColor . diColorStyle) di
+    colorStyle = diColorStyle di
+    borderColor = getBorderColor colorStyle
     name = diName di
     inType = diIsIn di
     resultDia = makeResultDiagram name
 
-    subscribedValueDia = alignT $ makeAppInnerIcon iconInfo di None PatternUnpackingPort (Labeled rhsNodeName patternSubscribedValueStr)
-
-    constructorDiagram = alignB $ makeInputDiagram iconInfo di maybeConstructorName name
+    subscribedValueDia = alignT $ makeAppInnerIcon iconInfo di None PatternUnpackingPort (Labeled patternSubscribedValueStr rhsNodeName)
 
     patterns::[SpecialDiagram b]
     patterns = alignB $ zipWith (makeAppInnerIcon iconInfo di inType) resultPortsConst subIcons
-    patternDia = constructorDiagram ||| subscribedValueDia ||| hsep portSeparationSize patterns
+    patternDia = constructor ||| subscribedValueDia ||| hsep portSeparationSize patterns
+
+    constructor = coloredTextBox (textBoxTextC colorStyle) constructorName
 
     patternDiagramInBox = inFrame patternDia borderColor (width patternDia) (height patternDia)
 
@@ -420,8 +423,8 @@ caseDiagram iconInfo input condsAndVals flavor di
     iconMapper (condPort,valPort) (cond, val) = decisionDiagram where
       condDia = alignB $ vcat [inCaseDecisionFrame colorStyle condIcon, spaceForBigLine]
       valDia = alignB $ vcat [valIcon, caseValSymbol symbolColor]
-      condIcon = makeAppInnerIcon iconInfo di InCase condPort (Labeled cond "")
-      valIcon = makeAppInnerIcon iconInfo di None valPort (Labeled val "")
+      condIcon = makeAppInnerIcon iconInfo di InCase condPort (Labeled "" cond)
+      valIcon = makeAppInnerIcon iconInfo di None valPort (Labeled "" val)
       spaceForBigLine = strutY defaultLineWidth
       decisionDiagram = hcat [condDia, valDia]
 

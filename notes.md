@@ -37,5 +37,6 @@ stack exec glance-exe -- -c ./examples/advantages.hs -o ./images/advantages.svg
 stack exec glance-exe -- -c ./examples/lab1.hs -o ./images/lab1.svg
 stack exec glance-exe -- -c ./examples/lab2.hs -o ./images/lab2.svg
 stack exec glance-exe -- -c  ./examples/simpleFunctions.hs -o ./images/simpleFunctions.svg
+stack exec glance-exe -- -c ./examples/quickSort.hs -o ./images/quickSort.svg
 firefox --new-window ./test/test-output/visual-tests.svg
 ```

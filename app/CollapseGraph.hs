@@ -186,7 +186,7 @@ parentCanEmbedChild embedingTest graph parent child edge embedDirection
         childPort
         where
           parentType = lookupParentType graph parent
-          (NameAndPort _ fromPort, NameAndPort _ toPort) = edgeConnection edge
+          (Named _ fromPort, Named _ toPort) = edgeConnection edge
           (parentPort, childPort)
             = parentAndChild embedDirection (fromPort, toPort)
 
@@ -338,7 +338,7 @@ syntaxGraphToFglGraph (SyntaxGraph nodes edges _ _ eMap) =
     labeledNodes = fmap makeLabeledNode (Set.toList nodes)
     labeledEdges = fmap makeLabeledEdge (Set.toList edges)
 
-    makeLabeledEdge e@(Edge _ (NameAndPort name1 _, NameAndPort name2 _)) =
+    makeLabeledEdge e@(Edge _ (Named name1 _, Named name2 _)) =
       (nodeNameToInt $ lookupInEmbeddingMap name1 eMap
       , nodeNameToInt $ lookupInEmbeddingMap name2 eMap
       , e)

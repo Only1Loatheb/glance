@@ -103,8 +103,8 @@ customLayoutParams = GV.defaultParams{
       --GVA.OverlapScaling 4,
       GVA.OverlapShrink True
       , GVA.ClusterRank GVA.Local
-      , GVA.RankSep [1.2 * lambdaRegionPadding * drawingToGraphvizScaleFactor]
-      , GVA.NodeSep $ 0.8 * lambdaRegionPadding * drawingToGraphvizScaleFactor
+      , GVA.RankSep [0.9 * lambdaRegionPadding * drawingToGraphvizScaleFactor]
+      , GVA.NodeSep $ 0.9 * lambdaRegionPadding * drawingToGraphvizScaleFactor
       ]
     ]
   , GV.clusterID =  GV.Num . GV.Int --   ClusterT
@@ -132,7 +132,7 @@ renderIconGraph :: forall b. SpecialBackend b
   -> Gr (NodeInfo NamedIcon) (EmbedInfo Edge)
   -> IO (SpecialQDiagram b)
 renderIconGraph colorStyle fullGraphWithInfo viewGraph = do
-  layoutResult <- layoutGraph' layoutParams GVA.Dot parentGraph
+  layoutResult <- layoutGraph' layoutParams GVA.Dot parentGraphNoLoops
   let
     iconAndPositions = (Map.toList . fst . getGraph)  layoutResult
     
@@ -150,6 +150,8 @@ renderIconGraph colorStyle fullGraphWithInfo viewGraph = do
   pure  ( Dia.atop placedNodesAny placedEdges <> queryRects <> placedRegions)
   where
     parentGraph = ING.nmap niVal $ ING.labfilter (isNothing . niParent) viewGraph
+    parentGraphNoLoops = ING.delEdges loopEdges parentGraph
+    loopEdges = filter (uncurry (==)) $ ING.edges parentGraph
     fullGraph = ING.nmap niVal fullGraphWithInfo
     iconInfo = IMap.fromList
                 $ first nodeNameToInt . namedToTuple . snd
@@ -160,7 +162,6 @@ renderIconGraph colorStyle fullGraphWithInfo viewGraph = do
       GV.fmtNode = nodeAttribute
       , GV.clusterBy = clusterNodesBy iconInfo
       , GV.fmtEdge = edgeGraphVizAttrs
-      -- , GV.fmtCluster = (clusterAtributeList iconInfo)
       }
 
     nodeAttribute :: (_, NamedIcon) -> [GV.Attribute]
@@ -173,7 +174,7 @@ renderIconGraph colorStyle fullGraphWithInfo viewGraph = do
         dummyDiagram :: SpecialDiagram b
         dummyDiagram = iconToDiagram iconInfo nodeIcon (DrawingInfo (NodeName (-1)) 0 None dummyColorStyle)
 
-        recordFields = recordLabels iconInfo nodeIcon (Just name)
+        recordFields = recordLabels iconInfo nodeIcon name
           
 --TODO add edge parameter constraint = false -- https://www.graphviz.org/doc/info/attrs.html#a:constraint 
 

@@ -21,21 +21,21 @@ import           Types(
   , SyntaxNode(..)
   , SyntaxNodeCore(..)
   , Edge(..)
-  , NameAndPort(..)
+  ,  Named(..)
   , NodeName(..)
   , Port
   , Embedder(..)
-  , Named(..)
   , EmbedderSyntaxNode
+  , Labeled(..)
   )
 
 -- | Helper for makeArg
 findArg :: Port -> (NodeName, Edge) -> Bool
 findArg currentPort
   (argName
-  , Edge _ (NameAndPort fromName fromPort, NameAndPort toName toPort))
-  | argName == fromName = currentPort == toPort
-  | argName == toName = currentPort == fromPort
+  , Edge _ (Named nameFrom fromPort, Named nameTo toPort))
+  | argName == nameFrom = currentPort == toPort
+  | argName == nameTo = currentPort == fromPort
   | otherwise = False -- This case should never happen
 
 makeArg :: Set.Set (NodeName, Edge) -> Port -> Maybe NodeName
@@ -49,18 +49,12 @@ nodeToIcon (Embedder embeddedNodes node@(SyntaxNode (ApplyNode flavor numArgs) s
     argList = fmap (makeArg embeddedNodes) argPorts
 
 
-nodeToIcon (Embedder embeddedNodes (SyntaxNode (PatternApplyNode str children) src))
-  = Icon (
-    NestedPatternApp
-    icon
-    -- Why so many fmaps?
-    ( (fmap . fmap . fmap . fmap) nodeToIcon children)
-    asigendValueName
-  )
-  src
-  where
-    icon = pure $ Just (Named (NodeName (-1)) (Icon (TextBoxIcon str) src))
+nodeToIcon (Embedder embeddedNodes node@(SyntaxNode (PatternApplyNode str children) src))
+  = Icon ( NestedPatternApp str patternList asigendValueName ) src where
+    patternList = zipWith zipper (argumentPorts node) children
     asigendValueName = makeArg embeddedNodes PatternUnpackingPort
+    zipper :: Port -> String -> Labeled (Maybe NodeName)
+    zipper port patternLabel = Labeled patternLabel (makeArg embeddedNodes port)
 
 nodeToIcon (Embedder _embeddedNodes (SyntaxNode (BindNameNode str) src))
   = Icon (BindTextBoxIcon str) src

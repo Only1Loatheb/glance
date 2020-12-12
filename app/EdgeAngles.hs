@@ -137,8 +137,8 @@ getPortAngleHelper embeddedIn iconInfo (Icon icon _) port maybeNodeName = case i
     -> generalNestedPortAngle
       iconInfo
       (case embeddedIn of {Just Case -> flipedPatternAngles; _ -> patternAppPortAngle})
-      (headIcon ^. laValue)
-      (toListOf (traverse . laValue) args)
+      (Nothing)
+      ([])
       port
       maybeNodeName
       embeddedIn

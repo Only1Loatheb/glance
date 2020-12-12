@@ -24,6 +24,7 @@ import           Types(
   , Named(..)
   , DiagramIcon(..)
   , laValue
+  , naVal
   )
 import Diagrams.Prelude
 
@@ -42,29 +43,4 @@ findIconFromName icons name@(NodeName nameInt)
     icons
 
 findIcon :: IconInfo -> NodeName -> [Maybe NamedIcon] -> Maybe (Int, Icon)
-findIcon iconInfo name args = icon where
-  numberedArgs = zip ([0,1..] :: [Int]) args
-  filteredArgs = Arrow.second fromJust <$> filter (isJust . snd) numberedArgs
-  nameMatches (_, Named n _) = n == name
-  icon = case find nameMatches filteredArgs of
-    Nothing -> listToMaybe $ mapMaybe findSubSubIcon filteredArgs
-    Just (argNum, Named _ finalIcon) -> Just (argNum, finalIcon)
-    where
-      findSubSubIcon (argNum, Named _ subIcon)
-        = case findNestedIcon iconInfo name subIcon of
-            Nothing -> Nothing
-            Just x -> Just (argNum, x)
-
-findNestedIcon :: IconInfo -> NodeName -> Icon -> Maybe Icon
-findNestedIcon iconInfo name (Icon icon _) = case icon of
-  
-  NestedApply _ headIcon args -> mFoundIcon where 
-    mFoundIcon = over _Just snd (findIcon iconInfo name mNestedIcons) 
-    mNestedIcons ::[Maybe NamedIcon]
-    mNestedIcons = over (mapped . _Just) (findIconFromName iconInfo) (headIcon : args)
-
-  NestedPatternApp constructor args _rhsName -> mFoundIcon where
-    mFoundIcon = over _Just snd (findIcon iconInfo name mNestedIcons) 
-    mNestedIcons :: [Maybe NamedIcon]
-    mNestedIcons = toListOf (traverse . laValue) (constructor:args)
-  _ -> Nothing
+findIcon iconInfo name args = Just (-1000, findIconFromName iconInfo name ^. naVal)
