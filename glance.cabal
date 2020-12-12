@@ -114,7 +114,6 @@ test-suite glance-test
   default-language:    Haskell2010
   Other-modules: EdgeAngles 
                , Icons
-               , SyntaxGraphComparisonTests
                , VisualTests
                , VisualGraphAlgorithmTests
                , Rendering

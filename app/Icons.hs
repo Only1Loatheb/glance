@@ -23,13 +23,15 @@ import           Types(
   , IconInfo
   , Named(..)
   , DiagramIcon(..)
+  , laValue
   )
+import Diagrams.Prelude
 
 findMaybeIconsFromNames :: IconInfo -> [Maybe NodeName] -> [Maybe NamedIcon]
-findMaybeIconsFromNames iconInfo args = (fmap . fmap) (findIconFromName iconInfo) args
+findMaybeIconsFromNames iconInfo args = over (mapped . _Just) (findIconFromName iconInfo) args
 
 findMaybeIconFromName :: IconInfo -> Maybe NodeName -> Maybe NamedIcon
-findMaybeIconFromName iconInfo maybeName = fmap (findIconFromName iconInfo) maybeName
+findMaybeIconFromName iconInfo maybeName = over _Just (findIconFromName iconInfo) maybeName
 
 findIconFromName :: IconInfo -> NodeName -> NamedIcon
 findIconFromName icons name@(NodeName nameInt)
@@ -55,12 +57,14 @@ findIcon iconInfo name args = icon where
 
 findNestedIcon :: IconInfo -> NodeName -> Icon -> Maybe Icon
 findNestedIcon iconInfo name (Icon icon _) = case icon of
-  NestedApply _ headIcon args
-    -> snd
-        <$> findIcon
-        iconInfo
-        name
-        ((fmap . fmap) (findIconFromName iconInfo) (headIcon : args))
-  NestedPatternApp constructor args _rhsName->
-    snd <$> findIcon iconInfo name (fmap laValue (constructor:args))
+  
+  NestedApply _ headIcon args -> mFoundIcon where 
+    mFoundIcon = over _Just snd (findIcon iconInfo name mNestedIcons) 
+    mNestedIcons ::[Maybe NamedIcon]
+    mNestedIcons = over (mapped . _Just) (findIconFromName iconInfo) (headIcon : args)
+
+  NestedPatternApp constructor args _rhsName -> mFoundIcon where
+    mFoundIcon = over _Just snd (findIcon iconInfo name mNestedIcons) 
+    mNestedIcons :: [Maybe NamedIcon]
+    mNestedIcons = toListOf (traverse . laValue) (constructor:args)
   _ -> Nothing

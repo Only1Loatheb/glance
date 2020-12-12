@@ -65,6 +65,7 @@ import Types(NumericType,
   , ColorStyle
   , ColorStyle'(..)
   , InCaseOrInApply(..)
+  , laValue
   )
 
 import DiagramSymbols(
@@ -138,7 +139,7 @@ makeInputDiagram :: SpecialBackend b
   -> Labeled (Maybe NamedIcon)
   -> NodeName
   -> SpecialDiagram b
-makeInputDiagram iconInfo di maybeFunText name = case laValue maybeFunText of
+makeInputDiagram iconInfo di maybeFunText name = case maybeFunText ^. laValue of
   Just _ ->
     makeAppInnerIcon iconInfo di None InputPortConst maybeFunText
   Nothing -> makeQualifiedPort InputPortConst name

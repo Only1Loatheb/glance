@@ -12,7 +12,6 @@ import SVGrender(customRenderSVG)
 import VisualTests(visualTranslateTests)
 import VisualGraphAlgorithmTests(visualCollapseTests)
 
-import SyntaxGraphComparisonTests(syntaxGraphComparisonTests)
 import SyntaxGraphDirectTests(syntaxGraphDirectTests)
 import DrawingColors (dummyColorStyle)
 import Types (ColorStyle'(backgroundC))
@@ -38,5 +37,4 @@ main = do
   --  ING.prettyPrint singleApplyGraph
   renderDrawings drawingsAndNames
   _ <- runTestTT syntaxGraphDirectTests
-  _ <- runTestTT syntaxGraphComparisonTests
   pure ()

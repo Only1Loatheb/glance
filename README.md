@@ -20,7 +20,7 @@ Then build and execute glance:
 
 ```bash
 stack build
-stack exec glance-exe -- -c  ./examples/simpleFunctions.hs ./images/simpleFunctions.svg
+stack exec glance-exe -- -c ./examples/simpleFunctions.hs -o ./images/simpleFunctions.svg
 ```
 
 To see the command line options run:
@@ -51,7 +51,7 @@ Next image is a getting started guide for Glance rendered by Glance itself ([sou
 To start interactive aplication run command below and visit [localhost:3000](http://localhost:3000/).
 
 ```bash
-stack exec glance-exe -- -i ./examples/tutorial.hs ./images/tutorial.svg
+stack exec glance-exe -- -i ./examples/tutorial.hs
 ```
 
 <img src="https://github.com/Only1Loatheb/glance/blob/other_diagrams/examples/tutorial.svg" alt="Introduction to visual representation" />

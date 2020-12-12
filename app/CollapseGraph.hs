@@ -39,6 +39,7 @@ import Types(
   , EmbedderSyntaxNode
   , NodeName(..)
   , CaseFlavor(..)
+  , naVal
   )
 import SyntaxGraph(SyntaxGraph(..), lookupInEmbeddingMap)
 
@@ -47,6 +48,7 @@ import Util(
   nodeNameToInt
   , fromMaybeError
   )
+import Diagrams.Prelude
 
 data ParentType = ApplyParent
                 | CaseParent
@@ -154,7 +156,7 @@ parentTypeForNode (SyntaxNode n _) = case n of
 
 lookupSyntaxNode :: ING.Graph gr =>
   IngSyntaxGraph gr -> ING.Node -> Maybe EmbedderSyntaxNode
-lookupSyntaxNode gr node = naVal <$> ING.lab gr node
+lookupSyntaxNode gr node =  over _Just _naVal (ING.lab gr node)
 
 lookupParentType :: ING.Graph gr => IngSyntaxGraph gr -> ING.Node -> ParentType
 lookupParentType graph node
@@ -269,7 +271,7 @@ embedChildSyntaxNode parentNode childNode oldGraph = newGraph
             where
               Named nodeName oldSyntaxNode = oldNodeLabel
               newSyntaxNode = addChildToNodeLabel
-                              (naName childNodeLab, edge)
+                              (_naName childNodeLab, edge)
                               oldSyntaxNode
               newNodeLabel = NodeInfo isChild (Named nodeName newSyntaxNode)
 

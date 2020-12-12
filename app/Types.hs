@@ -1,5 +1,6 @@
 {-# LANGUAGE NoMonomorphismRestriction, FlexibleContexts, ConstraintKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Types (
   Named(..)
@@ -61,9 +62,13 @@ module Types (
   , ColorStyle
   , ColorStyle'(..)
   , InCaseOrInApply(..)
+  , laLabel
+  , laValue
+  , naVal
+  , naName
 ) where
 
-import Diagrams.Prelude(Colour, QDiagram, V2, Any, Renderable, Path, IsName, Point)
+import Diagrams.Prelude(Colour, QDiagram, V2, Any, Renderable, Path, IsName, Point, makeLenses)
 import Diagrams.TwoD.Text(Text)
 import Control.Applicative(Applicative(..))
 import qualified Data.Graph.Inductive as ING
@@ -74,20 +79,20 @@ import qualified Data.Set as Set
 import Data.Typeable(Typeable)
 import qualified Language.Haskell.Exts as Exts
 
-
 newtype NodeName = NodeName Int deriving (Typeable, Eq, Ord, Show)
 instance IsName NodeName
 
 data Named a = Named {
-  naName :: NodeName
-  , naVal :: a}
+  _naName :: NodeName
+  , _naVal :: a}
   deriving (Show, Eq, Ord, Functor)
+
 
 type NamedIcon = Named Icon
 
 data Labeled a = Labeled {
-  laValue :: a
-  , laLabel :: String}
+  _laValue :: a
+  , _laLabel :: String}
   deriving (Show, Eq, Ord)
 
 instance Functor Labeled where
@@ -358,4 +363,5 @@ data ColorStyle' a = ColorStyle {
     tupleC :: Colour a
   }
 
-  
+$(makeLenses ''Labeled)
+$(makeLenses ''Named)

@@ -19,6 +19,7 @@ module HsSyntaxToSimpSyntax (
   , formatString
   , pattern FunctionCompositionStr
   , simpPatNameStr
+  , supportedExtensions
   ) where
 
 import Data.Maybe(catMaybes)
@@ -496,16 +497,13 @@ simpExpToHsExp (SimpExp s x) = case x of
     l = srcSpanInfo s
 
 -- Parsing
-
+supportedExtensions = [Exts.EnableExtension Exts.MultiParamTypeClasses
+  , Exts.EnableExtension Exts.FlexibleContexts
+  , Exts.EnableExtension Exts.TupleSections
+  , Exts.EnableExtension Exts.MultiWayIf
+  ]
 customParseMode :: Exts.ParseMode
-customParseMode = Exts.defaultParseMode
-  {Exts.extensions =
-   [Exts.EnableExtension Exts.MultiParamTypeClasses,
-    Exts.EnableExtension Exts.FlexibleContexts,
-    Exts.EnableExtension Exts.TupleSections,
-    Exts.EnableExtension Exts.MultiWayIf
-   ]
-  }
+customParseMode = Exts.defaultParseMode {Exts.extensions = supportedExtensions}
 
 customParseDecl :: String -> Exts.Decl Exts.SrcSpanInfo
 customParseDecl = Exts.fromParseResult . Exts.parseDeclWithMode customParseMode

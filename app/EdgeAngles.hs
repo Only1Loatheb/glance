@@ -20,6 +20,7 @@ import Types  (
   , NamedIcon
   , Labeled(..)
   , IconInfo
+  , laValue
   )                         
 import Icons(findIcon,findMaybeIconFromName,findMaybeIconsFromNames)
 
@@ -136,8 +137,8 @@ getPortAngleHelper embeddedIn iconInfo (Icon icon _) port maybeNodeName = case i
     -> generalNestedPortAngle
       iconInfo
       (case embeddedIn of {Just Case -> flipedPatternAngles; _ -> patternAppPortAngle})
-      (laValue headIcon)
-      (fmap laValue args)
+      (headIcon ^. laValue)
+      (toListOf (traverse . laValue) args)
       port
       maybeNodeName
       embeddedIn

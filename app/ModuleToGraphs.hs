@@ -12,19 +12,17 @@ import qualified Language.Haskell.Exts as Exts
 
 import Types(ModuleGraphs)
 import SimpSyntaxToSyntaxGraph(translateDeclToSyntaxGraph)
-import HsSyntaxToSimpSyntax(hsDeclToSimpDecl)
+import HsSyntaxToSimpSyntax(supportedExtensions, hsDeclToSimpDecl)
 
 parseModule :: String
   -> IO (Exts.ParseResult (Exts.Module Exts.SrcSpanInfo, [Exts.Comment]))
 parseModule inputFilename =
   Exts.parseFileWithComments
     (Exts.defaultParseMode {
-        Exts.extensions = [Exts.EnableExtension Exts.MultiParamTypeClasses
-                          , Exts.EnableExtension Exts.FlexibleContexts]
+        Exts.extensions = supportedExtensions
         , Exts.parseFilename = inputFilename
         })
     inputFilename
-
 moduleToDecls ::
   Exts.Module Exts.SrcSpanInfo -> [Exts.Decl Exts.SrcSpanInfo]
 moduleToDecls (Exts.Module _ _ _ _ decls) = decls
@@ -33,7 +31,7 @@ moduleToDecls moduleSyntax = error $ "Unsupported syntax in moduleToDecls: "
 
 getSrcSpans = map (Exts.srcInfoSpan . Exts.ann)
 
-getModuleGraphs :: String -> IO(ModuleGraphs)
+getModuleGraphs :: String -> IO ModuleGraphs
 getModuleGraphs inputFilename = do
   parseResult <- parseModule inputFilename
   let
