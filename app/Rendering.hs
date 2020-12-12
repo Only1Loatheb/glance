@@ -26,7 +26,7 @@ import GHC.Stack(HasCallStack)
 
 import Icons(findMaybeIconFromName)
 import IconToDiagram( iconToDiagram, lambdaRegionToDiagram, lambdaRegionPadding)
-
+import NodeRecordLabels(recordLabels) 
 import SyntaxNodeToIcon(nodeToIcon)
 import           Types (
   EmbedInfo(..)
@@ -44,7 +44,6 @@ import           Types (
   , SpecialQDiagram
   , AnnotatedFGR
   , ColorStyle
-  , ColorStyle'(..)
   , InCaseOrInApply(..)
   )
 
@@ -168,13 +167,13 @@ renderIconGraph colorStyle fullGraphWithInfo viewGraph = do
     nodeAttribute (_, Named name nodeIcon) =
       [ GVA.Width diaWidth
       , GVA.Height diaHeight
-      -- , GVA.Label $ GVA.RecordLabel records
+      , GVA.Label $ GVA.RecordLabel recordFields
       ] where
         (diaWidth, diaHeight) = getDiagramWidthAndHeight dummyDiagram
         dummyDiagram :: SpecialDiagram b
         dummyDiagram = iconToDiagram iconInfo nodeIcon (DrawingInfo (NodeName (-1)) 0 None dummyColorStyle)
 
-        -- records = [GVA.PortName $ nodeNameToInt name]  
+        recordFields = recordLabels iconInfo nodeIcon (Just name)
           
 --TODO add edge parameter constraint = false -- https://www.graphviz.org/doc/info/attrs.html#a:constraint 
 

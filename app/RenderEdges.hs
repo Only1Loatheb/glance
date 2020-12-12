@@ -14,6 +14,8 @@ import           Diagrams.Prelude(
 import qualified Data.GraphViz.Attributes.Complete as GVA
 import qualified Data.Graph.Inductive as ING
 import GHC.Stack(HasCallStack)
+import qualified Data.Text.Lazy as T
+import Control.Arrow(first)
 
 --import qualified Data.GraphViz.Types
 --import Data.GraphViz.Commands
@@ -24,8 +26,9 @@ import EdgeToDiagram(
   )
 import EdgeAngles(getPortAngle)
 
-import Types( 
-  EmbedInfo(..)
+import Types(
+  Connection  
+  , EmbedInfo(..)
   , Edge(..)
   , NameAndPort(..)
   , SpecialDiagram
@@ -37,7 +40,7 @@ import Types(
   , EdgeOption(..)
   , PointType
   , ColorStyle
-  , ColorStyle'(..) 
+  , Port(..)
   )
 
 import Util(fromMaybeError)
@@ -47,10 +50,22 @@ dontConstrainAttrs :: [GVA.Attribute]
 dontConstrainAttrs = [GVA.Constraint False, GVA.MinLen 0]
 
 edgeGraphVizAttrs :: (a, Int, EmbedInfo Edge) -> [GVA.Attribute]
-edgeGraphVizAttrs (_, _, EmbedInfo _ (Edge (DoNotDrawButConstraint len) _)) 
-  = [GVA.MinLen len]
-edgeGraphVizAttrs (_, _, EmbedInfo _ (Edge DrawAndNotConstraint _)) = dontConstrainAttrs
-edgeGraphVizAttrs _  = []
+edgeGraphVizAttrs (_, _, EmbedInfo _ (Edge option connection)) = attrs where
+  attrs = constrainAttrs option ++ placementAttrs connection
+
+constrainAttrs :: EdgeOption -> [GVA.Attribute]
+constrainAttrs (DoNotDrawButConstraint len) = [GVA.MinLen len]
+constrainAttrs DrawAndNotConstraint {} = dontConstrainAttrs
+constrainAttrs _  = []
+
+placementAttrs :: Connection -> [GVA.Attribute]
+placementAttrs (NameAndPort _ portFrom, NameAndPort _ portTo) = [
+    GVA.TailPort $ gvaEdgePort (portFrom, Nothing)
+  , GVA.HeadPort $ gvaEdgePort (portTo,   Nothing)
+  ]
+
+gvaEdgePort :: (Port, Maybe GVA.CompassPoint) -> GVA.PortPos
+gvaEdgePort pair = uncurry GVA.LabelledPort $ first (GVA.PN . T.pack . show . Dia.toName) pair
 
 -- | makeEdges draws the edges underneath the nodes.
 makeEdges :: (HasCallStack, SpecialBackend b, ING.Graph gr) =>

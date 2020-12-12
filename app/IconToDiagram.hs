@@ -208,10 +208,9 @@ iconToDiagram :: SpecialBackend b
   -> TransformableDia b
 iconToDiagram iconInfo (Icon icon _) = case icon of
   TextBoxIcon s -> literalDiagram s
-  BindTextBoxIcon s -> bindDiagram s
-  CaseResultIcon -> caseResultDiagram
   FunctionArgIcon argumentNames -> functionArgDia argumentNames
   FunctionDefIcon funcName _ inputNode -> functionDefDia iconInfo funcName (findMaybeIconFromName iconInfo inputNode)
+  BindTextBoxIcon s -> bindDiagram s
   NestedApply flavor headIcon args
     -> applyDiagram iconInfo flavor
        (findMaybeIconFromName iconInfo headIcon)
@@ -222,6 +221,7 @@ iconToDiagram iconInfo (Icon icon _) = case icon of
                         (findMaybeIconFromName iconInfo arg)
                         (map (bimap (findMaybeIconFromName iconInfo) (findMaybeIconFromName iconInfo)) condsAndVals)
                         styleTag
+  CaseResultIcon -> caseResultDiagram
   ListCompIcon itemName gensNames qualsNames -> listCompDiagram iconInfo
     (findMaybeIconFromName iconInfo itemName) 
     (findMaybeIconsFromNames iconInfo gensNames)

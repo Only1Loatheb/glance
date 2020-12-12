@@ -79,6 +79,7 @@ executable glance-exe
                , FuncDefRegionInfo
                , EdgeToDiagram
                , DiagramSymbols
+               , NodeRecordLabels
 
 test-suite glance-test
   type:                exitcode-stdio-1.0
@@ -142,6 +143,7 @@ test-suite glance-test
                , FuncDefRegionInfo
                , EdgeToDiagram
                , DiagramSymbols
+               , NodeRecordLabels
 source-repository head
   type:     git
   location: https://github.com/rgleichman/glance
