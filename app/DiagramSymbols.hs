@@ -8,7 +8,8 @@ module DiagramSymbols(
   , symbolSize
   , boxPadding
   , portSeparationSize
-  , lambdaRegionPadding
+  , lambdaRegionPaddingX
+  , lambdaRegionPaddingY
   , defaultOpacity
   , defaultShadowOpacity
   , arrowLineWidth
@@ -61,8 +62,11 @@ boxPadding = 2 * defaultLineWidth
 portSeparationSize :: (Fractional a) => a
 portSeparationSize = 0.3 * letterHeight
 
-lambdaRegionPadding :: (Fractional a) => a
-lambdaRegionPadding = 2.4 * letterHeight
+lambdaRegionPaddingX :: (Fractional a) => a
+lambdaRegionPaddingX = 1.8 * letterHeight
+
+lambdaRegionPaddingY :: (Fractional a) => a
+lambdaRegionPaddingY = 1.7 * letterHeight
 
 defaultOpacity :: (Fractional a) => a
 defaultOpacity = 0.4
@@ -136,8 +140,8 @@ inDecisionFrame borderColor diagram
     boxWidth = boxPadding + width diagram
 
     topRightOffsets = [
-      halfBoxHeight *^ (unitY+unitX)
-      , halfBoxHeight *^ (unitY-unitX)
+        halfBoxHeight *^ unitY + symbolSize *^ unitX
+      , halfBoxHeight *^ unitY - symbolSize *^ unitX
       , boxWidth *^ (-unitX)
       ]
     bottomLeftOffsets = map negate topRightOffsets

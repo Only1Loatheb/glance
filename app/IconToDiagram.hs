@@ -8,7 +8,8 @@ module IconToDiagram
   ( iconToDiagram
   , lambdaRegionToDiagram
   , nameDiagram
-  , lambdaRegionPadding
+  , lambdaRegionPaddingX
+  , lambdaRegionPaddingY
   )
 where
 
@@ -72,7 +73,8 @@ import DiagramSymbols(
   defaultLineWidth
   , symbolSize
   , portSeparationSize
-  , lambdaRegionPadding
+  , lambdaRegionPaddingX
+  , lambdaRegionPaddingY
   , inputPortSymbol
   , resultPortSymbol
   , caseValSymbol
@@ -280,7 +282,7 @@ patternDiagram
 
     patterns::[SpecialDiagram b]
     patterns = map alignB $ zipWith (makeAppInnerIcon iconInfo di inType) resultPortsConst subIcons
-    patternDia = constructor ||| subscribedValueDia ||| hsep portSeparationSize patterns
+    patternDia = constructor ||| subscribedValueDia ||| hcat patterns
 
     constructor = alignB $ coloredTextBox (textBoxTextC colorStyle) constructorName
 
@@ -404,7 +406,7 @@ listLitDiagram iconInfo flavor literals delimiters drawingInfo = finalDia where
 -- 1 -> bottom
 -- odds -> left
 -- evens -> right
-caseDiagram ::forall b n. SpecialBackend b
+caseDiagram ::forall b. SpecialBackend b
   => IconInfo
   -> Maybe NamedIcon
   -> [(Maybe NamedIcon,Maybe NamedIcon)]
@@ -481,9 +483,10 @@ lambdaRegionToDiagram colorStyle enclosedDiagarms (NodeName nameInt) level
   = regionSymbol
   where
     -- TODO Add lambda ranks/levels
-    paddingSize =  lambdaRegionPadding + 2 * defaultLineWidth * (fromIntegral level)
-    paddedDiagrams = fmap (frame paddingSize) enclosedDiagarms
-    diagramBoxes = map  boundingRect paddedDiagrams
+    additionalPadding = defaultLineWidth * fromIntegral level
+    paddingSizeX = lambdaRegionPaddingX + 1.5 * additionalPadding
+    paddingSizeY = lambdaRegionPaddingY + 1.5 * additionalPadding
+    diagramBoxes = map  (boundingRect . extrudeLeft paddingSizeX . extrudeRight paddingSizeX . extrudeBottom paddingSizeY . extrudeTop paddingSizeY ) enclosedDiagarms
     boxesPath = mconcat diagramBoxes
     contentsRect = strokePath $ B.union Winding boxesPath
 

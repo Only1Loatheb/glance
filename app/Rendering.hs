@@ -25,7 +25,7 @@ import GHC.Stack(HasCallStack)
 --import Data.GraphViz.Commands
 
 import Icons(findMaybeIconFromName)
-import IconToDiagram( iconToDiagram, lambdaRegionToDiagram, lambdaRegionPadding)
+import IconToDiagram( iconToDiagram, lambdaRegionToDiagram, lambdaRegionPaddingX, lambdaRegionPaddingY )
 import NodeRecordLabels(recordLabels) 
 import SyntaxNodeToIcon(nodeToIcon)
 import           Types (
@@ -103,8 +103,8 @@ customLayoutParams = GV.defaultParams{
       --GVA.OverlapScaling 4,
       GVA.OverlapShrink True
       , GVA.ClusterRank GVA.Local
-      , GVA.RankSep [0.9 * lambdaRegionPadding * drawingToGraphvizScaleFactor]
-      , GVA.NodeSep $ 0.9 * lambdaRegionPadding * drawingToGraphvizScaleFactor
+      , GVA.RankSep [1.4 * lambdaRegionPaddingY * drawingToGraphvizScaleFactor]
+      , GVA.NodeSep $ 1.2 * lambdaRegionPaddingX * drawingToGraphvizScaleFactor
       ]
     ]
   , GV.clusterID =  GV.Num . GV.Int --   ClusterT
