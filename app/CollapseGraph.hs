@@ -50,10 +50,11 @@ import Util(
   )
 import Diagrams.Prelude
 
+type IsEmbeddableTest = (ParentType -> SyntaxNode -> Port -> Port -> Bool) 
 data ParentType = ApplyParent
                 | CaseParent
                 | LambdaParent String
-                | PatternApplyParent
+                | PatternParent
                 | ListCompParent
                 | ListLitParent
                 | NotAParent
@@ -74,11 +75,7 @@ parentAndChild embedDirection
 
 -- TODO Use pattern synonyms here
 -- | A isSyntaxNodeEmbeddable if it can be collapsed into another node
-isSyntaxNodeEmbeddable :: ParentType
-                       -> SyntaxNode
-                       -> Port
-                       -> Port
-                       -> Bool
+isSyntaxNodeEmbeddable :: IsEmbeddableTest
 isSyntaxNodeEmbeddable parentType (SyntaxNode syntaxNode _) parentPort childPort
   = case (parentType, syntaxNode) of
     (ApplyParent, ApplyNode {}) -> parentPortNotResult
@@ -95,14 +92,16 @@ isSyntaxNodeEmbeddable parentType (SyntaxNode syntaxNode _) parentPort childPort
 
     (CaseParent, CaseResultNode {}) -> isParentQualPort
     (CaseParent, LiteralNode {}) -> parentPortNotResult
-    (CaseParent, PatternApplyNode {}) -> caseEmbeddable || parentPortIsArg && isPatternUnpackingPort childPort
+    (CaseParent, PatternNode {}) -> caseEmbeddable || parentPortIsArg && isPatternUnpackingPort childPort
     (CaseParent, CaseNode {}) -> False 
     (CaseParent, _) -> caseEmbeddable
     
-    (PatternApplyParent, _) -> isPatternUnpackingPort parentPort && childPortIsResult
+    (PatternParent, PatternNode {}) -> isPatternUnpackingPort childPort && parentPortNotInput
+    (PatternParent, LiteralNode {}) -> True
+    (PatternParent, _) -> isPatternUnpackingPort parentPort && childPortIsResult 
 
     (ListCompParent, ApplyNode {}) -> listCompEmbeddable
-    -- (ListCompParent, PatternApplyNode {}) -> parentPortNotInput
+    -- (ListCompParent, PatternNode {}) -> parentPortNotInput
     (ListCompParent, LiteralNode {}) -> listCompEmbeddable
     (ListCompParent, ListLitNode {}) -> listCompEmbeddable
     (ListCompParent, ListCompNode {}) -> parentPortNotInput && parentPortIsArg && childPortIsResult
@@ -126,11 +125,7 @@ isSyntaxNodeEmbeddable parentType (SyntaxNode syntaxNode _) parentPort childPort
     caseEmbeddable = parentPortNotResult && parentPortNotInput && childPortIsResult
       || parentPortIsInput && childPortIsResult
 
-doesSyntaxNodeHaveToBeEmbeded :: ParentType
-    -> SyntaxNode
-    -> Port
-    -> Port
-    -> Bool
+doesSyntaxNodeHaveToBeEmbeded :: IsEmbeddableTest
 doesSyntaxNodeHaveToBeEmbeded parentType (SyntaxNode syntaxNode _) parentPort _childPort
   = case (parentType, syntaxNode) of
     (ApplyParent, ApplyNode {}) -> parentPortNotResult
@@ -149,7 +144,7 @@ parentTypeForNode (SyntaxNode n _) = case n of
   ApplyNode {} -> ApplyParent
   CaseNode {} -> CaseParent
   FunctionValueNode fname _ -> LambdaParent fname
-  PatternApplyNode {} -> PatternApplyParent
+  PatternNode {} -> PatternParent
   ListLitNode {} -> ListLitParent
   ListCompNode {} -> ListCompParent
   _ -> NotAParent
@@ -172,7 +167,7 @@ edgeIsSingular graph node edge = numEdges <= 1 where
   numEdges = length edgeLabels
 
 parentCanEmbedChild :: ING.Graph gr =>
-  (ParentType -> SyntaxNode -> Port -> Port -> Bool)
+  IsEmbeddableTest
   -> IngSyntaxGraph gr -> ING.Node -> ING.Node -> Edge -> EmbedDirection -> Bool
 parentCanEmbedChild embedingTest graph parent child edge embedDirection
   = case lookupSyntaxNode graph child of
@@ -191,7 +186,7 @@ parentCanEmbedChild embedingTest graph parent child edge embedDirection
             = parentAndChild embedDirection (fromPort, toPort)
 
 findEmbedDir :: ING.Graph gr => 
-  (ParentType -> SyntaxNode -> Port -> Port -> Bool)
+  IsEmbeddableTest
   -> IngSyntaxGraph gr
   -> ING.Node
   -> ING.Node
@@ -206,7 +201,7 @@ findEmbedDir embedingTest gr fromNode toNode e = if
 
 
 annotateGraph' :: ING.DynGraph gr => 
-  (ParentType -> SyntaxNode -> Port -> Port -> Bool)
+  IsEmbeddableTest
   -> IngSyntaxGraph gr -> gr SgNamedNode (EmbedInfo Edge)
 annotateGraph' embedingTest gr = ING.gmap edgeMapper gr
   where

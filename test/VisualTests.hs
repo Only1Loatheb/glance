@@ -51,7 +51,7 @@ simpleTests = [
   "y = x"
   , "y = 1"
   , "f = \\x -> x"
-  , "f x = x"
+  -- , "f x = x"
   , "f x = 1"
   , "y = \"foo\""
   , "y = f x"
@@ -251,6 +251,8 @@ patternTests = [
 
   -- test labelled ports
   "Foo x1 x2 = 4"
+  , "mirrorTree Empty = Empty \n\
+    \mirrorTree (Node a Empty Empty) = Node a Empty Empty"
   ]
 
 lambdaTests :: [String]
@@ -266,7 +268,6 @@ lambdaTests = [
   "y = (\\x1 -> (\\x2 -> (\\x3 -> x1 x2 x3)))",
   "y = f1 a where f1 b = f2 c where f2 d = f3 e",
   "y x = (\\z -> x)",
-  "y x = x",
   "y x = y x",
   "y x = g y y",
   "y f x = f x",
@@ -371,8 +372,8 @@ otherInLambdaTest = [
   ,"lambdaWLetDescription = \\a1 a2 -> let x = a1 in  v1 + x"
   ,"lambdaWLetBoth = \\a1 a2 -> let x = a1 in  a2 + x"
   ,"lambdaWListComp = \\xs -> [x | x <- xs] "
-  ,"lambdaWCaseCondAndValue = \\a1 a2 a3-> case a1 of a2 -> a3"
-  ,"lambdaWCaseUnused = \\a1 a2 -> case v1 of v2 -> v3"
+  ,"lambdaWCaseCondAndValue = \\a1 a3-> case a1 of True -> a3"
+  ,"lambdaWCaseUnused = \\a1 a2 -> case v1 of V2 -> v3"
   -- not supported
   -- , "lambdaWCaseMixed = \\a1 a2 -> case a1 of \n\ 
   -- \  a2 -> v1\n\

@@ -118,7 +118,7 @@ makeBoxTest = syntaxGraphTest expectedSyntaxGraph generatedSyntaxGraph where
 
 evalExpNameTest :: Test
 evalExpNameTest = syntaxGraphTest expectedSyntaxGraph generatedSyntaxGraph where
-  generatedSyntaxGraph = graph $ evalState state initialIdState where
+  generatedSyntaxGraph = grGraph $ evalState state initialIdState where
     state = evalExp Set.empty (SimpExp dummySrcRef (SeName "testText"))
   expectedSyntaxGraph = SyntaxGraph {
     sgNodes = Set.fromList [
@@ -132,7 +132,7 @@ evalExpNameTest = syntaxGraphTest expectedSyntaxGraph generatedSyntaxGraph where
 -- Shouldn't it create something?
 evalExpNameInContextTest :: Test
 evalExpNameInContextTest = syntaxGraphTest expectedSyntaxGraph generatedSyntaxGraph where
-  generatedSyntaxGraph = graph $ evalState state initialIdState where
+  generatedSyntaxGraph = grGraph $ evalState state initialIdState where
     state = evalExp (Set.fromList [nameInContext]) (SimpExp dummySrcRef (SeName nameInContext))
   nameInContext = "testText"
   expectedSyntaxGraph = SyntaxGraph{
@@ -145,7 +145,7 @@ evalExpNameInContextTest = syntaxGraphTest expectedSyntaxGraph generatedSyntaxGr
 
 evalExpLitTest :: Test
 evalExpLitTest = syntaxGraphTest expectedSyntaxGraph generatedSyntaxGraph where
-  generatedSyntaxGraph = graph $ evalState state initialIdState where
+  generatedSyntaxGraph = grGraph $ evalState state initialIdState where
     state = evalExp Set.empty (SimpExp dummySrcRef (SeLit lit))
   lit :: Exts.Literal Exts.SrcSpanInfo
   lit = Exts.String dummySrcInfo "test" "test" 
@@ -160,7 +160,7 @@ evalExpLitTest = syntaxGraphTest expectedSyntaxGraph generatedSyntaxGraph where
 
 evalExpAppTest :: Test
 evalExpAppTest = syntaxGraphTest expectedSyntaxGraph generatedSyntaxGraph where
-  generatedSyntaxGraph = graph $ evalState state initialIdState where
+  generatedSyntaxGraph = grGraph $ evalState state initialIdState where
     state = evalExp Set.empty (SimpExp dummySrcRef (SeApp fun arg))
   fun = SimpExp dummySrcRef (SeName "y")
   arg = SimpExp dummySrcRef (SeName "x")
@@ -239,7 +239,7 @@ getNodeNames codeString
 
 syntaxNodeCoreToMaybeStr  :: SyntaxNodeCore -> [String]
 syntaxNodeCoreToMaybeStr (ApplyNode {}) = []
-syntaxNodeCoreToMaybeStr (PatternApplyNode name labeledList) = name : labeledList
+syntaxNodeCoreToMaybeStr (PatternNode name labeledList) = name : labeledList
 syntaxNodeCoreToMaybeStr (BindNameNode name) = [name]
 syntaxNodeCoreToMaybeStr (LiteralNode name) = [name]
 syntaxNodeCoreToMaybeStr (FunctionArgNode names) = names

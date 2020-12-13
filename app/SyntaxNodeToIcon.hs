@@ -49,7 +49,7 @@ nodeToIcon (Embedder embeddedNodes node@(SyntaxNode (ApplyNode flavor numArgs) s
     argList = fmap (makeArg embeddedNodes) argPorts
 
 
-nodeToIcon (Embedder embeddedNodes node@(SyntaxNode (PatternApplyNode str children) src))
+nodeToIcon (Embedder embeddedNodes node@(SyntaxNode (PatternNode str children) src))
   = Icon ( NestedPatternApp str patternList asigendValueName ) src where
     patternList = zipWith zipper (argumentPorts node) children
     asigendValueName = makeArg embeddedNodes PatternUnpackingPort

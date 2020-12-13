@@ -40,8 +40,8 @@ insertAt (x : xs) a index = x : insertAt xs a (index - 1)
 codeCezar :: String -> Int -> String
 codeCezar [] _ = []
 codeCezar (x : xs) i
-  | x >= 'A' && x <= 'Z' = (codeCezarLetter x i (ord 'A')) : codeCezar xs i
-  | x >= 'a' && x <= 'z' = (codeCezarLetter x i (ord 'a')) : codeCezar xs i
+  | x `elem` ['A'..'Z'] = (codeCezarLetter x i (ord 'A')) : codeCezar xs i
+  | x `elem` ['a'..'z'] = (codeCezarLetter x i (ord 'a')) : codeCezar xs i
 
 codeCezarLetter x i baseLetterOrd = chr codedletterOrd where
   codedletterOrd = letterNumberCycled + baseLetterOrd where

@@ -279,10 +279,10 @@ patternDiagram
     subscribedValueDia = alignT $ makeAppInnerIcon iconInfo di None PatternUnpackingPort (Labeled patternSubscribedValueStr rhsNodeName)
 
     patterns::[SpecialDiagram b]
-    patterns = alignB $ zipWith (makeAppInnerIcon iconInfo di inType) resultPortsConst subIcons
+    patterns = map alignB $ zipWith (makeAppInnerIcon iconInfo di inType) resultPortsConst subIcons
     patternDia = constructor ||| subscribedValueDia ||| hsep portSeparationSize patterns
 
-    constructor = coloredTextBox (textBoxTextC colorStyle) constructorName
+    constructor = alignB $ coloredTextBox (textBoxTextC colorStyle) constructorName
 
     patternDiagramInBox = inFrame patternDia borderColor (width patternDia) (height patternDia)
 

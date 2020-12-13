@@ -180,7 +180,7 @@ data SyntaxNodeCore =
   -- Function application, composition, and applying to a composition
   -- The list of nodes is unordered (replace with a map?)
   ApplyNode ApplyFlavor Int
-  | PatternApplyNode String [String]
+  | PatternNode String [String]
   | BindNameNode String -- for top level bindings --TODO delete this
   | LiteralNode String -- Literal values like the string "Hello World"
   | FunctionArgNode
@@ -344,8 +344,8 @@ instance Monoid SyntaxGraph where
   mappend = (<>)
 
 data GraphAndRef = GraphAndRef {
-  graph :: SyntaxGraph
-  , ref :: Reference
+  grGraph :: SyntaxGraph
+  , grRef :: Reference
   }
 
 type ColorStyle = ColorStyle' NumericType
