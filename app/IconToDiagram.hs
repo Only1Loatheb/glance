@@ -8,8 +8,6 @@ module IconToDiagram
   ( iconToDiagram
   , lambdaRegionToDiagram
   , nameDiagram
-  , lambdaRegionPaddingX
-  , lambdaRegionPaddingY
   )
 where
 
@@ -29,14 +27,14 @@ import TextBox (
   )
 
 import PortConstants(
-  pattern InputPortConst
-  , pattern ResultPortConst
-  , argPortsConst
-  , resultPortsConst
+  pattern InputPort
+  , pattern ResultPort
+  , argPortList
+  , valuePortList
   , isArgPort
-  , mixedPorts
+  , casePortPairList
   , pattern PatternUnpackingPort
-  , listCompQualPorts
+  , listCompQualPortList
   )
 
 import StringSymbols(
@@ -50,7 +48,6 @@ import Types(NumericType,
   , DiagramIcon(..)
   , SpecialDiagram
   , SpecialBackend
-  
   , NodeName(..)
   , Port(..)
   , ApplyFlavor(..)
@@ -143,14 +140,14 @@ makeInputDiagram :: SpecialBackend b
   -> SpecialDiagram b
 makeInputDiagram iconInfo di maybeFunText name = case maybeFunText ^. laValue of
   Just _ ->
-    makeAppInnerIcon iconInfo di None InputPortConst maybeFunText
-  Nothing -> makeQualifiedPort InputPortConst name
+    makeAppInnerIcon iconInfo di None InputPort maybeFunText
+  Nothing -> makeQualifiedPort InputPort name
       -- becaues it can only be [function name, lambda, imputPort]
 
 makeResultDiagram :: SpecialBackend b
   => NodeName
   -> SpecialDiagram b
-makeResultDiagram = makeQualifiedPort ResultPortConst
+makeResultDiagram = makeQualifiedPort ResultPort
 
 makeAppInnerIcon :: SpecialBackend b
   => IconInfo
@@ -209,9 +206,9 @@ iconToDiagram :: SpecialBackend b
   -> Icon
   -> TransformableDia b
 iconToDiagram iconInfo (Icon icon _) = case icon of
-  TextBoxIcon s -> literalDiagram s
-  FunctionArgIcon argumentNames -> functionArgDia argumentNames
-  FunctionDefIcon funcName _ inputNode -> functionDefDia iconInfo funcName (findMaybeIconFromName iconInfo inputNode)
+  TextBoxIcon s -> literalDiagram iconInfo s
+  FunctionArgIcon argumentNames _ -> functionArgDia argumentNames
+  FunctionDefIcon funcName inputNode -> functionDefDia iconInfo funcName (findMaybeIconFromName iconInfo inputNode)
   BindTextBoxIcon s -> bindDiagram s
   NestedApply flavor headIcon args -> applyDiagram
     iconInfo flavor
@@ -236,7 +233,7 @@ caseResultDiagram :: SpecialBackend b => TransformableDia b
 caseResultDiagram drawingInfo = finalDia where
   name = diName drawingInfo
   caseResultDia = nameDiagram name memptyWithPosition
-  output = makeQualifiedPort ResultPortConst name
+  output = makeQualifiedPort ResultPort name
   finalDia = caseResultDia === output
 
 bindDiagram :: SpecialBackend b =>
@@ -245,16 +242,19 @@ bindDiagram _bindName drawingInfo = finalDia where
   name = diName drawingInfo
   bindDia = nameDiagram name memptyWithPosition
 
-  input = makeQualifiedPort InputPortConst name
+  input = makeQualifiedPort InputPort name
   finalDia = input === bindDia
 
 literalDiagram :: SpecialBackend b =>
-  String  
+  IconInfo
+  -> String  
   -> TransformableDia b
-literalDiagram t drawingInfo = finalDia where
-  finalDia = bindText === outputDia
+literalDiagram iconInfo t drawingInfo = finalDia where
+  name = diName drawingInfo
+  asPatternPort = makeAppInnerIcon iconInfo drawingInfo None PatternUnpackingPort (pure Nothing)
+  finalDia = vcat [asPatternPort, bindText, outputDia]
   colorStyle = diColorStyle drawingInfo 
-  outputDia = makeResultDiagram (diName drawingInfo)
+  outputDia = makeResultDiagram name
   bindText = coloredTextBox (textBoxTextC colorStyle) t
 
 patternDiagram :: forall b. SpecialBackend b
@@ -281,7 +281,7 @@ patternDiagram
     subscribedValueDia = alignT $ makeAppInnerIcon iconInfo di None PatternUnpackingPort (Labeled patternSubscribedValueStr rhsNodeName)
 
     patterns::[SpecialDiagram b]
-    patterns = map alignB $ zipWith (makeAppInnerIcon iconInfo di inType) resultPortsConst subIcons
+    patterns = map alignB $ zipWith (makeAppInnerIcon iconInfo di inType) valuePortList subIcons
     patternDia = constructor ||| subscribedValueDia ||| hcat patterns
 
     constructor = alignB $ coloredTextBox (textBoxTextC colorStyle) constructorName
@@ -303,8 +303,8 @@ applyDiagram iconInfo flavor icon icons di =
     ComposeFlavor -> generalApplyDia iconInfo flavor (applyCompositionC colorStyle) icon icons di
 
 -- | apply port locations:
--- InputPortConst: Function
--- ResultPortConst: Result
+-- InputPort: Function
+-- ResultPort: Result
 -- Ports 2,3..: Arguments
 generalApplyDia :: SpecialBackend b
   => IconInfo
@@ -329,7 +329,7 @@ generalApplyDia
     borderColor = borderColors !! nestingLevel
     boxWidth =  max (width transformedName) (width argPorts)
 
-    argPortsUncentred =  zipWith ( makeAppInnerIcon iconInfo di InApply) argPortsConst (fmap pure args)
+    argPortsUncentred =  zipWith ( makeAppInnerIcon iconInfo di InApply) argPortList (fmap pure args)
     argPortsCentred  = fmap alignB argPortsUncentred
     argPorts = centerX $ hsep portSeparationSize argPortsCentred
     argsDiagram = inFrame argPorts borderColor boxWidth (height argPorts)
@@ -363,13 +363,13 @@ listCompDiagram
     name = diName di 
     boxWidth =  width argPorts
 
-    qualDiagrams = zipWith ( makeAppInnerIcon iconInfo di None) listCompQualPorts (fmap pure qualIcons)
+    qualDiagrams = zipWith ( makeAppInnerIcon iconInfo di None) listCompQualPortList (fmap pure qualIcons)
     qualDiagram = hcat $ map (inCaseDecisionFrame colorStyle) qualDiagrams
-    qualDiagramWithLine = (alignB $ listCompPipe colorStyle (letterHeight + height qualDiagram)) <> (alignBL qualDiagram)
+    qualDiagramWithLine = alignB ( listCompPipe colorStyle (letterHeight + height qualDiagram)) ||| alignB qualDiagram
 
     argPortsUncentred =  zipWith 
       (makePassthroughIcon iconInfo di None) 
-      (zip argPortsConst resultPortsConst) 
+      (zip argPortList valuePortList) 
       (fmap pure genIcons)
 
     argPortsCentred  = fmap alignB argPortsUncentred
@@ -394,12 +394,13 @@ listLitDiagram :: SpecialBackend b
 listLitDiagram iconInfo flavor literals delimiters drawingInfo = finalDia where
   colorStyle = diColorStyle drawingInfo
   name = diName drawingInfo
-  literalDias = map alignB $ zipWith ( makeAppInnerIcon iconInfo drawingInfo None) argPortsConst (fmap pure literals)
+  asPatternPort = makeAppInnerIcon iconInfo drawingInfo None PatternUnpackingPort (pure Nothing)
+  literalDias = map alignB $ zipWith ( makeAppInnerIcon iconInfo drawingInfo None) argPortList (fmap pure literals)
   delimitersDias = map (listLitDelimiterDia colorStyle flavor) delimiters
   litDiagram = concat . transpose $ [delimitersDias,literalDias]
   listDia = centerX $ hcat litDiagram
   resultDia = centerX $ makeResultDiagram name
-  finalDia = listDia === resultDia
+  finalDia = vcat [asPatternPort, listDia, resultDia]
 
 -- | generalNestedCaseDia port layout:
 -- 0 -> top
@@ -420,7 +421,7 @@ caseDiagram iconInfo input condsAndVals flavor di
 
     resultDia = makeResultDiagram name
 
-    iFVarAndConstIcons = zipWith iconMapper mixedPorts condsAndVals
+    iFVarAndConstIcons = zipWith iconMapper casePortPairList condsAndVals
 
     iconMapper (condPort,valPort) (cond, val) = decisionDiagram where
       condDia = alignB $ vcat [inCaseDecisionFrame colorStyle condIcon, spaceForBigLine]
@@ -450,8 +451,8 @@ functionArgDia argumentNames drawingInfo
   = named name finalDiagram where
   colorStyle = diColorStyle drawingInfo
   name = diName drawingInfo
-    -- argumetPort = zipWith (makePassthroughPorts name) (zip argPortsConst resultPortsConst) argumentNames
-  argumetPort = zipWith (makeLabelledPort None colorStyle name) resultPortsConst argumentNames
+    -- argumetPort = zipWith (makePassthroughPorts name) (zip argPortList valuePortList) argumentNames
+  argumetPort = zipWith (makeLabelledPort None colorStyle name) valuePortList argumentNames
   combinedArgumetPort = hsep portSeparationSize argumetPort
   -- argumetsInBox = inFrame combinedArgumetPort (lambdaC colorScheme) (width combinedArgumetPort) (height combinedArgumetPort)
   finalDiagram = combinedArgumetPort
@@ -464,7 +465,7 @@ functionDefDia :: SpecialBackend b
 functionDefDia iconInfo functionName input drawingInfo = finalDiagram where
   colorStyle = diColorStyle drawingInfo
   name = diName drawingInfo
-  lambdaSymbol = alignBR $ (lambdaBodySymbol functionName colorStyle ||| memptyWithPosition)
+  lambdaSymbol = alignBR (lambdaBodySymbol functionName colorStyle ||| memptyWithPosition)
   inputDiagram = makeInputDiagram iconInfo drawingInfo (pure input) name
   resultDiagram =  makeResultDiagram name
   finalDiagram = lambdaSymbol <> (inputDiagram === resultDiagram)

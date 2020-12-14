@@ -122,9 +122,9 @@ data DiagramIcon =
   TextBoxIcon String
   | FunctionArgIcon
     [String]  -- Parameter labels
+    FuncDefRegionInfo
   | FunctionDefIcon
     String  -- Function name
-    FuncDefRegionInfo
     (Maybe NodeName) -- embeded body node
   | BindTextBoxIcon String
   | NestedApply
@@ -185,9 +185,9 @@ data SyntaxNodeCore =
   | LiteralNode String -- Literal values like the string "Hello World"
   | FunctionArgNode
     [String]  -- Parameter labels
+    FuncDefRegionInfo
   | FunctionValueNode  -- Function definition (ie. lambda expression)
     String -- function name
-    FuncDefRegionInfo
   | CaseResultNode -- if same icon is in condition statment and result value
   | CaseNode CaseFlavor Int -- number of alternatives
   | ListCompNode

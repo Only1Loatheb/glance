@@ -16,20 +16,18 @@ type FuncDefRegionInfo = (Set.Set NodeName, Int)
 lambdaLevel :: FuncDefRegionInfo -> Int
 lambdaLevel = snd 
 
-getFuncDefRegionInfo :: SyntaxGraph -> [NodeName] -> FuncDefRegionInfo
-getFuncDefRegionInfo combinedGraph lambdaNames = (enclosedNodeNames, level) where
+getFuncDefRegionInfo :: SyntaxGraph -> FuncDefRegionInfo
+getFuncDefRegionInfo combinedGraph = (enclosedNodeNames, level) where
   innerNodes = sgNodes combinedGraph 
   level = getLambdaLevel innerNodes 
-  enclosedNodeNames = getEnclosedNodeNames innerNodes lambdaNames  
+  enclosedNodeNames = getEnclosedNodeNames innerNodes  
 
-getEnclosedNodeNames :: Set.Set (Named a) -> [NodeName] -> Set.Set NodeName
-getEnclosedNodeNames innerNodes lambdaNames = enclosedNodeNames where
-  allNodeNames = Set.map _naName innerNodes 
-  enclosedNodeNames = Set.difference allNodeNames (Set.fromList lambdaNames)
+getEnclosedNodeNames :: Set.Set (Named a) -> Set.Set NodeName
+getEnclosedNodeNames =  Set.map _naName 
 
 getLambdaLevel :: Set.Set (Named (Embedder SyntaxNode)) -> Int
 getLambdaLevel innerNodes = level where
   allNodes = map (syntaxNodeCore . emNode . _naVal) (Set.toList innerNodes) 
-  funcDefLevels = [x | (FunctionValueNode _ (_, x)) <- allNodes]
+  funcDefLevels = [x | (FunctionArgNode _ (_, x)) <- allNodes]
   maxLevel = foldl' max 0 funcDefLevels
   level = maxLevel + 1

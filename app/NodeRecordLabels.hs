@@ -26,11 +26,11 @@ import Types  (
 import Icons(findMaybeIconFromName)
 
 import PortConstants(
-  argPortsConst
-  , resultPortsConst
-  , pattern InputPortConst
-  , pattern ResultPortConst
-  , listCompQualPorts
+  argPortList
+  , valuePortList
+  , pattern InputPort
+  , pattern ResultPort
+  , listCompQualPortList
   , pattern PatternUnpackingPort
   )
 
@@ -44,19 +44,22 @@ emptyRecord :: GVA.RecordField
 emptyRecord = GVA.FieldLabel $ T.pack "empty"
 
 inputRecord :: NodeName -> GVA.RecordField
-inputRecord name = recordPort $ Named name InputPortConst
+inputRecord name = recordPort $ Named name InputPort
 
 resultRecord :: NodeName -> GVA.RecordField
-resultRecord name = recordPort $ Named name ResultPortConst
+resultRecord name = recordPort $ Named name ResultPort
 
 valueRecords :: NodeName -> [GVA.RecordField]
-valueRecords name = map (recordPort . Named name) resultPortsConst
+valueRecords name = map (recordPort . Named name) valuePortList
 
 argRecords :: NodeName -> [GVA.RecordField]
-argRecords name = map (recordPort . Named name) argPortsConst
+argRecords name = map (recordPort . Named name) argPortList
 
 qualRecords :: NodeName -> [GVA.RecordField]
-qualRecords name = map (recordPort . Named name) listCompQualPorts
+qualRecords name = map (recordPort . Named name) listCompQualPortList
+
+patternUnpackingRecord :: NodeName -> GVA.RecordField
+patternUnpackingRecord name = recordPort $ Named name PatternUnpackingPort
 
 nestedRecordLabels ::
   IconInfo
@@ -70,9 +73,9 @@ nestedRecordLabels iconInfo defaultRecord maybeNodeName = records where
 
 recordLabels :: IconInfo -> Icon -> NodeName -> GVA.RecordFields -- this mirrors IconToDiagram layouts
 recordLabels iconInfo (Icon icon _) name = case icon of
-  TextBoxIcon {} -> [resultRecord name]
-  FunctionArgIcon argLabels ->  take (length argLabels) (valueRecords name)
-  FunctionDefIcon _ _ mBodyNode -> records where
+  TextBoxIcon {} -> [patternUnpackingRecord name, resultRecord name]
+  FunctionArgIcon argLabels _->  take (length argLabels) (valueRecords name)
+  FunctionDefIcon _ mBodyNode -> records where
     records = [GVA.FlipFields $ bodyRecord ++ [resultRecord name]]
     bodyRecord = nestedRecordLabels iconInfo (inputRecord name) mBodyNode
   BindTextBoxIcon {} -> [inputRecord name]
@@ -84,7 +87,7 @@ recordLabels iconInfo (Icon icon _) name = case icon of
     topRecords = GVA.FlipFields $ inputRecord name : emptyRecord : args
     argLenght = length argLabels
     bottomRecords = GVA.FlipFields $ emptyRecord : patRecord ++ replicate argLenght emptyRecord
-    patternRecord = recordPort $ Named name PatternUnpackingPort
+    patternRecord = patternUnpackingRecord name
     patRecord = nestedRecordLabels iconInfo patternRecord rhsNodeName
     args = mconcat $ zipWith (nestedRecordLabels iconInfo) (valueRecords name) (toListOf (traverse . laValue) argLabels )
   NestedCaseIcon _ arg condsAndVals ->  leftSide : records  where
@@ -102,5 +105,5 @@ recordLabels iconInfo (Icon icon _) name = case icon of
     qualifiers = GVA.FlipFields $ concat $ zipWith (nestedRecordLabels iconInfo) (qualRecords name) quals
     itemRecord = nestedRecordLabels iconInfo (inputRecord name) item
   ListLitIcon _ argNodes _ -> records where
-    records = [GVA.FlipFields [args, resultRecord name]]
+    records = [GVA.FlipFields [patternUnpackingRecord name, args, resultRecord name]]
     args = GVA.FlipFields $ mconcat $ zipWith (nestedRecordLabels iconInfo) (argRecords name) argNodes

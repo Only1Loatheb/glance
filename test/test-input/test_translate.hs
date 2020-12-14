@@ -200,9 +200,9 @@ iconGraphToDrawing (IconGraph icons edges subDrawings _ _) = Drawing icons edges
 makeApplyGraph :: Bool -> DIA.Name -> (IconGraph, Reference) -> [(IconGraph, Reference)] -> Int -> (IconGraph, NameAndPort)
 makeApplyGraph inPattern applyIconName funVal argVals numArgs = (newGraph <> combinedGraph, nameAndPort applyIconName 1)
   where
-    argumentPorts = map (nameAndPort applyIconName) [2,3..]
+    argumentPortList = map (nameAndPort applyIconName) [2,3..]
     functionPort = nameAndPort applyIconName 0
-    combinedGraph = combineExpressions inPattern $ zip (funVal:argVals) (functionPort:argumentPorts)
+    combinedGraph = combineExpressions inPattern $ zip (funVal:argVals) (functionPort:argumentPortList)
     icons = [(applyIconName, Apply0NIcon numArgs)]
     newGraph = iconGraphFromIcons icons
 

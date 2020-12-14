@@ -25,7 +25,7 @@ import GHC.Stack(HasCallStack)
 --import Data.GraphViz.Commands
 
 import Icons(findMaybeIconFromName)
-import IconToDiagram( iconToDiagram, lambdaRegionToDiagram, lambdaRegionPaddingX, lambdaRegionPaddingY )
+import IconToDiagram( iconToDiagram, lambdaRegionToDiagram)
 import NodeRecordLabels(recordLabels) 
 import SyntaxNodeToIcon(nodeToIcon)
 import           Types (
@@ -59,8 +59,24 @@ import NodePlacementMap (
   , getQueryRects
   ) 
 import DrawingColors (dummyColorStyle)
+import TextBox ( letterHeight)
 -- If the inferred types for these functions becomes unweildy,
 -- try using PartialTypeSignitures.
+
+drawingToGraphvizScaleFactor :: Double
+-- For Neato, ScaleOverlaps
+--drawingToGraphvizScaleFactor = 0.08
+-- has to be set acording to drawings
+drawingToGraphvizScaleFactor = 0.13
+
+-- GVA.Width and GVA.Height have a minimum of 0.01
+minialGVADimention :: Double
+minialGVADimention = 0.01
+
+nodeSeparationX :: Double
+nodeSeparationX = 1.5 * letterHeight * drawingToGraphvizScaleFactor
+nodeSeparationY :: Double
+nodeSeparationY = 2.38 * letterHeight * drawingToGraphvizScaleFactor
 
 drawLambdaRegions :: forall b . SpecialBackend b =>
   ColorStyle 
@@ -79,47 +95,34 @@ drawLambdaRegions colorStyle iconInfo placedNodes
     -- Consult CollapseGraph to find out where FunctionDefIcon can be nested 
     drawRegion :: Set.Set NodeName -> NamedIcon -> SpecialDiagram b
     drawRegion parentNames (Named name (Icon diagramIcon _)) = case diagramIcon of
-      (FunctionDefIcon _ (enclosedNames,level) maybeEmbededNode)
-        -> thisRegionDiagram <> innerRegionDiagram where
+      (FunctionArgIcon _ (enclosedNames,level))
+        -> thisRegionDiagram where
           thisRegionDiagram = lambdaRegionToDiagram colorStyle enclosed name level
-          enclosed = findDia <$> (name : Set.toList (parentNames <> enclosedNames))
-          innerRegionDiagram = case findMaybeIconFromName iconInfo maybeEmbededNode of
-            Nothing -> mempty
-            Just foundIcon -> drawRegion (Set.insert name parentNames) foundIcon
+          enclosed = findDia <$> Set.toList (parentNames <> enclosedNames)
       _ -> mempty
 
 customLayoutParams :: GV.GraphvizParams ING.Node v e ClusterT v
 customLayoutParams = GV.defaultParams{
   GV.globalAttributes = [
-    GV.NodeAttrs [GVA.Shape GVA.Record]
+      GV.NodeAttrs [GVA.Shape GVA.Record]
     , GV.EdgeAttrs [GVA.MinLen 1]
-    , GV.GraphAttrs
-      [
+    , GV.GraphAttrs [
       --GVA.Overlap GVA.KeepOverlaps,
       --GVA.Overlap GVA.ScaleOverlaps,
-      GVA.Overlap $ GVA.PrismOverlap (Just 5000),
-      GVA.Splines GVA.Curved,
-      GVA.OverlapScaling 8,
+        GVA.Overlap $ GVA.PrismOverlap (Just 5000)
+      , GVA.Splines GVA.Curved
+      , GVA.OverlapScaling 8
       --GVA.OverlapScaling 4,
-      GVA.OverlapShrink True
+      , GVA.OverlapShrink True
       , GVA.ClusterRank GVA.Local
-      , GVA.RankSep [1.4 * lambdaRegionPaddingY * drawingToGraphvizScaleFactor]
-      , GVA.NodeSep $ 1.2 * lambdaRegionPaddingX * drawingToGraphvizScaleFactor
+      , GVA.RankSep [nodeSeparationY]
+      , GVA.NodeSep nodeSeparationX
+      , GVA.Margin $ GVA.PVal $ GVA.createPoint 0.0 0.0
       ]
     ]
-  , GV.clusterID =  GV.Num . GV.Int --   ClusterT
+      
+    , GV.clusterID =  GV.Num . GV.Int --   ClusterT
   }
-
-
-drawingToGraphvizScaleFactor :: Double
--- For Neato, ScaleOverlaps
---drawingToGraphvizScaleFactor = 0.08
--- has to be set acording to drawings
-drawingToGraphvizScaleFactor = 0.13
-
--- GVA.Width and GVA.Height have a minimum of 0.01
-minialGVADimention :: Double
-minialGVADimention = 0.01
 
 getDiagramWidthAndHeight :: forall b. SpecialBackend b => SpecialDiagram b -> (Double, Double)
 getDiagramWidthAndHeight dummyDiagram = (diaWidth, diaHeight) where
@@ -162,6 +165,7 @@ renderIconGraph colorStyle fullGraphWithInfo viewGraph = do
       GV.fmtNode = nodeAttribute
       , GV.clusterBy = clusterNodesBy iconInfo
       , GV.fmtEdge = edgeGraphVizAttrs
+      -- , GV.fmtCluster = const [ GV.GraphAttrs [GVA.Margin $ GVA.PVal $ GVA.createPoint 0.0 0.0]]
       }
 
     nodeAttribute :: (_, NamedIcon) -> [GV.Attribute]
@@ -175,8 +179,6 @@ renderIconGraph colorStyle fullGraphWithInfo viewGraph = do
         dummyDiagram = iconToDiagram iconInfo nodeIcon (DrawingInfo (NodeName (-1)) 0 None dummyColorStyle)
 
         recordFields = recordLabels iconInfo nodeIcon name
-          
---TODO add edge parameter constraint = false -- https://www.graphviz.org/doc/info/attrs.html#a:constraint 
 
 renderIngSyntaxGraph :: (HasCallStack, SpecialBackend b)
   => ColorStyle

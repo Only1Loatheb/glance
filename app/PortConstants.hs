@@ -1,18 +1,18 @@
 {-# LANGUAGE PatternSynonyms #-}
 module PortConstants
-  ( pattern InputPortConst
-  , pattern ResultPortConst
+  ( pattern InputPort
+  , pattern ResultPort
   , pattern PatternUnpackingPort
   , isArgPort
   , inputPort
   , resultPort
-  , argumentPorts
+  , argumentPortList
   , caseValuePorts
-  , caseConditionPorts
-  , argPortsConst
-  , mixedPorts
-  , resultPortsConst
-  , listCompQualPorts
+  , caseCondPortList
+  , argPortList
+  , casePortPairList
+  , valuePortList
+  , listCompQualPortList
   , isQualPort
   , isInputPort
   , isPatternUnpackingPort
@@ -25,11 +25,11 @@ import Types( Port(..)
   )
 
 isInputPort :: Port -> Bool
-isInputPort InputPortConst = True
+isInputPort InputPort = True
 isInputPort _ = False
 
 isResultPort :: Port -> Bool
-isResultPort ResultPortConst = True
+isResultPort ResultPort = True
 isResultPort _ = False
 
 isPatternUnpackingPort :: Port -> Bool
@@ -42,50 +42,50 @@ isArgPort (Port portNo) = even portNo
 isQualPort :: Port -> Bool
 isQualPort (Port portNo) = portNo < 0
 
-pattern InputPortConst :: Port
-pattern InputPortConst = Port 0
+pattern InputPort :: Port
+pattern InputPort = Port 0
 
-pattern ResultPortConst :: Port
-pattern ResultPortConst = Port 1
+pattern ResultPort :: Port
+pattern ResultPort = Port 1
 
 pattern PatternUnpackingPort :: Port
-pattern PatternUnpackingPort = Port 2
+pattern PatternUnpackingPort = Port (-1)
 
-argPortsConst :: [Port]
-argPortsConst = fmap Port [2,4..]
+argPortList :: [Port]
+argPortList = fmap Port [2,4..]
 
-resultPortsConst :: [Port]
-resultPortsConst = fmap Port [3,5..]
+valuePortList :: [Port]
+valuePortList = fmap Port [3,5..]
 
-qualPortsConst :: [Port]
-qualPortsConst = fmap Port [-2,-4..]
+qualPortList :: [Port]
+qualPortList = fmap Port [-2,-4..]
 
-caseConditionPorts :: [Port]
-caseConditionPorts = argPortsConst
+caseCondPortList :: [Port]
+caseCondPortList = argPortList
 
 caseValuePorts :: [Port]
-caseValuePorts =  qualPortsConst
+caseValuePorts =  qualPortList
 
-listCompQualPorts :: [Port]
-listCompQualPorts = qualPortsConst
+listCompQualPortList :: [Port]
+listCompQualPortList = qualPortList
 
 
-mixedPorts :: [(Port,Port)]
-mixedPorts = zip caseConditionPorts caseValuePorts
+casePortPairList :: [(Port,Port)]
+casePortPairList = zip caseCondPortList caseValuePorts
 
 -- TODO It's a bit strange that the parameter is a SyntaxNode, not an Icon.
 inputPort :: SyntaxNode -> Port
-inputPort = const InputPortConst
+inputPort = const InputPort
 
 resultPort :: SyntaxNode -> Port
-resultPort = const ResultPortConst
+resultPort = const ResultPort
 
-argumentPorts :: SyntaxNode -> [Port]
-argumentPorts (SyntaxNode n _) = case n of
-  ApplyNode {} -> argPortsConst
-  PatternNode {} -> resultPortsConst
-  FunctionValueNode {} -> resultPortsConst
-  CaseNode {} -> caseConditionPorts
-  ListCompNode {} -> argPortsConst
-  ListLitNode {} -> argPortsConst
-  _ -> error "Node don't have argument ports. PortConstants argumentPorts"
+argumentPortList :: SyntaxNode -> [Port]
+argumentPortList (SyntaxNode n _) = case n of
+  ApplyNode {} -> argPortList
+  PatternNode {} -> valuePortList
+  FunctionValueNode {} -> valuePortList
+  CaseNode {} -> caseCondPortList
+  ListCompNode {} -> argPortList
+  ListLitNode {} -> argPortList
+  _ -> error "Node don't have argument ports. PortConstants argumentPortList"

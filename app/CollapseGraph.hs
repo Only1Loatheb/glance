@@ -143,7 +143,7 @@ parentTypeForNode :: SyntaxNode -> ParentType
 parentTypeForNode (SyntaxNode n _) = case n of
   ApplyNode {} -> ApplyParent
   CaseNode {} -> CaseParent
-  FunctionValueNode fname _ -> LambdaParent fname
+  FunctionValueNode fname -> LambdaParent fname
   PatternNode {} -> PatternParent
   ListLitNode {} -> ListLitParent
   ListCompNode {} -> ListCompParent

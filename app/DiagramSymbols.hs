@@ -63,10 +63,10 @@ portSeparationSize :: (Fractional a) => a
 portSeparationSize = 0.3 * letterHeight
 
 lambdaRegionPaddingX :: (Fractional a) => a
-lambdaRegionPaddingX = 1.8 * letterHeight
+lambdaRegionPaddingX = 1.4 * letterHeight
 
 lambdaRegionPaddingY :: (Fractional a) => a
-lambdaRegionPaddingY = 1.7 * letterHeight
+lambdaRegionPaddingY = 2 * letterHeight
 
 defaultOpacity :: (Fractional a) => a
 defaultOpacity = 0.4

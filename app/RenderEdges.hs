@@ -47,9 +47,10 @@ import Util(fromMaybeError)
 
 import NodeRecordLabels(showNamedPortRrecord)
   
-  -- MinLen - Minimum edge length (rank difference between head and tail).
+-- MinLen - Minimum edge length (rank difference between head and tail).
+-- https://www.graphviz.org/doc/info/attrs.html#a:constraint
 dontConstrainAttrs :: [GVA.Attribute]
-dontConstrainAttrs = [GVA.Constraint False, GVA.MinLen 0]
+dontConstrainAttrs = [GVA.Constraint False]
 
 edgeGraphVizAttrs :: (a, Int, EmbedInfo Edge) -> [GVA.Attribute]
 edgeGraphVizAttrs (_, _, EmbedInfo _ (Edge option connection)) = attrs where
