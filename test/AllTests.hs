@@ -13,6 +13,7 @@ import VisualTests(visualTranslateTests)
 import VisualGraphAlgorithmTests(visualCollapseTests)
 
 import SyntaxGraphDirectTests(syntaxGraphDirectTests)
+import StringSymbolsTests(stringSymbolsTests)
 import DrawingColors (dummyColorStyle)
 import Types (ColorStyle'(backgroundC))
 
@@ -37,4 +38,5 @@ main = do
   --  ING.prettyPrint singleApplyGraph
   renderDrawings drawingsAndNames
   _ <- runTestTT syntaxGraphDirectTests
+  _ <- runTestTT stringSymbolsTests
   pure ()
