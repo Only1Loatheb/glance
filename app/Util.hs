@@ -6,6 +6,7 @@ module Util (
   , makeSimpleEdge
   , makeNotConstraintEdge
   , makeInvisibleEdge
+  , makeImportantEdge
   , nameAndPort
   , fromMaybeError
   , maybeBoolToBool
@@ -42,6 +43,9 @@ makeSimpleEdge = Edge DrawAndConstraint
 
 makeNotConstraintEdge :: Connection -> Edge
 makeNotConstraintEdge = Edge DrawAndNotConstraint
+
+makeImportantEdge :: Connection -> Edge
+makeImportantEdge = Edge DrawAsImportant
 
 makeInvisibleEdge :: Int -> Connection -> Edge
 makeInvisibleEdge len = Edge (DoNotDrawButConstraint len)

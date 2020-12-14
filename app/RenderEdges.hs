@@ -62,7 +62,7 @@ edgeGraphVizAttrs (_, _, EmbedInfo _ (Edge option connection)) = attrs where
 constrainAttrs :: EdgeOption -> [GVA.Attribute]
 constrainAttrs (DoNotDrawButConstraint len) = [GVA.MinLen len]
 constrainAttrs DrawAndNotConstraint {} = dontConstrainAttrs
-constrainAttrs DrawIsImportant = importantAttrs
+constrainAttrs DrawAsImportant = importantAttrs
 constrainAttrs _  = []
 
 placementAttrs :: Connection -> [GVA.Attribute]

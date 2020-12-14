@@ -16,11 +16,10 @@ import Control.Monad.State(State, evalState)
 import Data.List(unzip5, partition, intercalate)
 import qualified Data.Set as Set
 import qualified Data.Map as SMap
-import qualified Data.IntMap as IMap
 import           Data.Either                    ( partitionEithers )
 import           Data.Maybe(fromMaybe,  
   catMaybes
-  , mapMaybe
+  
   , isNothing
   )
 import qualified Language.Haskell.Exts as Exts
@@ -62,7 +61,6 @@ import           Types(
   ListLitFlavor
   , NameAndPort
   , IDState
-  , SgNamedNode
   , SyntaxNode(SyntaxNode)
   , SyntaxNodeCore(..)
   , NodeName(..)
@@ -79,6 +77,7 @@ import Util(
   makeSimpleEdge
   , makeNotConstraintEdge
   , makeInvisibleEdge
+  , makeImportantEdge
   , nameAndPort
   )
 import SyntaxGraph( 
@@ -105,7 +104,7 @@ import SyntaxGraph(
   , edgeFromPortToRef
   , edgeFromRefToPort
   , makeAsBindGraph
-  , graphsToComponents
+  
   , combineFromPortToGraph
   , deleteBindings
   , combineFromGraphToPort
@@ -122,8 +121,6 @@ import StringSymbols(
   )
   
 import FuncDefRegionInfo(lambdaLevel, getFuncDefRegionInfo, FuncDefRegionInfo)
-import Control.Arrow (Arrow(first))
-import Diagrams.Prelude
   
 -- OVERVIEW --
 -- SimpSyntaxToSyntaxGraph SimpExp into subgraf of type SyntaxGraph
@@ -469,7 +466,7 @@ evalLambda seSrcRef context argPatterns expr functionName = do
 
     asBindGraph = mconcat $ zipWith asBindGraphZipper (fmap snd argPatternValsWithAsNames) lambdaPorts
 
-    graphWithoutRegionNode = makeEdgesKeepBindings makeSimpleEdge (rhsRawGraph <> argPatternGraph  <> asBindGraph )
+    graphWithoutRegionNode = makeEdgesKeepBindings makeImportantEdge (rhsRawGraph <> argPatternGraph  <> asBindGraph )
     combinedGraph = makeEdgesKeepBindings makeNotConstraintEdge (lambdaIconAndOutputGraph <> graphWithoutRegionNode)
     finalGraph = makeEdges makeSimpleEdge (combinedGraph <> lambdaArgGraph)
 

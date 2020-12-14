@@ -209,7 +209,7 @@ data EdgeOption =
   DrawAndConstraint
   | DrawAndNotConstraint
   | DoNotDrawButConstraint Int -- length in number of ranks
-  | DrawIsImportant
+  | DrawAsImportant
   deriving (Show, Eq, Ord)
 
 -- | An Edge has an name of the source icon, and its optional port number,
