@@ -141,7 +141,6 @@ nTuplePatternString n = concat $ nTupleDelimiters n
 nTupleDelimiters :: Int -> Delimiters
 nTupleDelimiters n =  "(" : replicate (n -1) "," ++ [")"]
 
--- TODO Unit tests for this
 nTupleSectionDelimiters :: Eq a => [Maybe a] -> Delimiters
 nTupleSectionDelimiters maybeExp = delims where
   groupsOfMaybe = groupBy isSameMaybe maybeExp

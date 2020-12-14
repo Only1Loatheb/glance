@@ -30,4 +30,4 @@ getLambdaLevel innerNodes = level where
   allNodes = map (syntaxNodeCore . emNode . _naVal) (Set.toList innerNodes) 
   funcDefLevels = [x | (FunctionArgNode _ (_, x)) <- allNodes]
   maxLevel = foldl' max 0 funcDefLevels
-  level = maxLevel + 1
+  level = max 2 $ maxLevel + 1

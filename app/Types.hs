@@ -169,7 +169,6 @@ type EmbedderSyntaxNode = Embedder SyntaxNode
 
 type SgNamedNode = Named EmbedderSyntaxNode
 
--- TODO remove Ints from SyntaxNode data constructors.
 data SyntaxNode = SyntaxNode {
   syntaxNodeCore :: SyntaxNodeCore
   , srcRef :: SrcRef
@@ -181,7 +180,7 @@ data SyntaxNodeCore =
   -- The list of nodes is unordered (replace with a map?)
   ApplyNode ApplyFlavor Int
   | PatternNode String [String]
-  | BindNameNode String -- for top level bindings --TODO delete this
+  | BindNameNode String -- for top level bindings
   | LiteralNode String -- Literal values like the string "Hello World"
   | FunctionArgNode
     [String]  -- Parameter labels
@@ -206,11 +205,11 @@ type NameAndPort = Named Port -- deriving (Show, Eq, Ord) -- there is NamedPort 
 
 type Connection = (NameAndPort, NameAndPort)
 
--- TODO Consider removing EdgeOption since it's unused.
 data EdgeOption =
   DrawAndConstraint
   | DrawAndNotConstraint
-  | DoNotDrawButConstraint Int -- length in number of ranks 
+  | DoNotDrawButConstraint Int -- length in number of ranks
+  | DrawIsImportant
   deriving (Show, Eq, Ord)
 
 -- | An Edge has an name of the source icon, and its optional port number,
@@ -321,7 +320,6 @@ data SyntaxGraph = SyntaxGraph {
   sgNodes :: Set.Set SgNamedNode,
   sgEdges :: Set.Set Edge,
   sgSinks :: Set.Set SgSink, -- values that havent been used (unused bindings)
-  -- TODO change to SMap.StringMap NameAndPort
   sgBinds :: SgBindMap, -- name form upper leval -> reference -- Reference -> Reference 
   -- sgEmbedMap keeps track of nodes embedded in other nodes. If (child, parent)
   -- is in the Map, then child is embedded inside parent.

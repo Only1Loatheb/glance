@@ -95,8 +95,6 @@ nestedMultiIfPortAngle iconInfo args port maybeNodeName = case maybeNodeName of
   Nothing -> multiIfPortAngle port
   Just name -> case findIcon iconInfo name args of
     Nothing -> 1/4 @@ turn
-    -- TODO Don't use hardcoded numbers
-    -- The arguments correspond to ports [0, 2, 3, 4 ...]
     Just (_, icon) -> subAngle where
         subAngle = getPortAngleHelper (Just Case) iconInfo icon port Nothing
 
@@ -131,7 +129,7 @@ getPortAngleHelper embeddedIn iconInfo (Icon icon _) port maybeNodeName = case i
     -> generalNestedPortAngle
       iconInfo
       (if isNothing embeddedIn then applyPortAngle else nestedApplyPortAngle)
-      -- TODO Refactor with iconToDiagram
+      -- TODO Refactor with IconToDiagram and NodeRecordLabels
       (findMaybeIconFromName iconInfo headIcon)
       (findMaybeIconsFromNames iconInfo args)
       port
@@ -151,5 +149,5 @@ getPortAngleHelper embeddedIn iconInfo (Icon icon _) port maybeNodeName = case i
       (conds, vals) = unzip condsAndVals
       subicons = findMaybeIconFromName iconInfo arg : findMaybeIconsFromNames iconInfo (conds ++ vals)
     in nestedMultiIfPortAngle iconInfo subicons  port maybeNodeName
-  ListCompIcon {} -> listCompPortAngle port -- TODO better angles for ListCompIcon 
-  ListLitIcon {} -> listLitPortAngle port -- TODO better angles for ListLitIcon 
+  ListCompIcon {} -> listCompPortAngle port 
+  ListLitIcon {} -> listLitPortAngle port 

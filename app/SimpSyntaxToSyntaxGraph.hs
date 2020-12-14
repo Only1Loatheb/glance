@@ -242,7 +242,6 @@ getBoundVarName (SimpDecl _s d) = case d of
   SdTypeSig {} -> Set.empty
   SdCatchAll {} -> Set.empty
 
--- TODO make it rerurn -> State IDState [(SyntaxGraph, EvalContext)]
 evalDecls ::
   EvalContext -> [SimpDecl] -> State IDState (SyntaxGraph, EvalContext)
 evalDecls c decls = do
@@ -470,9 +469,9 @@ evalLambda seSrcRef context argPatterns expr functionName = do
 
     asBindGraph = mconcat $ zipWith asBindGraphZipper (fmap snd argPatternValsWithAsNames) lambdaPorts
 
-    combinedGraph = makeEdgesKeepBindings makeSimpleEdge (rhsRawGraph <> argPatternGraph  <> asBindGraph )
-    graphWithoutRegionNode = makeEdgesKeepBindings makeNotConstraintEdge (lambdaIconAndOutputGraph <> combinedGraph)
-    finalGraph = makeEdges makeSimpleEdge (graphWithoutRegionNode <> lambdaArgGraph)
+    graphWithoutRegionNode = makeEdgesKeepBindings makeSimpleEdge (rhsRawGraph <> argPatternGraph  <> asBindGraph )
+    combinedGraph = makeEdgesKeepBindings makeNotConstraintEdge (lambdaIconAndOutputGraph <> graphWithoutRegionNode)
+    finalGraph = makeEdges makeSimpleEdge (combinedGraph <> lambdaArgGraph)
 
     resultNameAndPort = nameAndPort lambdaName (resultPort lambdaNode)
   if isIdLambda isOutputStraightFromInput argPatterns functionName
@@ -483,7 +482,7 @@ constraintLambdaArgAboveValue :: Reference -> NodeName -> NodeName -> FuncDefReg
 constraintLambdaArgAboveValue outputReference argNodeName lambdaName regionInfo = -- case outputReference of 
     [makeInvisibleEdge len (nameAndPort argNodeName ResultPort,
       nameAndPort lambdaName InputPort)] where
-      len = 1 + lambdaLevel regionInfo
+      len = lambdaLevel regionInfo
     
 
 isIdLambda :: Bool -> [SimpPat] -> Maybe String -> Bool
@@ -695,15 +694,13 @@ makeListLitEdges listGenName graphsAndRefs ports = mconcat edges where
 
 -- BEGIN BEGIN BEGIN BEGIN BEGIN list comp
 -- valus form ListCompNode are connected to item constructor
--- TODO reconsider PORT architecture choise to identfy arguments
 -- TODO improve connection to guard expresion
--- TODO connect valus from generators to ListCompNode 
 evalListComp ::
   EvalContext -> SrcRef -> SimpExp -> [SimpQStmt] -> State IDState GraphAndRef
 evalListComp context l  itemExp qualExps =  do  
   
   let decls = [d | (SimpQStmt _ (SqLet d )) <- qualExps]
-  declGraphAndRefdeclContexts <-  mapM (evalDecls context) decls -- TODO add decls to context and graph
+  declGraphAndRefdeclContexts <-  mapM (evalDecls context) decls
   let (declGraphAndRef, declContexts) = unzip declGraphAndRefdeclContexts
   let declContext =  Set.unions (context : declContexts)
   
@@ -846,6 +843,7 @@ evalTypeSig names typeForNames srcRef = makeBox
    , srcRef)
   where
     -- TODO Make custom version of prettyPrint for type signitures.
+    -- or multiline text from TextBox
     -- Use (unwords . words) to convert consecutive whitspace characters to one
     -- space.
     prettyPrintWithoutNewlines = unwords . words . Exts.prettyPrint

@@ -483,7 +483,6 @@ lambdaRegionToDiagram :: SpecialBackend b
 lambdaRegionToDiagram colorStyle enclosedDiagarms (NodeName nameInt) level
   = regionSymbol
   where
-    -- TODO Add lambda ranks/levels
     additionalPadding = defaultLineWidth * fromIntegral level
     paddingSizeX = lambdaRegionPaddingX + 1.5 * additionalPadding
     paddingSizeY = lambdaRegionPaddingY + 1.5 * additionalPadding

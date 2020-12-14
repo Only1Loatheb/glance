@@ -101,7 +101,6 @@ getArrowOpts (formPoint, toPoint) (anglesFrom,anglesTo) (_,iconTo) namedPortTo
       arrowHead .~ getArrowHead iconTo namedPortTo
       $ arrowTail .~ noTail
       $ arrowShaft .~ edgeSymbol formPoint toPoint anglesFrom anglesTo
-      -- TODO Don't use a magic number for lengths (headLength and tailLength)
       $ lengths .~ global symbolSize
       $ with
 

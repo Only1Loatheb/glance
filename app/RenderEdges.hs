@@ -52,6 +52,9 @@ import NodeRecordLabels(showNamedPortRrecord)
 dontConstrainAttrs :: [GVA.Attribute]
 dontConstrainAttrs = [GVA.Constraint False]
 
+importantAttrs :: [GVA.Attribute]
+importantAttrs = [GVA.Weight $ GVA.Int 10]
+
 edgeGraphVizAttrs :: (a, Int, EmbedInfo Edge) -> [GVA.Attribute]
 edgeGraphVizAttrs (_, _, EmbedInfo _ (Edge option connection)) = attrs where
   attrs = constrainAttrs option ++ placementAttrs connection
@@ -59,6 +62,7 @@ edgeGraphVizAttrs (_, _, EmbedInfo _ (Edge option connection)) = attrs where
 constrainAttrs :: EdgeOption -> [GVA.Attribute]
 constrainAttrs (DoNotDrawButConstraint len) = [GVA.MinLen len]
 constrainAttrs DrawAndNotConstraint {} = dontConstrainAttrs
+constrainAttrs DrawIsImportant = importantAttrs
 constrainAttrs _  = []
 
 placementAttrs :: Connection -> [GVA.Attribute]

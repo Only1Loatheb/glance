@@ -73,7 +73,6 @@ listCompQualPortList = qualPortList
 casePortPairList :: [(Port,Port)]
 casePortPairList = zip caseCondPortList caseValuePorts
 
--- TODO It's a bit strange that the parameter is a SyntaxNode, not an Icon.
 inputPort :: SyntaxNode -> Port
 inputPort = const InputPort
 
