@@ -26,7 +26,7 @@ import EdgeToDiagram(
   )
 import EdgeAngles(getPortAngle)
 
-import Types(
+import Types(NodeName(..), 
   Connection  
   , EmbedInfo(..)
   , Edge(..)
@@ -46,6 +46,8 @@ import Types(
 import Util(fromMaybeError)
 
 import NodeRecordLabels(showNamedPortRrecord)
+
+import Icons(findIconFromName)
   
 -- MinLen - Minimum edge length (rank difference between head and tail).
 -- https://www.graphviz.org/doc/info/attrs.html#a:constraint
@@ -53,7 +55,7 @@ dontConstrainAttrs :: [GVA.Attribute]
 dontConstrainAttrs = [GVA.Constraint False]
 
 importantAttrs :: [GVA.Attribute]
-importantAttrs = [GVA.Weight $ GVA.Int 10]
+importantAttrs = [GVA.Weight $ GVA.Int 2]
 
 edgeGraphVizAttrs :: (a, Int, EmbedInfo Edge) -> [GVA.Attribute]
 edgeGraphVizAttrs (_, _, EmbedInfo _ (Edge option connection)) = attrs where
@@ -75,30 +77,28 @@ gvaEdgePort :: (NameAndPort, Maybe GVA.CompassPoint) -> GVA.PortPos
 gvaEdgePort pair = uncurry GVA.LabelledPort $ first (GVA.PN . T.pack . showNamedPortRrecord) pair
 
 -- | makeEdges draws the edges underneath the nodes.
-makeEdges :: (HasCallStack, SpecialBackend b, ING.Graph gr) =>
+makeEdges :: (HasCallStack, SpecialBackend b) =>
   ColorStyle
   -> IconInfo
-  -> gr NamedIcon (EmbedInfo Edge)
+  -> ING.Gr NamedIcon (EmbedInfo Edge)
   -> SpecialDiagram b
   -> SpecialDiagram b
 makeEdges colorStyle iconInfo graph origDia
-  = mconcat $ map (connectMaybePorts colorStyle iconInfo graph origDia) labledEdges where
+  = mconcat $ map (connectMaybePorts colorStyle iconInfo origDia) labledEdges where
     labledEdges = ING.labEdges graph
 
 
 -- | Given an Edge, return a transformation on Diagrams that will draw a line.
-connectMaybePorts :: (ING.Graph gr,SpecialBackend b)
+connectMaybePorts :: (SpecialBackend b)
   => 
   ColorStyle
   -> IconInfo 
-  -> gr NamedIcon (EmbedInfo Edge)
   -> SpecialDiagram b
   -> ING.LEdge (EmbedInfo Edge)
   -> SpecialDiagram b
 connectMaybePorts
   colorStyle
   iconInfo
-  graph
   origDia
   labeledEdge@(
     _node0,
@@ -109,7 +109,7 @@ connectMaybePorts
     in case mPointFromAndPointTo of
       (Nothing, _) -> mempty
       (_, Nothing) -> mempty
-      (Just pointFrom, Just pointTo) -> makeArrowDiagram colorStyle iconInfo (pointFrom,pointTo) graph labeledEdge
+      (Just pointFrom, Just pointTo) -> makeArrowDiagram colorStyle iconInfo (pointFrom,pointTo) labeledEdge
 
 getPoints :: SpecialBackend b => SpecialDiagram b-> (NameAndPort, NameAndPort) -> (Maybe PointType, Maybe PointType)
 getPoints origDia (fromNamePort, toNamePort) = (pointFrom, pointTo) where
@@ -122,16 +122,15 @@ getPositionOfNamed origDia (Named name port) = case Dia.lookupName (name .> port
   Nothing -> Nothing -- error $ "Name does not exist! name=" <> show n -- <> "\neInfo=" <> show eInfo
   Just subDia -> Just $ Dia.location subDia
 
-makeArrowDiagram :: (SpecialBackend b , ING.Graph gr)=> 
+makeArrowDiagram :: (SpecialBackend b)=> 
   ColorStyle 
   -> IconInfo 
   -> (PointType, PointType) 
-  -> gr NamedIcon (EmbedInfo Edge) 
   -> (Int, Int, EmbedInfo Edge) 
   -> SpecialDiagram b
-makeArrowDiagram colorStyle iconInfo pointFromAndPointTo graph labeledEdge
+makeArrowDiagram colorStyle iconInfo pointFromAndPointTo labeledEdge
   = Dia.atop arrowShaft arrowShadow where 
-    (arrowBaseOpts, arrowShadowOpts) = getArrowsOpts colorStyle iconInfo graph labeledEdge pointFromAndPointTo
+    (arrowBaseOpts, arrowShadowOpts) = getArrowsOpts colorStyle iconInfo labeledEdge pointFromAndPointTo
     arrowShaft = drawArrowFunc arrowBaseOpts pointFromAndPointTo
     arrowShadow = drawArrowFunc arrowShadowOpts pointFromAndPointTo
 -- In order to give arrows a "shadow" effect, draw a thicker semi-transparent
@@ -142,23 +141,24 @@ drawArrowFunc :: SpecialBackend b =>  Dia.ArrowOpts NumericType -> (PointType, P
 drawArrowFunc arrowOpts (pointFrom, pointTo) = arrowBetween' arrowOpts pointFrom pointTo
 
 
+getArrowsOpts :: 
+  ColorStyle 
+  -> IconInfo 
+  -> (Int, Int, EmbedInfo Edge) 
+  -> (Dia.Point Dia.V2 NumericType, Dia.Point Dia.V2 NumericType) 
+  -> (Dia.ArrowOpts NumericType, Dia.ArrowOpts NumericType)
 getArrowsOpts
   colorStyle
   iconInfo
-  graph
-  (node0
-  , node1
-  , EmbedInfo _ e@(Edge  _la namePorts@(fromNamePort, toNamePort))
+  (node0, node1, EmbedInfo _ e@(Edge  _la namePorts@(fromNamePort, toNamePort))
   )
   points
   = (arrowBaseOpts, arrowShadowOpts) where
-    namedIconFrom = fromMaybeError ("makeEdge: nodeFrom is not in graph: " ++ show node0)
-                $ ING.lab graph node0
-    namedIconTo = fromMaybeError ("makeEdge: nodeTo is not in graph: " ++ show node1)
-                $ ING.lab graph node1
+    namedIconFrom = findIconFromName iconInfo (NodeName node0)
+    namedIconTo = findIconFromName iconInfo (NodeName node1)
 
-    angleFrom = findPortAngles iconInfo namedIconFrom fromNamePort
-    angleTo = findPortAngles iconInfo namedIconTo toNamePort
+    angleFrom = getPortAngle iconInfo (NodeName node0) fromNamePort
+    angleTo = getPortAngle iconInfo (NodeName node1) toNamePort
 
     arrowBaseOpts{-'-} = getArrowBaseOpts namePorts points  (angleFrom, angleTo) (namedIconFrom, namedIconTo) colorStyle
     -- arrowBaseOpts = viewArrowBaseOpts e arrowBaseOpts'
@@ -168,10 +168,4 @@ getArrowsOpts
 --   shaftColor (Edge DrawAndNotConstraint _ ) = Dia.red
 --   shaftColor (Edge (DoNotDrawButConstraint {}) _) = Dia.blue
 --   shaftColor _ = Dia.white
-
-findPortAngles :: IconInfo -> NamedIcon -> NameAndPort -> Maybe (Angle NumericType)
-findPortAngles iconInfo (Named nodeName nodeIcon) (Named diaName port)
-  = foundAngles where
-    mName = if nodeName == diaName then Nothing else Just diaName
-    foundAngles = Just $ getPortAngle iconInfo nodeIcon port mName
 -- End makeEdges --

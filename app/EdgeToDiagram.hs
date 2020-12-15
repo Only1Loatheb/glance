@@ -41,34 +41,35 @@ edgeControlVectorLen = symbolSize * 4.0
 getArrowShadowOpts ::
   (NameAndPort,NameAndPort)
   -> (Point V2 NumericType, Point V2 NumericType)
-  -> (Maybe (Angle NumericType), Maybe (Angle NumericType))
+  -> (Angle NumericType, Angle NumericType)
   -> (NamedIcon,NamedIcon)
   -> ColorStyle 
   -> ArrowOpts NumericType
 getArrowShadowOpts 
   (_, namedPortTo)
-  points maybeAngles iconPair colorStyle
+  points angles iconPair colorStyle
   = shaftStyle %~ (lwG arrowShadowWidth .
                 lcA $ withOpacity shaftColor defaultShadowOpacity)
   $ headStyle %~ fc shaftColor
-  $ getArrowOpts points maybeAngles iconPair namedPortTo where
+  $ getArrowOpts points angles iconPair namedPortTo where
     shaftColor = backgroundC colorStyle
 
 getArrowBaseOpts :: 
   (NameAndPort,NameAndPort)
   -> (Point V2 NumericType, Point V2 NumericType)
-  -> (Maybe (Angle NumericType), Maybe (Angle NumericType))
+  -> (Angle NumericType, Angle NumericType)
   -> (NamedIcon, NamedIcon)
   -> ColorStyle
   -> ArrowOpts NumericType
 getArrowBaseOpts 
   namesAndPorts@(_, namedPortTo)
-  points maybeAngles 
+  points
+  angles 
   iconPair
   colorStyle
   = shaftStyle %~ (lwG arrowLineWidth {-- )-- -} . lc shaftColor) 
   $ headStyle %~ fc shaftColor
-  $ getArrowOpts points maybeAngles iconPair namedPortTo where
+  $ getArrowOpts points angles iconPair namedPortTo where
     shaftColor = getShaftColor colorStyle namesAndPorts iconPair
 
 getShaftColor :: ColorStyle -> (NameAndPort,NameAndPort) -> (NamedIcon, NamedIcon) -> Colour Double
@@ -90,7 +91,7 @@ hashedShaftColor nodeNum portNum edgeColors = shaftColor where
 
 getArrowOpts :: 
   (Point V2 NumericType, Point V2 NumericType)
-  -> (Maybe (Angle NumericType), Maybe (Angle NumericType))
+  -> (Angle NumericType, Angle NumericType)
   -> (NamedIcon, NamedIcon)
   -> NameAndPort
   -> ArrowOpts NumericType
@@ -111,17 +112,19 @@ getArrowHead (Named iconName (Icon FunctionDefIcon {} _)) (Named nodeName InputP
 getArrowHead _ _ = tri
 -- https://archives.haskell.org/projects.haskell.org/diagrams/doc/arrow.html
 
-edgeSymbol :: (R1 (Diff p), Affine p, Transformable (Diff p (N t)),
-                 TrailLike t, Floating (N (Diff p (N t))), Eq (N (Diff p (N t))),
-                 V (Diff p (N t)) ~ V2, V t ~ Diff p)
-  => p (N t)
-  -> p (N t)
-  -> Maybe (Angle (N (Diff p (N t))))
-  -> Maybe (Angle (N (Diff p (N t))))
-  -> t
-edgeSymbol formPoint toPoint anglesFrom anglesTo = fromSegments [bezier3 offsetToControl1 offsetToControl2 offsetToEnd] where
-  angleFrom = fromMaybe (3/4 @@ turn) anglesFrom  -- } edges defaults to go down for unnamed nodes
-  angleTo = fromMaybe (1/4 @@ turn) anglesTo  -- }
+edgeSymbol :: 
+    Point V2 NumericType
+  -> Point V2 NumericType
+  -> Angle NumericType
+  -> Angle NumericType
+  -> Trail V2 NumericType
+edgeSymbol formPoint toPoint angleFrom angleTo = fromSegments [bezier3 offsetToControl1 offsetToControl2 offsetToEnd] where
   offsetToEnd = toPoint .-. formPoint
-  offsetToControl1 = rotate angleFrom (scale edgeControlVectorLen unitX)
-  offsetToControl2 = rotate angleTo (scale edgeControlVectorLen unitX) ^+^ offsetToEnd
+  xOfTheOffset  = offsetToEnd ^. _x
+  angleFromFlipped = flipIfOnOtherSide xOfTheOffset angleFrom
+  angleToFlipped =   flipIfOnOtherSide xOfTheOffset angleTo
+  offsetToControl1 = rotate angleFromFlipped (scale edgeControlVectorLen unitY)
+  offsetToControl2 = rotate angleToFlipped (scale edgeControlVectorLen unitY) ^+^ offsetToEnd
+
+flipIfOnOtherSide :: NumericType -> Angle NumericType -> Angle Double
+flipIfOnOtherSide xOfTheOffset angle = if xOfTheOffset < 0 then  (- angle ^. turn) @@ turn else angle 

@@ -170,8 +170,8 @@ evalExpAppTest = syntaxGraphTest expectedSyntaxGraph generatedSyntaxGraph where
       , Named {_naName = NodeName 1, _naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = LiteralNode "x", srcRef = dummySrcRef }}}
       , Named {_naName = NodeName 2, _naVal = Embedder {emEmbedded = Set.fromList [], emNode = SyntaxNode {syntaxNodeCore = ApplyNode ApplyFlavor 1, srcRef = dummySrcRef}}}]
     , sgEdges = Set.fromList [
-      Edge {edgeOption = DrawAndConstraint, edgeConnection = (Named (NodeName 0) (Port 1),Named (NodeName 2) (Port 0))}
-      , Edge {edgeOption = DrawAndConstraint, edgeConnection = (Named (NodeName 1) (Port 1),Named (NodeName 2) (Port 2))}]
+      Edge {edgeOption = DrawAndConstraint, edgeConnection = (Named (NodeName 0) (Port 0),Named (NodeName 2) (Port 1))}
+      , Edge {edgeOption = DrawAndConstraint, edgeConnection = (Named (NodeName 1) (Port 0),Named (NodeName 2) (Port 3))}]
     , sgSinks = Set.fromList []
     , sgBinds = SMap.empty
     , sgEmbedMap = IMap.fromList []

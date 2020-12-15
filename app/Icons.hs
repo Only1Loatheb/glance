@@ -5,7 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Icons
     (
-    findIcon,
+    findIconFromName,
     findMaybeIconFromName,
     findMaybeIconsFromNames
     ) where
@@ -41,6 +41,3 @@ findIconFromName icons name@(NodeName nameInt)
       <> show icons <> "\nname=" <> show name)
     nameInt
     icons
-
-findIcon :: IconInfo -> NodeName -> [Maybe NamedIcon] -> Maybe (Int, Icon)
-findIcon iconInfo name args = Just (-1000, findIconFromName iconInfo name ^. naVal)

@@ -37,25 +37,25 @@ isPatternUnpackingPort PatternUnpackingPort = True
 isPatternUnpackingPort _ = False
 
 isArgPort :: Port -> Bool
-isArgPort (Port portNo) = even portNo
+isArgPort (Port portNo) = odd portNo
 
 isQualPort :: Port -> Bool
 isQualPort (Port portNo) = portNo < 0
 
 pattern InputPort :: Port
-pattern InputPort = Port 0
+pattern InputPort = Port 1
 
 pattern ResultPort :: Port
-pattern ResultPort = Port 1
+pattern ResultPort = Port 0
 
 pattern PatternUnpackingPort :: Port
 pattern PatternUnpackingPort = Port (-1)
 
 argPortList :: [Port]
-argPortList = fmap Port [2,4..]
+argPortList = fmap Port [3,5..]
 
 valuePortList :: [Port]
-valuePortList = fmap Port [3,5..]
+valuePortList = fmap Port [2,4..]
 
 qualPortList :: [Port]
 qualPortList = fmap Port [-2,-4..]
