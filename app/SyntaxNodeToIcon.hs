@@ -62,8 +62,8 @@ nodeToIcon (Embedder _embeddedNodes (SyntaxNode (BindNameNode str) src))
 nodeToIcon (Embedder _embeddedNodes (SyntaxNode (LiteralNode str) src))
   = Icon (TextBoxIcon str) src
 
-nodeToIcon (Embedder _embeddedNodes (SyntaxNode (FunctionArgNode labels regionInfo) src))
-  = Icon (FunctionArgIcon labels regionInfo) src 
+nodeToIcon (Embedder _embeddedNodes (SyntaxNode (FunctionArgNode labels regionInfo lambdaName) src))
+  = Icon (FunctionArgIcon labels regionInfo lambdaName) src 
   
 nodeToIcon (Embedder embeddedNodes node@(SyntaxNode (FunctionValueNode str) src))
   = Icon (FunctionDefIcon str embeddedBodyNode) src where

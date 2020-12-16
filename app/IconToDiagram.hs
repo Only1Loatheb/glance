@@ -207,7 +207,7 @@ iconToDiagram :: SpecialBackend b
   -> TransformableDia b
 iconToDiagram iconInfo (Icon icon _) = case icon of
   TextBoxIcon s -> literalDiagram iconInfo s
-  FunctionArgIcon argumentNames _ -> functionArgDia argumentNames
+  FunctionArgIcon argumentNames _ _ -> functionArgDia argumentNames
   FunctionDefIcon funcName inputNode -> functionDefDia iconInfo funcName (findMaybeIconFromName iconInfo inputNode)
   BindTextBoxIcon s -> bindDiagram s
   NestedApply flavor headIcon args -> applyDiagram

@@ -95,10 +95,10 @@ drawLambdaRegions colorStyle iconInfo placedNodes
     -- Consult CollapseGraph to find out where FunctionDefIcon can be nested 
     drawRegion :: Set.Set NodeName -> NamedIcon -> SpecialDiagram b
     drawRegion parentNames (Named name (Icon diagramIcon _)) = case diagramIcon of
-      (FunctionArgIcon _ (enclosedNames,level))
+      (FunctionArgIcon _ (enclosedNames,level) lambdaName)
         -> thisRegionDiagram where
           thisRegionDiagram = lambdaRegionToDiagram colorStyle enclosed name level
-          enclosed = findDia <$> Set.toList (parentNames <> enclosedNames)
+          enclosed = findDia <$> lambdaName : Set.toList (parentNames <> enclosedNames)
       _ -> mempty
 
 customLayoutParams :: GV.GraphvizParams ING.Node v e ClusterT v

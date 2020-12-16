@@ -123,6 +123,7 @@ data DiagramIcon =
   | FunctionArgIcon
     [String]  -- Parameter labels
     FuncDefRegionInfo
+    NodeName -- FunctionDefIcon Name
   | FunctionDefIcon
     String  -- Function name
     (Maybe NodeName) -- embeded body node
@@ -185,6 +186,7 @@ data SyntaxNodeCore =
   | FunctionArgNode
     [String]  -- Parameter labels
     FuncDefRegionInfo
+    NodeName -- FunctionDefNode Name
   | FunctionValueNode  -- Function definition (ie. lambda expression)
     String -- function name
   | CaseResultNode -- if same icon is in condition statment and result value

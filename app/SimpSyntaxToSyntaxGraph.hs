@@ -446,7 +446,7 @@ evalLambda seSrcRef context argPatterns expr functionName = do
     (outputReference,isOutputStraightFromInput) 
       = getOutputNameAndPort rhsRef  argPatternVals lambdaPorts  nodesGraph
   
-    argNode = makeLambdaArgumentNode argPatternValsWithAsNames regionInfo seSrcRef 
+    argNode = makeLambdaArgumentNode argPatternValsWithAsNames regionInfo lambdaName seSrcRef 
     regionInfo = getFuncDefRegionInfo graphWithoutRegionNode
     lambdaNode = makeLambdaNode lambdaLabel  seSrcRef
     lambdaPorts = map (nameAndPort argNodeName) $ argumentPortList lambdaNode
@@ -514,10 +514,10 @@ makeLambdaNode :: String  -> SrcRef -> SyntaxNode
 makeLambdaNode  functionName seSrcRef  = node where
   node = SyntaxNode (FunctionValueNode functionName) seSrcRef
 
-makeLambdaArgumentNode :: [(GraphAndRef, Maybe String)] -> FuncDefRegionInfo -> SrcRef -> SyntaxNode
-makeLambdaArgumentNode argPatternValsWithAsNames regionInfo seSrcRef = node where 
+makeLambdaArgumentNode :: [(GraphAndRef, Maybe String)] -> FuncDefRegionInfo -> NodeName -> SrcRef -> SyntaxNode
+makeLambdaArgumentNode argPatternValsWithAsNames regionInfo lambdaName seSrcRef = node where 
   paramNames = fmap patternName argPatternValsWithAsNames
-  node = SyntaxNode (FunctionArgNode paramNames regionInfo) seSrcRef
+  node = SyntaxNode (FunctionArgNode paramNames regionInfo lambdaName) seSrcRef
 
 
 makeLambdaOutputGraph :: (NodeName, SyntaxNode)

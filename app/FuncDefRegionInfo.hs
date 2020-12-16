@@ -28,6 +28,6 @@ getEnclosedNodeNames =  Set.map _naName
 getLambdaLevel :: Set.Set (Named (Embedder SyntaxNode)) -> Int
 getLambdaLevel innerNodes = level where
   allNodes = map (syntaxNodeCore . emNode . _naVal) (Set.toList innerNodes) 
-  funcDefLevels = [x | (FunctionArgNode _ (_, x)) <- allNodes]
+  funcDefLevels = [x | (FunctionArgNode _ (_, x) _) <- allNodes]
   maxLevel = foldl' max 0 funcDefLevels
   level = max 2 $ maxLevel + 1

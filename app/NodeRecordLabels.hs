@@ -74,7 +74,7 @@ nestedRecordLabels iconInfo defaultRecord maybeNodeName = records where
 recordLabels :: IconInfo -> Icon -> NodeName -> GVA.RecordFields -- this mirrors IconToDiagram layouts
 recordLabels iconInfo (Icon icon _) name = case icon of
   TextBoxIcon {} -> [patternUnpackingRecord name, resultRecord name]
-  FunctionArgIcon argLabels _->  take (length argLabels) (valueRecords name)
+  FunctionArgIcon argLabels _ _->  take (length argLabels) (valueRecords name)
   FunctionDefIcon _ mBodyNode -> records where
     records = [GVA.FlipFields $ bodyRecord ++ [resultRecord name]]
     bodyRecord = nestedRecordLabels iconInfo (inputRecord name) mBodyNode
