@@ -35,7 +35,7 @@ clusterNodesBy iconInfo  = clusterBy where
 
 iconClusterMap :: (IMap.Key, Icon) -> IMap.IntMap ClusterT
 iconClusterMap (name, Icon (FunctionArgIcon _ (nodesInside,_)) _) = lambdaClusterMap where
-  lambdaClusterMap = IMap.fromAscList $ map (\x -> (nodeNameToInt x, name)) (Set.toAscList nodesInside)
+  lambdaClusterMap = IMap.fromAscList $ map (\x -> (nodeNameToInt x, -name)) (Set.toAscList nodesInside)
 iconClusterMap _ = IMap.empty -- TODO other nested nodes
 
 combineClusterMaps :: IMap.IntMap ClusterT -> IMap.IntMap ClusterT -> IMap.IntMap ClusterT
