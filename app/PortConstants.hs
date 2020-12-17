@@ -3,6 +3,7 @@ module PortConstants
   ( pattern InputPort
   , pattern ResultPort
   , pattern PatternUnpackingPort
+  , pattern FunDefValuePort
   , isArgPort
   , inputPort
   , resultPort
@@ -17,6 +18,7 @@ module PortConstants
   , isInputPort
   , isPatternUnpackingPort
   , isResultPort
+  , isFunDefValuePort
   ) where
 
 import Types( Port(..)
@@ -36,6 +38,10 @@ isPatternUnpackingPort :: Port -> Bool
 isPatternUnpackingPort PatternUnpackingPort = True
 isPatternUnpackingPort _ = False
 
+isFunDefValuePort :: Port -> Bool
+isFunDefValuePort FunDefValuePort = True
+isFunDefValuePort _ = False
+
 isArgPort :: Port -> Bool
 isArgPort (Port portNo) = odd portNo
 
@@ -50,6 +56,9 @@ pattern ResultPort = Port 0
 
 pattern PatternUnpackingPort :: Port
 pattern PatternUnpackingPort = Port (-1)
+
+pattern FunDefValuePort :: Port
+pattern FunDefValuePort = Port (-3)
 
 argPortList :: [Port]
 argPortList = fmap Port [3,5..]
@@ -74,7 +83,8 @@ casePortPairList :: [(Port,Port)]
 casePortPairList = zip caseCondPortList caseValuePorts
 
 inputPort :: SyntaxNode -> Port
-inputPort = const InputPort
+inputPort (SyntaxNode FunctionValueNode {} _) = FunDefValuePort
+inputPort _ = InputPort
 
 resultPort :: SyntaxNode -> Port
 resultPort = const ResultPort

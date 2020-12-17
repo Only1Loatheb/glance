@@ -21,6 +21,7 @@ import PortConstants(
   , isArgPort
   , isQualPort
   , isResultPort
+  , isFunDefValuePort
   )
 import Types(
   SyntaxNode(..)
@@ -28,7 +29,6 @@ import Types(
   , IngSyntaxGraph
   , Edge(..)
   , Port(..)
-  , NameAndPort(..)
   , SgNamedNode
   , AnnotatedGraph
   , EmbedInfo(..)
@@ -38,8 +38,6 @@ import Types(
   , Named(..)
   , EmbedderSyntaxNode
   , NodeName(..)
-  , CaseFlavor(..)
-  , naVal
   )
 import SyntaxGraph(SyntaxGraph(..), lookupInEmbeddingMap)
 
@@ -120,7 +118,7 @@ isSyntaxNodeEmbeddable parentType (SyntaxNode syntaxNode _) parentPort childPort
     listCompEmbeddable = isParentQualPort
       || parentPortIsArg && childPortIsResult
 
-    lambdaEmbeddable fname = parentPortIsInput && isTempLabel fname && childPortIsResult
+    lambdaEmbeddable fname = isFunDefValuePort parentPort && isTempLabel fname && childPortIsResult
     
     caseEmbeddable = parentPortNotResult && parentPortNotInput && childPortIsResult
       || parentPortIsInput && childPortIsResult

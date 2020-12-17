@@ -28,6 +28,8 @@ import PortConstants(
     pattern InputPort
   , pattern ResultPort
   , pattern PatternUnpackingPort
+  , pattern FunDefValuePort
+  , isFunDefValuePort
   , isArgPort
   , isQualPort
   )
@@ -54,7 +56,7 @@ nestedApplyPortAngle ResultPort = 1/2 @@ turn
 nestedApplyPortAngle _isInput = 1/16 @@ turn
 
 lambdaPortAngle :: EmbeddedIn -> Port -> Angle NumericType
-lambdaPortAngle _ InputPort = 0 @@ turn
+lambdaPortAngle _ FunDefValuePort = 0 @@ turn
 lambdaPortAngle _ ResultPort = 1/2 @@ turn
 lambdaPortAngle embeddedIn port
   | isArgPort port = if isJust embeddedIn then 1/4 @@ turn else 0 @@ turn

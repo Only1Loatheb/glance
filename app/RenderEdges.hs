@@ -162,7 +162,7 @@ getArrowsOpts
 
     arrowBaseOpts{-'-} = getArrowBaseOpts namePorts points  (angleFrom, angleTo) (namedIconFrom, namedIconTo) colorStyle
     -- arrowBaseOpts = viewArrowBaseOpts e arrowBaseOpts'
-    arrowShadowOpts = getArrowShadowOpts namePorts points  (angleFrom, angleTo) (namedIconFrom, namedIconTo) colorStyle
+    arrowShadowOpts = getArrowShadowOpts namePorts points  (angleFrom, angleTo) colorStyle
 
 -- viewArrowBaseOpts e arrowBaseOpts' = Dia.shaftStyle Dia.%~ (Dia.opacity 1 $ Dia.lc (shaftColor e))  $ arrowBaseOpts' where
 --   shaftColor (Edge DrawAndNotConstraint _ ) = Dia.red

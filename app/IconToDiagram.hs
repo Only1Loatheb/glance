@@ -34,6 +34,7 @@ import PortConstants(
   , isArgPort
   , casePortPairList
   , pattern PatternUnpackingPort
+  , pattern FunDefValuePort
   , listCompQualPortList
   )
 
@@ -82,6 +83,7 @@ import DiagramSymbols(
   , listCompPipe
   , listLitDelimiterDia
   )
+import Data.Maybe (isJust)
 
 -- name.
 nameDiagram ::
@@ -138,10 +140,18 @@ makeInputDiagram :: SpecialBackend b
   -> Labeled (Maybe NamedIcon)
   -> NodeName
   -> SpecialDiagram b
-makeInputDiagram iconInfo di maybeFunText name = case maybeFunText ^. laValue of
-  Just _ ->
-    makeAppInnerIcon iconInfo di None InputPort maybeFunText
-  Nothing -> makeQualifiedPort InputPort name
+makeInputDiagram = makeInputDiagram' InputPort
+
+makeInputDiagram' :: SpecialBackend b
+  => Port
+  -> IconInfo
+  -> DrawingInfo
+  -> Labeled (Maybe NamedIcon)
+  -> NodeName
+  -> SpecialDiagram b
+makeInputDiagram' port iconInfo di maybeFunText name = if isJust $ maybeFunText ^. laValue
+  then makeAppInnerIcon iconInfo di None port maybeFunText
+  else makeQualifiedPort port name
       -- becaues it can only be [function name, lambda, imputPort]
 
 makeResultDiagram :: SpecialBackend b
@@ -466,7 +476,8 @@ functionDefDia iconInfo functionName input drawingInfo = finalDiagram where
   colorStyle = diColorStyle drawingInfo
   name = diName drawingInfo
   lambdaSymbol = alignBR (lambdaBodySymbol functionName colorStyle ||| memptyWithPosition)
-  inputDiagram = makeInputDiagram iconInfo drawingInfo (pure input) name
+  inputDiagram = makeInputDiagram' FunDefValuePort iconInfo drawingInfo (pure input) name
+  
   resultDiagram =  makeResultDiagram name
   finalDiagram = lambdaSymbol <> (inputDiagram === resultDiagram)
 

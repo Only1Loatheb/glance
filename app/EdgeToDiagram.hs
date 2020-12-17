@@ -13,6 +13,7 @@ import Data.Typeable(Typeable)
 import PortConstants(
   pattern InputPort
   , pattern ResultPort
+  , pattern FunDefValuePort
   )
 
 import Types(
@@ -42,16 +43,15 @@ getArrowShadowOpts ::
   (NameAndPort,NameAndPort)
   -> (Point V2 NumericType, Point V2 NumericType)
   -> (Angle NumericType, Angle NumericType)
-  -> (NamedIcon,NamedIcon)
   -> ColorStyle 
   -> ArrowOpts NumericType
 getArrowShadowOpts 
   (_, namedPortTo)
-  points angles iconPair colorStyle
+  points angles colorStyle
   = shaftStyle %~ (lwG arrowShadowWidth .
                 lcA $ withOpacity shaftColor defaultShadowOpacity)
   $ headStyle %~ fc shaftColor
-  $ getArrowOpts points angles iconPair namedPortTo where
+  $ getArrowOpts points angles namedPortTo where
     shaftColor = backgroundC colorStyle
 
 getArrowBaseOpts :: 
@@ -69,7 +69,7 @@ getArrowBaseOpts
   colorStyle
   = shaftStyle %~ (lwG arrowLineWidth {-- )-- -} . lc shaftColor) 
   $ headStyle %~ fc shaftColor
-  $ getArrowOpts points angles iconPair namedPortTo where
+  $ getArrowOpts points angles namedPortTo where
     shaftColor = getShaftColor colorStyle namesAndPorts iconPair
 
 getShaftColor :: ColorStyle -> (NameAndPort,NameAndPort) -> (NamedIcon, NamedIcon) -> Colour Double
@@ -79,9 +79,9 @@ getShaftColor colorStyle = getShaftColor' colorStyle edgeColors where
 getShaftColor' :: ColorStyle -> [Colour Double]
   -> (NameAndPort,NameAndPort)-> (NamedIcon, NamedIcon) -> Colour Double
 getShaftColor' colorStyle _ (Named _ ResultPort,_) (Named _ (Icon FunctionDefIcon {} _), _) = lambdaC colorStyle
-getShaftColor' colorStyle _ (_, Named _ InputPort) (_, Named _ (Icon FunctionDefIcon {} _)) = lambdaC colorStyle
+getShaftColor' colorStyle _ (_, Named _ FunDefValuePort) (_, Named _ (Icon FunctionDefIcon {} _)) = lambdaC colorStyle
 getShaftColor' _ edgeColors (Named (NodeName nodeNum) (Port portNum),_) (Named _ (Icon ListCompIcon {} _), _) = hashedShaftColor nodeNum portNum edgeColors
-getShaftColor' _ edgeColors (_, Named (NodeName nodeNum) (Port portNum)) (_, Named _ (Icon ListCompIcon {} _)) = hashedShaftColor nodeNum (portNum + 1) edgeColors
+getShaftColor' _ edgeColors (_, Named (NodeName nodeNum) (Port portNum)) (_, Named _ (Icon ListCompIcon {} _)) = hashedShaftColor nodeNum (portNum - 1) edgeColors
 getShaftColor' _ edgeColors (Named (NodeName nodeNum) (Port portNum),_) _ = hashedShaftColor nodeNum portNum edgeColors
 
 hashedShaftColor :: Int -> Int -> [a] -> a
@@ -92,24 +92,22 @@ hashedShaftColor nodeNum portNum edgeColors = shaftColor where
 getArrowOpts :: 
   (Point V2 NumericType, Point V2 NumericType)
   -> (Angle NumericType, Angle NumericType)
-  -> (NamedIcon, NamedIcon)
   -> NameAndPort
   -> ArrowOpts NumericType
-getArrowOpts (formPoint, toPoint) (anglesFrom,anglesTo) (_,iconTo) namedPortTo
+getArrowOpts (formPoint, toPoint) (anglesFrom,anglesTo) namedPortTo
   = arrowOptions where
     arrowOptions =
       -- arrowHead .~ noHead
-      arrowHead .~ getArrowHead iconTo namedPortTo
+      arrowHead .~ getArrowHead namedPortTo
       $ arrowTail .~ noTail
       $ arrowShaft .~ edgeSymbol formPoint toPoint anglesFrom anglesTo
       $ lengths .~ global symbolSize
       $ with
 
 -- getArrowHead :: Icon -> 
-getArrowHead :: NamedIcon -> NameAndPort -> ArrowHT NumericType
-getArrowHead (Named iconName (Icon FunctionDefIcon {} _)) (Named nodeName InputPort) 
-  = if nodeName == iconName then noHead else tri
-getArrowHead _ _ = tri
+getArrowHead :: NameAndPort -> ArrowHT NumericType
+getArrowHead (Named _ FunDefValuePort) =  noHead 
+getArrowHead _ = tri
 -- https://archives.haskell.org/projects.haskell.org/diagrams/doc/arrow.html
 
 edgeSymbol :: 
