@@ -36,7 +36,7 @@ import DiagramSymbols(
   , symbolSize
   )
 
-edgeControlVectorLen :: Fractional a => a
+edgeControlVectorLen :: NumericType
 edgeControlVectorLen = symbolSize * 4.0
 
 getArrowShadowOpts ::

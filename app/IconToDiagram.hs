@@ -292,7 +292,7 @@ patternDiagram
 
     patterns::[SpecialDiagram b]
     patterns = map alignB $ zipWith (makeAppInnerIcon iconInfo di inType) valuePortList subIcons
-    patternDia = constructor ||| subscribedValueDia ||| hcat patterns
+    patternDia = constructor ||| subscribedValueDia ||| hsep portSeparationSize patterns
 
     constructor = alignB $ coloredTextBox (textBoxTextC colorStyle) constructorName
 
@@ -505,5 +505,11 @@ lambdaRegionToDiagram colorStyle enclosedDiagarms (NodeName nameInt) level
     namePortHash = mod nameInt (length edgeColors)
     regionLineColor = edgeColors !! namePortHash
 
-    regionSymbol = dashingG [0.3 * symbolSize, 0.7 * symbolSize] 0 
-      $ lc regionLineColor (lwG defaultLineWidth contentsRect)
+    line =  lc regionLineColor (lwG defaultLineWidth contentsRect)
+    regionSymbol = setDashing line
+    setDashing a  = dashingG [dashingLineLen, dashingSpaceLen] 0 a
+
+dashingLineLen :: NumericType
+dashingLineLen = 0.15 * letterHeight
+dashingSpaceLen :: NumericType
+dashingSpaceLen = 0.35 * letterHeight

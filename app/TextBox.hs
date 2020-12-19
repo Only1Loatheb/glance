@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ConstraintKinds #-}
 module TextBox
   ( coloredTextBox
   , multilineComment
@@ -12,56 +13,73 @@ module TextBox
   )
 where
 
+import qualified Diagrams.Backend.Canvas as CV
+import qualified Diagrams.Backend.SVG as SVG
+
 import Diagrams.Prelude hiding ((&), (#), Name)
 
-import Types(SpecialDiagram, SpecialBackend, ColorStyle, ColorStyle'(..))
+import Types(
+    SpecialDiagram
+  , SpecialBackend(..)
+  , ColorStyle
+  , ColorStyle'(..)
+  , NumericType
+  , textSizeDiagram
+  )
 
 import StringSymbols(sourceCodeDiagramLabel)
+
+-- class SpecialBackend b => TextBoxDiagram b where
+--   textSizeDiagram :: String -> SpecialDiagram b
 
 -- Text constants --
 textBoxFontSize :: (Num a) => a
 textBoxFontSize = 12
 
-letterWidth :: Fractional a => a
-letterWidth = textBoxFontSize * monoLetterWidthToHeightFraction
-
-letterHeight :: Fractional a => a
+letterHeight :: NumericType
 letterHeight = textBoxFontSize * textBoxHeightFactor
 
-monoLetterWidthToHeightFraction :: (Fractional a) => a
-monoLetterWidthToHeightFraction = 0.72
-
-textBoxHeightFactor :: (Fractional a) => a
+textBoxHeightFactor :: NumericType
 textBoxHeightFactor = 1.4
-
-sidePadding :: Fractional a => a
-sidePadding = letterWidth * 0.0
 
 textFont :: String
 textFont = "monospace"
 
--- BEGIN Text helper functions --
+letterWidthSVG :: NumericType
+letterWidthSVG = textBoxFontSize * monoLetterWidthToHeightFractionSVG
 
--- This may be a faster implementation of normalizeAngle
---Get the decimal part of a float
--- reduceAngleRange :: SpecialNum a => a -> a
--- reduceAngleRange x = x - fromInteger (floor x)
+letterWidthCV :: NumericType
+letterWidthCV = textBoxFontSize * monoLetterWidthToHeightFractionCV
+
+monoLetterWidthToHeightFractionSVG :: NumericType
+monoLetterWidthToHeightFractionSVG = 0.62
+
+monoLetterWidthToHeightFractionCV :: NumericType
+monoLetterWidthToHeightFractionCV = 0.82
+
+nonlinearParam :: NumericType
+nonlinearParam = 0
+
+-- BEGIN Text helper functions --
 
 -- | Given the number of letters in a textbox string, make a rectangle that will
 -- enclose the text box. Since the normal SVG text has no size, some hackery is
 -- needed to determine the size of the text's bounding box.
 -- textSizeDiagram :: => Int -> t
 
-transparentAlpha :: Fractional a => a
+transparentAlpha :: NumericType
 transparentAlpha = 0.0
-
-textSizeDiagram :: SpecialBackend b 
-  => String -> SpecialDiagram b
-textSizeDiagram t = invisibleRect
-  where
-    n = length t
+instance SpecialBackend SVG.SVG where
+  textSizeDiagram t = invisibleRect where
+    n = (fromIntegral . length) t
     textHeight = letterHeight
-    textWidth = (fromIntegral n * letterWidth) + sidePadding
+    textWidth =  n * letterWidthSVG
+    invisibleRect =  opacity transparentAlpha $ rect textWidth textHeight
+instance SpecialBackend CV.Canvas where
+  textSizeDiagram t = invisibleRect where
+    n = (fromIntegral . length) t
+    textHeight = letterHeight
+    textWidth =  n * letterWidthCV + nonlinearParam * n * n
     invisibleRect =  opacity transparentAlpha $ rect textWidth textHeight
 
 -- END Text helper functions
@@ -86,7 +104,7 @@ coloredCommentBox textColor t = coloredTextBox' textColor objectWithSize textDia
     inTheMiddle =  0.5
     objectWithSize = alignL $ textSizeDiagram t
 
-coloredTextBox :: SpecialBackend b =>
+coloredTextBox ::   SpecialBackend b =>
   Colour Double -> String -> SpecialDiagram b
 coloredTextBox textColor t = coloredTextBox' textColor objectWithSize textDiagram where 
   textDiagram = text t -- dont have size

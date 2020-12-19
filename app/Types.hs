@@ -1,6 +1,7 @@
 {-# LANGUAGE NoMonomorphismRestriction, FlexibleContexts, ConstraintKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE GADTs #-}
 
 module Types (
   Named(..)
@@ -18,7 +19,7 @@ module Types (
   , IDState(..)
   , SpecialDiagram
   , SpecialQDiagram
-  , SpecialBackend
+  , SpecialBackend(..)
   
   , SgNamedNode
   , IngSyntaxGraph
@@ -66,6 +67,7 @@ module Types (
   , laValue
   , naVal
   , naName
+  , textSizeDiagram
 ) where
 
 import Diagrams.Prelude(Colour, QDiagram, V2, Any, Renderable, Path, IsName, Point, makeLenses)
@@ -235,10 +237,12 @@ type NumericType = Double
 type PointType = Point V2 NumericType
 
 -- Note that SpecialBackend is a constraint synonym, not a type synonym.
-type SpecialBackend b
-  = (Renderable (Path V2 NumericType) b, Renderable (Text NumericType) b)
 
-type SpecialDiagram b = QDiagram b V2 NumericType Any
+class (Renderable (Path V2 NumericType) b, Renderable (Text NumericType) b) => SpecialBackend b where
+  textSizeDiagram :: String -> SpecialDiagram b
+
+type SpecialDiagram b = QDiagram b V2 NumericType Any 
+-- class SpecialBackend b => SpecialDiagramC b where
 
 type SpecialQDiagram b = QDiagram b V2 NumericType DiaQuery
 

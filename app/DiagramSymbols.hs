@@ -50,34 +50,34 @@ import StringSymbols(
   )
 
 -- CONSTANTS --
-defaultLineWidth :: (Fractional a) => a
+defaultLineWidth :: NumericType
 defaultLineWidth = 0.15 * letterHeight
 
-symbolSize :: (Fractional a) => a
+symbolSize :: NumericType
 symbolSize = 0.5 * letterHeight
 
-boxPadding :: Fractional a => a
+boxPadding :: NumericType
 boxPadding = 2 * defaultLineWidth
 
-portSeparationSize :: (Fractional a) => a
+portSeparationSize :: NumericType
 portSeparationSize = 0.3 * letterHeight
 
-lambdaRegionPaddingX :: (Fractional a) => a
+lambdaRegionPaddingX :: NumericType
 lambdaRegionPaddingX = 1.4 * letterHeight
 
-lambdaRegionPaddingY :: (Fractional a) => a
+lambdaRegionPaddingY :: NumericType
 lambdaRegionPaddingY = 2 * letterHeight
 
-defaultOpacity :: (Fractional a) => a
+defaultOpacity :: NumericType
 defaultOpacity = 0.4
 
-defaultShadowOpacity :: (Fractional a) => a
+defaultShadowOpacity :: NumericType
 defaultShadowOpacity = 0.6
 
-arrowLineWidth :: Fractional a => a
+arrowLineWidth :: NumericType
 arrowLineWidth = defaultLineWidth
 
-arrowShadowWidth :: Fractional a => a
+arrowShadowWidth :: NumericType
 arrowShadowWidth = 1.9 * arrowLineWidth
 
 

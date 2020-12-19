@@ -30,10 +30,10 @@ getBlankCanvasOpts  portNumber =  BC.Options {
   , BC.weak = False
   }
 
-diagramForBlankCanvas :: SpecialBackend b
-  => SpecialQDiagram b
+diagramForBlankCanvas ::
+  SpecialQDiagram Canvas
   -> Double
-  -> (SpecialQDiagram b, (Double, Double) -> PointType,  Dia.SizeSpec Dia.V2 Double)
+  -> (SpecialQDiagram Canvas, (Double, Double) -> PointType,  Dia.SizeSpec Dia.V2 Double)
 diagramForBlankCanvas moduleDiagram imageScale = (moduleDiagramAligned, pointToDiaPoint, sizeSpec) where
   moduleDiagramAligned = Dia.alignTL moduleDiagram
   pointToDiaPoint _point@(x,y) = (1.0/imageScale) Dia.*^ Dia.p2 (x,-y)
@@ -88,9 +88,9 @@ loop
     -- if no mouse location, ignore, and redraw
     Nothing -> loop context (moduleDiagram, withdrawView view) loopControl imageScale colorStyle
     Just point -> do
-      let scaledPoint = pointToDiaPoint point
-      let clicked = sampleDiagram moduleDiagramAligned scaledPoint
       let 
+        scaledPoint = pointToDiaPoint point
+        clicked = sampleDiagram moduleDiagramAligned scaledPoint 
         newView = if not $ null clicked 
           then progressView clicked view 
           else withdrawView view
