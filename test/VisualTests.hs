@@ -232,7 +232,7 @@ patternTests = [
   -- test labelled ports
   "Foo x1 x2 = 4"
   , "mirrorTree Empty = Empty \n\
-    \mirrorTree (Node a Empty Empty) = Node a Empty Empty"
+    \mirrorTree (Node a l r) = Node a (mirrorTree r) (mirrorTree l)"
   ]
 
 lambdaTests :: [String]

@@ -4,6 +4,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE InstanceSigs #-}
 module TextBox
   ( coloredTextBox
   , multilineComment
@@ -13,9 +14,6 @@ module TextBox
   )
 where
 
-import qualified Diagrams.Backend.Canvas as CV
-import qualified Diagrams.Backend.SVG as SVG
-
 import Diagrams.Prelude hiding ((&), (#), Name)
 
 import Types(
@@ -24,7 +22,6 @@ import Types(
   , ColorStyle
   , ColorStyle'(..)
   , NumericType
-  , textSizeDiagram
   )
 
 import StringSymbols(sourceCodeDiagramLabel)
@@ -45,21 +42,6 @@ textBoxHeightFactor = 1.4
 textFont :: String
 textFont = "monospace"
 
-letterWidthSVG :: NumericType
-letterWidthSVG = textBoxFontSize * monoLetterWidthToHeightFractionSVG
-
-letterWidthCV :: NumericType
-letterWidthCV = textBoxFontSize * monoLetterWidthToHeightFractionCV
-
-monoLetterWidthToHeightFractionSVG :: NumericType
-monoLetterWidthToHeightFractionSVG = 0.62
-
-monoLetterWidthToHeightFractionCV :: NumericType
-monoLetterWidthToHeightFractionCV = 0.82
-
-nonlinearParam :: NumericType
-nonlinearParam = 0
-
 -- BEGIN Text helper functions --
 
 -- | Given the number of letters in a textbox string, make a rectangle that will
@@ -69,18 +51,13 @@ nonlinearParam = 0
 
 transparentAlpha :: NumericType
 transparentAlpha = 0.0
-instance SpecialBackend SVG.SVG where
-  textSizeDiagram t = invisibleRect where
-    n = (fromIntegral . length) t
-    textHeight = letterHeight
-    textWidth =  n * letterWidthSVG
-    invisibleRect =  opacity transparentAlpha $ rect textWidth textHeight
-instance SpecialBackend CV.Canvas where
-  textSizeDiagram t = invisibleRect where
-    n = (fromIntegral . length) t
-    textHeight = letterHeight
-    textWidth =  n * letterWidthCV + nonlinearParam * n * n
-    invisibleRect =  opacity transparentAlpha $ rect textWidth textHeight
+
+textSizeDiagram :: forall b. SpecialBackend b => String -> SpecialDiagram b
+textSizeDiagram t = invisibleRect where
+  n = (fromIntegral . length) t
+  textHeight = letterHeight
+  textWidth =  n * textBoxFontSize *  monoLetterWidthToHeight (mempty :: SpecialDiagram b)
+  invisibleRect =  opacity transparentAlpha $ rect textWidth textHeight
 
 -- END Text helper functions
 

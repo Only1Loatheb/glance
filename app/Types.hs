@@ -1,7 +1,7 @@
 {-# LANGUAGE NoMonomorphismRestriction, FlexibleContexts, ConstraintKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE InstanceSigs #-}
 
 module Types (
   Named(..)
@@ -19,7 +19,7 @@ module Types (
   , IDState(..)
   , SpecialDiagram
   , SpecialQDiagram
-  , SpecialBackend(..)
+  , SpecialBackend()
   
   , SgNamedNode
   , IngSyntaxGraph
@@ -67,12 +67,39 @@ module Types (
   , laValue
   , naVal
   , naName
-  , textSizeDiagram
+  , monoLetterWidthToHeight
+  , setDashing
 ) where
 
-import Diagrams.Prelude(Colour, QDiagram, V2, Any, Renderable, Path, IsName, Point, makeLenses)
+import Diagrams.Prelude
+    ( Any,
+      Bifunctor(bimap),
+      (&),
+      dashingG,
+      boundingBox,
+      getCorners,
+      _LG,
+      lGradEnd,
+      lGradStart,
+      lc,
+      lineTexture,
+      mkLinearGradient,
+      mkStops,
+      height,
+      width,
+      (.~),
+      makeLenses,
+      Colour,
+      IsName,
+      QDiagram,
+      Renderable,
+      Coordinates((^&)),
+      Path,
+      SpreadMethod(GradPad),
+      Point,
+      V2 )
 import Diagrams.TwoD.Text(Text)
-import Control.Applicative(Applicative(..))
+
 import qualified Data.Graph.Inductive as ING
 import qualified Data.Graph.Inductive.PatriciaTree as FGR
 import qualified Data.IntMap as IMap
@@ -80,6 +107,9 @@ import qualified Data.Map as SMap
 import qualified Data.Set as Set
 import Data.Typeable(Typeable)
 import qualified Language.Haskell.Exts as Exts
+import qualified Diagrams.Backend.Canvas as CV
+import qualified Diagrams.Backend.SVG as SVG
+import Data.Maybe (fromMaybe)
 
 newtype NodeName = NodeName Int deriving (Typeable, Eq, Ord, Show)
 instance IsName NodeName
@@ -239,7 +269,27 @@ type PointType = Point V2 NumericType
 -- Note that SpecialBackend is a constraint synonym, not a type synonym.
 
 class (Renderable (Path V2 NumericType) b, Renderable (Text NumericType) b) => SpecialBackend b where
-  textSizeDiagram :: String -> SpecialDiagram b
+  monoLetterWidthToHeight :: SpecialDiagram b -> NumericType
+  setDashing :: Colour NumericType -> [NumericType] -> SpecialDiagram b -> SpecialDiagram b
+
+instance SpecialBackend SVG.SVG where
+  monoLetterWidthToHeight = const 0.62
+  setDashing regionLineColor dashingPattern a = lc regionLineColor $ dashingG dashingPattern 0 a
+
+-- | Nasty workaround of lack of dashingG
+instance SpecialBackend CV.Canvas where
+  monoLetterWidthToHeight = const 0.82
+  setDashing regionLineColor [] a = lc regionLineColor a
+  setDashing regionLineColor dashingPattern a = lineTexture  gradient a where
+    (corner1,corner2) = fromMaybe ((-0.5) ^& 0,0.5 ^& 0) $ getCorners $ boundingBox a
+    gradient = mkLinearGradient stops corner1 corner2 GradPad 
+      & _LG . lGradStart        .~ corner1
+      & _LG . lGradEnd          .~ corner2
+    patternLen = sum dashingPattern
+    dashingLens = map (/ largerDimention) $ scanl (+) 0.0 
+      $ concat $ replicate (floor $ largerDimention / patternLen)  dashingPattern
+    largerDimention = uncurry max $ bimap width height (a,a)
+    stops = mkStops $ zipWith (\locationKey lineOpacity -> (regionLineColor, locationKey, lineOpacity)) dashingLens (cycle [1.0,0.0])
 
 type SpecialDiagram b = QDiagram b V2 NumericType Any 
 -- class SpecialBackend b => SpecialDiagramC b where

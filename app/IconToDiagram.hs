@@ -65,11 +65,11 @@ import Types(NumericType,
   , ColorStyle'(..)
   , InCaseOrInApply(..)
   , laValue
+  , setDashing
   )
 
 import DiagramSymbols(
   defaultLineWidth
-  , symbolSize
   , portSeparationSize
   , lambdaRegionPaddingX
   , lambdaRegionPaddingY
@@ -505,9 +505,8 @@ lambdaRegionToDiagram colorStyle enclosedDiagarms (NodeName nameInt) level
     namePortHash = mod nameInt (length edgeColors)
     regionLineColor = edgeColors !! namePortHash
 
-    line =  lc regionLineColor (lwG defaultLineWidth contentsRect)
-    regionSymbol = setDashing line
-    setDashing a  = dashingG [dashingLineLen, dashingSpaceLen] 0 a
+    line =  lwG defaultLineWidth contentsRect
+    regionSymbol = setDashing regionLineColor [dashingLineLen, dashingSpaceLen] line
 
 dashingLineLen :: NumericType
 dashingLineLen = 0.15 * letterHeight
