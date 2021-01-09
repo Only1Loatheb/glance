@@ -13,7 +13,7 @@ import qualified Data.GraphViz.Attributes.Complete as GVA
 import qualified Data.Graph.Inductive as ING
 import qualified Data.Graph.Inductive.PatriciaTree as FGR
 
-import Types(SpecialDiagram, SpecialBackend, SyntaxNode(..), SgNamedNode
+import Types(Drawing, DrawingBackend, SyntaxNode(..), SgNamedNode
             , NodeInfo(..), Named(..), Embedder(..))
 import SimpSyntaxToSyntaxGraph(translateStringToSyntaxGraph)
 import CollapseGraph(annotateGraph, collapseAnnotatedGraph, syntaxGraphToFglGraph)
@@ -30,9 +30,9 @@ prettyPrintSyntaxNode :: SyntaxNode -> String
 --     printEdge (Edge _ (NameAndPort n1 _, NameAndPort n2 _)) = show (n1, n2)
 prettyPrintSyntaxNode = show
 
-renderFglGraph :: SpecialBackend b
+renderFglGraph :: DrawingBackend b
                => FGR.Gr SgNamedNode e
-               -> IO (SpecialDiagram b)
+               -> IO (Drawing b)
 renderFglGraph fglGraph = do
   layedOutGraph <- DiaGV.layoutGraph' layoutParams GVA.Neato fglGraph
   pure $ DiaGV.drawGraph
@@ -82,7 +82,7 @@ collapseTestStrings = [
   "y x = case x of {Just w -> (let (z,_) = w in z)}"
   ]
 
-makeCollapseTest :: SpecialBackend b => String -> IO (SpecialDiagram b)
+makeCollapseTest :: DrawingBackend b => String -> IO (Drawing b)
 makeCollapseTest str = do
   before <- renderFglGraph fglGraph
   afterCollapse <- renderFglGraph (ING.nmap niVal collapsedGraph)
@@ -101,7 +101,7 @@ makeCollapseTest str = do
     afterText = alignL $ customTextBox "After:" -- :: Diagram B
 
 -- TODO Make this work for many input strings
-visualCollapseTests :: SpecialBackend b => IO (SpecialDiagram b)
+visualCollapseTests :: DrawingBackend b => IO (Drawing b)
 visualCollapseTests = do
   drawings <- traverse makeCollapseTest collapseTestStrings
   pure $ vsep 1 drawings

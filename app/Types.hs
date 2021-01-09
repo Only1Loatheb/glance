@@ -15,12 +15,10 @@ module Types (
   , Connection
   , Edge(..)
   , EdgeOption(..)
-  , Drawing(..)
   , IDState(..)
-  , SpecialDiagram
-  , SpecialQDiagram
-  , SpecialBackend()
-  
+  , Drawing
+  , QueryableDrawing
+  , DrawingBackend()
   , SgNamedNode
   , IngSyntaxGraph
   , ApplyFlavor(..)
@@ -71,33 +69,36 @@ module Types (
   , setDashing
 ) where
 
-import Diagrams.Prelude
-    ( Any,
-      Bifunctor(bimap),
-      (&),
-      dashingG,
-      boundingBox,
-      getCorners,
-      _LG,
-      lGradEnd,
-      lGradStart,
-      lc,
-      lineTexture,
-      mkLinearGradient,
-      mkStops,
-      height,
-      width,
-      (.~),
-      makeLenses,
-      Colour,
-      IsName,
-      QDiagram,
-      Renderable,
-      Coordinates((^&)),
-      Path,
-      SpreadMethod(GradPad),
-      Point,
-      V2 )
+import Diagrams.Prelude(
+    Any
+  , Bifunctor(bimap)
+  , (&)
+  , dashingG
+  , boundingBox
+  , getCorners
+  , _LG
+  , lGradEnd
+  , lGradStart
+  , lc
+  , lineTexture
+  , mkLinearGradient
+  , mkStops
+  , (.~)
+  , makeLenses
+  , Colour
+  , IsName
+  , QDiagram
+  , Renderable
+  , Coordinates((^&))
+  , Path
+  , SpreadMethod(GradPad)
+  , Point
+  , V2
+  , unp2
+  , p2
+  , (.-.)
+  , norm
+  )
 import Diagrams.TwoD.Text(Text)
 
 import qualified Data.Graph.Inductive as ING
@@ -254,10 +255,6 @@ data Edge = Edge {
   }
   deriving (Show, Eq, Ord)
 
--- | A drawing is a map from names to Icons, a list of edges,
--- and a map of names to subDrawings
-data Drawing = Drawing [NamedIcon] (Set.Set Edge) deriving (Show, Eq)
-
 -- | IDState is an Abstract Data Type that is used as a state whose value is a
 -- unique id.
 newtype IDState = IDState Int deriving (Eq, Show)
@@ -266,35 +263,38 @@ type NumericType = Double
 
 type PointType = Point V2 NumericType
 
--- Note that SpecialBackend is a constraint synonym, not a type synonym.
+-- Note that DrawingBackend is a constraint synonym, not a type synonym.
 
-class (Renderable (Path V2 NumericType) b, Renderable (Text NumericType) b) => SpecialBackend b where
-  monoLetterWidthToHeight :: SpecialDiagram b -> NumericType
-  setDashing :: Colour NumericType -> [NumericType] -> SpecialDiagram b -> SpecialDiagram b
+class (Renderable (Path V2 NumericType) b, Renderable (Text NumericType) b) => DrawingBackend b where
+  monoLetterWidthToHeight :: Drawing b -> NumericType
+  setDashing :: Colour NumericType -> [NumericType] -> Drawing b -> Drawing b
 
-instance SpecialBackend SVG.SVG where
+instance DrawingBackend SVG.SVG where
   monoLetterWidthToHeight = const 0.62
   setDashing regionLineColor dashingPattern a = lc regionLineColor $ dashingG dashingPattern 0 a
 
 -- | Nasty workaround of lack of dashingG
-instance SpecialBackend CV.Canvas where
+instance DrawingBackend CV.Canvas where
   monoLetterWidthToHeight = const 0.82
   setDashing regionLineColor [] a = lc regionLineColor a
   setDashing regionLineColor dashingPattern a = lineTexture  gradient a where
-    (corner1,corner2) = fromMaybe ((-0.5) ^& 0,0.5 ^& 0) $ getCorners $ boundingBox a
+    (corner1,corner2) = bimap (p2 . dup . uncurry  min . unp2) (p2 . dup . uncurry  max . unp2) $ fromMaybe ((-0.5) ^& 0,0.5 ^& 0) $ getCorners $ boundingBox a
     gradient = mkLinearGradient stops corner1 corner2 GradPad 
       & _LG . lGradStart        .~ corner1
       & _LG . lGradEnd          .~ corner2
     patternLen = sum dashingPattern
     dashingLens = map (/ largerDimention) $ scanl (+) 0.0 
       $ concat $ replicate (floor $ largerDimention / patternLen)  dashingPattern
-    largerDimention = uncurry max $ bimap width height (a,a)
+    largerDimention = norm $ corner2 .-. corner1
     stops = mkStops $ zipWith (\locationKey lineOpacity -> (regionLineColor, locationKey, lineOpacity)) dashingLens (cycle [1.0,0.0])
 
-type SpecialDiagram b = QDiagram b V2 NumericType Any 
--- class SpecialBackend b => SpecialDiagramC b where
+dup :: a -> (a, a)
+dup a = (a,a)
 
-type SpecialQDiagram b = QDiagram b V2 NumericType DiaQuery
+type Drawing b = QDiagram b V2 NumericType Any 
+-- class DrawingBackend b => SpecialDiagramC b where
+
+type QueryableDrawing b = QDiagram b V2 NumericType DiaQuery
 
 type IngSyntaxGraph gr = gr SgNamedNode Edge
 
@@ -329,11 +329,11 @@ data InCaseOrInApply = InApply | InCase | None deriving (Show, Eq)
 -- | A TransformableDia is a function that returns a diagram for an icon when
 -- given the icon's name, its nesting depth, whether it will be reflected, and
 -- by what angle it will be rotated.
-type TransformableDia b = DrawingInfo -> SpecialDiagram b
+type TransformableDia b = DrawingInfo -> Drawing b
 
 data NodeQueryValue = NodeQueryValue {
-  nodeSrcRef :: SrcRef
-  , nodeName :: NodeName
+  srcRefNQV :: SrcRef
+  , nodeNameNQV :: NodeName
   } deriving (Show, Eq, Ord)
 
 data DeclQueryValue = DeclQueryValue {

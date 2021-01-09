@@ -1,17 +1,20 @@
 {-# LANGUAGE NoMonomorphismRestriction, FlexibleContexts, TypeFamilies #-}
 {-# LANGUAGE OverloadedStrings #-} -- for "mousedown"
+{-# LANGUAGE PatternSynonyms #-}
+
 module FrontendBlankCanvas
   ( blankCanvasLoop
   )
 where
     
+import Data.String(IsString)
 import qualified Diagrams.Prelude as Dia hiding ((#), (&))
 import Diagrams.Backend.Canvas as CV
 import qualified Graphics.Blank as BC hiding (rotate, scale, ( # ))
 
 import Types (
-  SpecialQDiagram
-  , SpecialBackend
+  QueryableDrawing
+  , DrawingBackend
   , DiaQuery
   , CreateView
   , View
@@ -20,10 +23,20 @@ import Types (
   , ColorStyle'(..)
   )
 
+pattern LMBkeyCode :: Int
+pattern LMBkeyCode = 1
+pattern RMBkeyCode :: Int
+pattern RMBkeyCode = 3
+
+pattern MouseDownEvent :: (Eq a, IsString a) => a
+pattern MouseDownEvent = "mousedown"
+pattern KeyPressEvent :: (Eq a, IsString a) => a
+pattern KeyPressEvent = "keypress"
+
 getBlankCanvasOpts :: Int -> BC.Options
 getBlankCanvasOpts  portNumber =  BC.Options {
   BC.port = portNumber
-  , BC.events = ["mousedown"] 
+  , BC.events = [MouseDownEvent,KeyPressEvent] 
   , BC.debug = False
   , BC.root = "."
   , BC.middleware = [BC.local_only]
@@ -31,9 +44,9 @@ getBlankCanvasOpts  portNumber =  BC.Options {
   }
 
 diagramForBlankCanvas ::
-  SpecialQDiagram Canvas
+  QueryableDrawing Canvas
   -> Double
-  -> (SpecialQDiagram Canvas, (Double, Double) -> PointType,  Dia.SizeSpec Dia.V2 Double)
+  -> (QueryableDrawing Canvas, (Double, Double) -> PointType,  Dia.SizeSpec Dia.V2 Double)
 diagramForBlankCanvas moduleDiagram imageScale = (moduleDiagramAligned, pointToDiaPoint, sizeSpec) where
   moduleDiagramAligned = Dia.alignTL moduleDiagram
   pointToDiaPoint _point@(x,y) = (1.0/imageScale) Dia.*^ Dia.p2 (x,-y)
@@ -49,11 +62,13 @@ bcDrawDiagram context sizeSpec moduleDiagram colorStyle = do
   let moduleDrawing = Dia.bg (backgroundC colorStyle) $ Dia.clearValue moduleDiagram
   BC.send context $ Dia.renderDia CV.Canvas (CanvasOptions sizeSpec) moduleDrawing   
   
-blankCanvasLoop :: SpecialQDiagram Canvas 
+blankCanvasLoop :: QueryableDrawing Canvas 
   -> Int 
-  -> (SpecialQDiagram Canvas -> View -> IO (SpecialQDiagram Canvas)
-    , SpecialQDiagram Canvas -> PointType  -> DiaQuery
-    , CreateView, View -> View) 
+  -> (QueryableDrawing Canvas -> View -> IO (QueryableDrawing Canvas)
+    , QueryableDrawing Canvas -> PointType  -> DiaQuery
+    , CreateView
+    , View -> View
+    ) 
   -> Double 
   -> ColorStyle 
   -> IO ()
@@ -63,12 +78,12 @@ blankCanvasLoop moduleDiagram portNumber loopControl imageScale colorStyle = do
 
 loop ::
   BC.DeviceContext
-  -> (SpecialQDiagram Canvas, View)
-  -> (SpecialQDiagram Canvas -> View -> IO (SpecialQDiagram Canvas)
-    , SpecialQDiagram Canvas -> PointType -> DiaQuery
+  -> (QueryableDrawing Canvas, View)
+  -> (QueryableDrawing Canvas -> View -> IO (QueryableDrawing Canvas)
+    , QueryableDrawing Canvas -> PointType -> DiaQuery
     , CreateView
     , View -> View
-  )
+    )
   -> Double
   -> ColorStyle
   -> IO b
@@ -84,14 +99,16 @@ loop
   let (moduleDiagramAligned, pointToDiaPoint, sizeSpec) = diagramForBlankCanvas diagram imageScale
   bcDrawDiagram context sizeSpec moduleDiagramAligned colorStyle
   event <- BC.wait context
-  case BC.ePageXY event of
-    -- if no mouse location, ignore, and redraw
-    Nothing -> loop context (moduleDiagram, withdrawView view) loopControl imageScale colorStyle
-    Just point -> do
+  
+  case (BC.eType event, BC.ePageXY event, BC.eWhich event) of
+    (MouseDownEvent, Just point, Just keyCode) -> do
       let 
         scaledPoint = pointToDiaPoint point
         clicked = sampleDiagram moduleDiagramAligned scaledPoint 
-        newView = if not $ null clicked 
-          then progressView clicked view 
-          else withdrawView view
+        newView = case keyCode of
+          LMBkeyCode | not $ null clicked ->  progressView clicked view 
+          RMBkeyCode -> withdrawView view
+          _ -> view
       loop context (moduleDiagram, newView) loopControl imageScale colorStyle
+    _ -> loop context (moduleDiagram, view) loopControl imageScale colorStyle
+-- https://github.com/ku-fpg/blank-canvas/blob/master/examples/keyread/Main.hs

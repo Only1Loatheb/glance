@@ -661,7 +661,7 @@ makeNestedPatternGraph applyIconName funStr argVals srcRef = nestedApplyResult w
   patternNodeGraph = syntaxGraphFromNodes $ Set.singleton (Named applyIconName (mkEmbedder patternNode))
 
   asNameBinds :: [SyntaxGraph]
-  asNameBinds = map ((flip makeAsBindGraph) (map snd argVals)) (map (grRef. fst) argVals)
+  asNameBinds = map (flip makeAsBindGraph (map snd argVals) . grRef . fst) argVals
 
   graph = mconcat $ patternNodeGraph : asNameBinds ++ combinedGraph
    

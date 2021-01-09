@@ -31,8 +31,8 @@ import Types(NodeName(..),
   , EmbedInfo(..)
   , Edge(..)
   , NameAndPort(..)
-  , SpecialDiagram
-  , SpecialBackend
+  , Drawing
+  , DrawingBackend
   , NumericType
   , NamedIcon
   , IconInfo
@@ -77,25 +77,25 @@ gvaEdgePort :: (NameAndPort, Maybe GVA.CompassPoint) -> GVA.PortPos
 gvaEdgePort pair = uncurry GVA.LabelledPort $ first (GVA.PN . T.pack . showNamedPortRrecord) pair
 
 -- | makeEdges draws the edges underneath the nodes.
-makeEdges :: (HasCallStack, SpecialBackend b) =>
+makeEdges :: (HasCallStack, DrawingBackend b) =>
   ColorStyle
   -> IconInfo
   -> ING.Gr NamedIcon (EmbedInfo Edge)
-  -> SpecialDiagram b
-  -> SpecialDiagram b
+  -> Drawing b
+  -> Drawing b
 makeEdges colorStyle iconInfo graph origDia
   = mconcat $ map (connectMaybePorts colorStyle iconInfo origDia) labledEdges where
     labledEdges = ING.labEdges graph
 
 
 -- | Given an Edge, return a transformation on Diagrams that will draw a line.
-connectMaybePorts :: (SpecialBackend b)
+connectMaybePorts :: (DrawingBackend b)
   => 
   ColorStyle
   -> IconInfo 
-  -> SpecialDiagram b
+  -> Drawing b
   -> ING.LEdge (EmbedInfo Edge)
-  -> SpecialDiagram b
+  -> Drawing b
 connectMaybePorts
   colorStyle
   iconInfo
@@ -111,23 +111,23 @@ connectMaybePorts
       (_, Nothing) -> mempty
       (Just pointFrom, Just pointTo) -> makeArrowDiagram colorStyle iconInfo (pointFrom,pointTo) labeledEdge
 
-getPoints :: SpecialBackend b => SpecialDiagram b-> (NameAndPort, NameAndPort) -> (Maybe PointType, Maybe PointType)
+getPoints :: DrawingBackend b => Drawing b-> (NameAndPort, NameAndPort) -> (Maybe PointType, Maybe PointType)
 getPoints origDia (fromNamePort, toNamePort) = (pointFrom, pointTo) where
   pointFrom  = getPositionOfNamed origDia fromNamePort
   pointTo = getPositionOfNamed origDia toNamePort
 
-getPositionOfNamed :: SpecialBackend b => SpecialDiagram b-> NameAndPort ->  Maybe PointType
+getPositionOfNamed :: DrawingBackend b => Drawing b-> NameAndPort ->  Maybe PointType
 getPositionOfNamed origDia (Named name port) = case Dia.lookupName (name .> port) origDia of
   --Nothing -> Dia.r2 (0, 0)--error "Name does not exist!"
   Nothing -> Nothing -- error $ "Name does not exist! name=" <> show n -- <> "\neInfo=" <> show eInfo
   Just subDia -> Just $ Dia.location subDia
 
-makeArrowDiagram :: (SpecialBackend b)=> 
+makeArrowDiagram :: (DrawingBackend b)=> 
   ColorStyle 
   -> IconInfo 
   -> (PointType, PointType) 
   -> (Int, Int, EmbedInfo Edge) 
-  -> SpecialDiagram b
+  -> Drawing b
 makeArrowDiagram colorStyle iconInfo pointFromAndPointTo labeledEdge
   = Dia.atop arrowShaft arrowShadow where 
     (arrowBaseOpts, arrowShadowOpts) = getArrowsOpts colorStyle iconInfo labeledEdge pointFromAndPointTo
@@ -137,7 +137,7 @@ makeArrowDiagram colorStyle iconInfo pointFromAndPointTo labeledEdge
 -- line shaft the same color as the background underneath the normal line
 -- shaft.
 
-drawArrowFunc :: SpecialBackend b =>  Dia.ArrowOpts NumericType -> (PointType, PointType) -> SpecialDiagram b
+drawArrowFunc :: DrawingBackend b =>  Dia.ArrowOpts NumericType -> (PointType, PointType) -> Drawing b
 drawArrowFunc arrowOpts (pointFrom, pointTo) = arrowBetween' arrowOpts pointFrom pointTo
 
 

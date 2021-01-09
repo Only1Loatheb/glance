@@ -31,8 +31,8 @@ import SyntaxNodeToIcon(nodeToIcon)
 import           Types (
   EmbedInfo(..)
   , Edge(..)
-  , SpecialDiagram
-  , SpecialBackend
+  , Drawing
+  , DrawingBackend
   , NodeName(..)
   , NamedIcon
   , Icon(..)
@@ -41,7 +41,7 @@ import           Types (
   , IconInfo
   , Named(..)
   , DrawingInfo(..)
-  , SpecialQDiagram
+  , QueryableDrawing
   , AnnotatedFGR
   , ColorStyle
   , InCaseOrInApply(..)
@@ -78,22 +78,22 @@ nodeSeparationX = 1.5 * letterHeight * drawingToGraphvizScaleFactor
 nodeSeparationY :: Double
 nodeSeparationY = 2.38 * letterHeight * drawingToGraphvizScaleFactor
 
-drawLambdaRegions :: forall b . SpecialBackend b =>
+drawLambdaRegions :: forall b . DrawingBackend b =>
   ColorStyle 
   -> IconInfo
-  -> [(NamedIcon, SpecialDiagram b)]
-  -> SpecialDiagram b
+  -> [(NamedIcon, Drawing b)]
+  -> Drawing b
 drawLambdaRegions colorStyle iconInfo placedNodes
   = mconcat $ fmap (drawRegion Set.empty . fst) placedNodes
   where
-    findDia :: NodeName -> SpecialDiagram b
+    findDia :: NodeName -> Drawing b
     findDia n1
       = maybe mempty snd
         (find (\(Named n2 _, _) -> n1 == n2) placedNodes)
 
     -- Also draw the region around the icon the lambda is in.
     -- Consult CollapseGraph to find out where FunctionDefIcon can be nested 
-    drawRegion :: Set.Set NodeName -> NamedIcon -> SpecialDiagram b
+    drawRegion :: Set.Set NodeName -> NamedIcon -> Drawing b
     drawRegion parentNames (Named name (Icon diagramIcon _)) = case diagramIcon of
       (FunctionArgIcon _ (enclosedNames,level) lambdaName)
         -> thisRegionDiagram where
@@ -124,22 +124,22 @@ customLayoutParams = GV.defaultParams{
     , GV.clusterID =  GV.Num . GV.Int --   ClusterT
   }
 
-getDiagramWidthAndHeight :: forall b. SpecialBackend b => SpecialDiagram b -> (Double, Double)
+getDiagramWidthAndHeight :: forall b. DrawingBackend b => Drawing b -> (Double, Double)
 getDiagramWidthAndHeight dummyDiagram = (diaWidth, diaHeight) where
   diaWidth = max (drawingToGraphvizScaleFactor * Dia.width dummyDiagram) minialGVADimention
   diaHeight = max (drawingToGraphvizScaleFactor * Dia.height dummyDiagram) minialGVADimention    
 
-renderIconGraph :: forall b. SpecialBackend b
+renderIconGraph :: forall b. DrawingBackend b
   => ColorStyle
   -> Gr (NodeInfo NamedIcon) (EmbedInfo Edge)
   -> Gr (NodeInfo NamedIcon) (EmbedInfo Edge)
-  -> IO (SpecialQDiagram b)
+  -> IO (QueryableDrawing b)
 renderIconGraph colorStyle fullGraphWithInfo viewGraph = do
   layoutResult <- layoutGraph' layoutParams GVA.Dot parentGraphNoLoops
   let
     iconAndPositions = (Map.toList . fst . getGraph)  layoutResult
     
-    iconAndPlacedNodes :: [(NamedIcon,SpecialDiagram b)]
+    iconAndPlacedNodes :: [(NamedIcon,Drawing b)]
     iconAndPlacedNodes = map (placeNode iconInfo colorStyle drawingToGraphvizScaleFactor) iconAndPositions
     placedNodes = mconcat $ fmap snd iconAndPlacedNodes
 
@@ -175,15 +175,15 @@ renderIconGraph colorStyle fullGraphWithInfo viewGraph = do
       , GVA.Label $ GVA.RecordLabel recordFields
       ] where
         (diaWidth, diaHeight) = getDiagramWidthAndHeight dummyDiagram
-        dummyDiagram :: SpecialDiagram b
+        dummyDiagram :: Drawing b
         dummyDiagram = iconToDiagram iconInfo nodeIcon (DrawingInfo (NodeName (-1)) 0 None dummyColorStyle)
 
         recordFields = recordLabels iconInfo nodeIcon name
 
-renderIngSyntaxGraph :: (HasCallStack, SpecialBackend b)
+renderIngSyntaxGraph :: (HasCallStack, DrawingBackend b)
   => ColorStyle
   -> (AnnotatedFGR, AnnotatedFGR) 
-  -> IO (SpecialQDiagram b)
+  -> IO (QueryableDrawing b)
 renderIngSyntaxGraph colorStyle (fullGr, viweGr) 
   = renderIconGraph colorStyle fullGraph viewGraph where
     fullGraph = ING.nmap (fmap (fmap nodeToIcon)) fullGr

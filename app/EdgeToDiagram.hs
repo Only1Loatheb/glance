@@ -80,8 +80,6 @@ getShaftColor' :: ColorStyle -> [Colour Double]
   -> (NameAndPort,NameAndPort)-> (NamedIcon, NamedIcon) -> Colour Double
 getShaftColor' colorStyle _ (Named _ ResultPort,_) (Named _ (Icon FunctionDefIcon {} _), _) = lambdaC colorStyle
 getShaftColor' colorStyle _ (_, Named _ FunDefValuePort) (_, Named _ (Icon FunctionDefIcon {} _)) = lambdaC colorStyle
-getShaftColor' _ edgeColors (Named (NodeName nodeNum) (Port portNum),_) (Named _ (Icon ListCompIcon {} _), _) = hashedShaftColor nodeNum portNum edgeColors
-getShaftColor' _ edgeColors (_, Named (NodeName nodeNum) (Port portNum)) (_, Named _ (Icon ListCompIcon {} _)) = hashedShaftColor nodeNum (portNum - 1) edgeColors
 getShaftColor' _ edgeColors (Named (NodeName nodeNum) (Port portNum),_) _ = hashedShaftColor nodeNum portNum edgeColors
 
 hashedShaftColor :: Int -> Int -> [a] -> a

@@ -7,8 +7,8 @@ module NodePlacementMap (
 
 import qualified Diagrams.Prelude as Dia
 
-import Types(InCaseOrInApply(..), SpecialDiagram, SpecialBackend
-  , SpecialQDiagram
+import Types(InCaseOrInApply(..), Drawing, DrawingBackend
+  , QueryableDrawing
   , NamedIcon
   , Icon(..)
   , IconInfo
@@ -25,12 +25,12 @@ import TextBox(transparentAlpha, letterHeight)
 
 import IconToDiagram(iconToDiagram)
 
-placeNode :: SpecialBackend b
+placeNode :: DrawingBackend b
   => IconInfo
   -> ColorStyle 
   -> Double
   -> (NamedIcon, Dia.P2 Double) 
-  -> (NamedIcon, SpecialDiagram b)
+  -> (NamedIcon, Drawing b)
 placeNode iconInfo colorStyle graphVizScale (namedIcon@(Named name icon), layoutPosition)
   = (namedIcon, Dia.place transformedDia diaPosition) where
       origDia = iconToDiagram
@@ -47,9 +47,9 @@ getDiaPosition graphVizScale layoutPosition = graphVizScale Dia.*^ layoutPositio
 boundingBoxPadding :: Double
 boundingBoxPadding = 0.5 * letterHeight
 
-getQueryRects :: SpecialBackend b
-  =>[(NamedIcon, SpecialDiagram b)]
-  -> [SpecialQDiagram b]
+getQueryRects :: DrawingBackend b
+  =>[(NamedIcon, Drawing b)]
+  -> [QueryableDrawing b]
 getQueryRects iconAndPlacedNodes 
   = [box | (icon, diagram) <- iconAndPlacedNodes,
     let 

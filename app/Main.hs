@@ -14,8 +14,8 @@ import qualified Diagrams.Prelude as Dia hiding ((#), (&))
 import SVGrender(customRenderSVG')
 
 import Types (
-  SpecialQDiagram
-  , SpecialBackend
+  QueryableDrawing
+  , DrawingBackend
   , DiaQuery
   , SourceCode
   , SrcRef
@@ -84,8 +84,8 @@ prepareDiagram (CMD.CmdLineOptions
     blankCanvasLoop moduleDiagram portNumber loopControl imageScale colorStyle
   else pure ()
 
-selectViewWithSourceCode :: SpecialBackend b =>
-  (SrcRef -> SourceCode) -> ColorStyle -> SpecialQDiagram b -> View -> IO(SpecialQDiagram b)
+selectViewWithSourceCode :: DrawingBackend b =>
+  (SrcRef -> SourceCode) -> ColorStyle -> QueryableDrawing b -> View -> IO(QueryableDrawing b)
 selectViewWithSourceCode getCodeFragment colorStyle moduleDiagram view = do
   diagram <- selectView colorStyle moduleDiagram view
   if hasSrcRef view
@@ -97,7 +97,7 @@ selectViewWithSourceCode getCodeFragment colorStyle moduleDiagram view = do
   else pure diagram 
 
 
-selectView :: SpecialBackend b => ColorStyle -> SpecialQDiagram b -> View -> IO (SpecialQDiagram b)
+selectView :: DrawingBackend b => ColorStyle -> QueryableDrawing b -> View -> IO (QueryableDrawing b)
 selectView colorStyle moduleDiagram (maybeDeclQV, maybeNodeQV) = do
   case maybeDeclQV of
     Nothing -> pure moduleDiagram
@@ -106,8 +106,8 @@ selectView colorStyle moduleDiagram (maybeDeclQV, maybeNodeQV) = do
         Nothing -> declDiagram colorStyle declQueryValue
         Just nodeQueryValue -> nodeDiagram colorStyle declQueryValue nodeQueryValue
 
-sampleDiagram :: SpecialBackend b =>
-  SpecialQDiagram b -> PointType -> DiaQuery
+sampleDiagram :: DrawingBackend b =>
+  QueryableDrawing b -> PointType -> DiaQuery
 sampleDiagram = Dia.sample
 
 progressView :: CreateView

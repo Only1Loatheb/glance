@@ -17,8 +17,8 @@ where
 import Diagrams.Prelude hiding ((&), (#), Name)
 
 import Types(
-    SpecialDiagram
-  , SpecialBackend(..)
+    Drawing
+  , DrawingBackend(..)
   , ColorStyle
   , ColorStyle'(..)
   , NumericType
@@ -26,8 +26,8 @@ import Types(
 
 import StringSymbols(sourceCodeDiagramLabel)
 
--- class SpecialBackend b => TextBoxDiagram b where
---   textSizeDiagram :: String -> SpecialDiagram b
+-- class DrawingBackend b => TextBoxDiagram b where
+--   textSizeDiagram :: String -> Drawing b
 
 -- Text constants --
 textBoxFontSize :: (Num a) => a
@@ -52,43 +52,43 @@ textFont = "monospace"
 transparentAlpha :: NumericType
 transparentAlpha = 0.0
 
-textSizeDiagram :: forall b. SpecialBackend b => String -> SpecialDiagram b
+textSizeDiagram :: forall b. DrawingBackend b => String -> Drawing b
 textSizeDiagram t = invisibleRect where
   n = (fromIntegral . length) t
   textHeight = letterHeight
-  textWidth =  n * textBoxFontSize *  monoLetterWidthToHeight (mempty :: SpecialDiagram b)
+  textWidth =  n * textBoxFontSize *  monoLetterWidthToHeight (mempty :: Drawing b)
   invisibleRect =  opacity transparentAlpha $ rect textWidth textHeight
 
 -- END Text helper functions
 
-multilineComment :: SpecialBackend b 
-  => ColorStyle -> String -> SpecialDiagram b
+multilineComment :: DrawingBackend b 
+  => ColorStyle -> String -> Drawing b
 multilineComment colorStyle = multilineComment' (textBoxTextC colorStyle)
 
-multilineComment' :: SpecialBackend b =>
-  Colour Double -> String -> SpecialDiagram b
+multilineComment' :: DrawingBackend b =>
+  Colour Double -> String -> Drawing b
 multilineComment' textColor t = textDia where
   textLines = lines t
   textAreas = map (coloredCommentBox textColor) textLines
   textsAlignd = map alignL textAreas
   textDia = vcat textsAlignd
 
-coloredCommentBox :: SpecialBackend b =>
-  Colour Double -> String -> SpecialDiagram b
+coloredCommentBox :: DrawingBackend b =>
+  Colour Double -> String -> Drawing b
 coloredCommentBox textColor t = coloredTextBox' textColor objectWithSize textDiagram where
     textDiagram = alignedText onLeftSide inTheMiddle t
     onLeftSide = 0
     inTheMiddle =  0.5
     objectWithSize = alignL $ textSizeDiagram t
 
-coloredTextBox ::   SpecialBackend b =>
-  Colour Double -> String -> SpecialDiagram b
+coloredTextBox ::   DrawingBackend b =>
+  Colour Double -> String -> Drawing b
 coloredTextBox textColor t = coloredTextBox' textColor objectWithSize textDiagram where 
   textDiagram = text t -- dont have size
   objectWithSize = textSizeDiagram t
 
-coloredTextBox' :: SpecialBackend b =>
-  Colour Double -> SpecialDiagram b -> SpecialDiagram b -> SpecialDiagram b
+coloredTextBox' :: DrawingBackend b =>
+  Colour Double -> Drawing b -> Drawing b -> Drawing b
 coloredTextBox' textColor objectWithSize textDiagram = objectWithSize <> textLabel where
   textLabel =
     fontSize
@@ -96,8 +96,8 @@ coloredTextBox' textColor objectWithSize textDiagram = objectWithSize <> textLab
     (font textFont $ fillColor textColor  textDiagram)
 
 
-sourceCodeDiagram :: SpecialBackend b
-  => String -> ColorStyle -> SpecialDiagram b
+sourceCodeDiagram :: DrawingBackend b
+  => String -> ColorStyle -> Drawing b
 sourceCodeDiagram s colorStyle = label === sourceCode  ||| padding where
   sourceCode = multilineComment colorStyle s
   label = multilineComment colorStyle sourceCodeDiagramLabel

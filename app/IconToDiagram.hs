@@ -47,8 +47,8 @@ import StringSymbols(
 import Types(NumericType, 
   Icon(..)
   , DiagramIcon(..)
-  , SpecialDiagram
-  , SpecialBackend
+  , Drawing
+  , DrawingBackend
   , NodeName(..)
   , Port(..)
   , ApplyFlavor(..)
@@ -88,34 +88,34 @@ import Data.Maybe (isJust)
 -- name.
 nameDiagram ::
   NodeName
-  -> SpecialDiagram b
-  -> SpecialDiagram b
+  -> Drawing b
+  -> Drawing b
 nameDiagram name dia = named name (name .>> dia)
 
 -- | Make an port with an integer name. Always use <> to add a ports
 -- (not === or |||)  since mempty has no size and will not be placed where you
 -- want it.
-makePort :: SpecialBackend b => Port -> SpecialDiagram b
+makePort :: DrawingBackend b => Port -> Drawing b
 makePort x = named x mempty
 --makePort x = circle 0.2 # fc green # named x
 -- Note, the version of makePort below seems to have a different type.
 --makePort x = textBox (show x) # fc green # named x
 
-makeQualifiedPort :: SpecialBackend b 
-  =>  Port -> NodeName -> SpecialDiagram b
+makeQualifiedPort :: DrawingBackend b 
+  =>  Port -> NodeName -> Drawing b
 makeQualifiedPort = makeQualifiedPort' inputPortSymbol resultPortSymbol
 
-makeQualifiedPort' :: SpecialBackend b => 
-                        SpecialDiagram b
-                        -> SpecialDiagram b -> Port -> NodeName -> SpecialDiagram b
+makeQualifiedPort' :: DrawingBackend b => 
+                        Drawing b
+                        -> Drawing b -> Port -> NodeName -> Drawing b
 makeQualifiedPort' inputDia resultDia port name = portAndSymbol where
   namedPort = name .>> (makePort port)
   portAndSymbol = namedPort <> symbol
   symbol = if isArgPort port then inputDia else resultDia
 
 -- Don't display " tempvar" from SimpSyntaxToSyntaxGraph.hs/matchesToCase
-makeLabelledPort :: SpecialBackend b =>
-  InCaseOrInApply -> ColorStyle -> NodeName -> Port -> String -> SpecialDiagram b
+makeLabelledPort :: DrawingBackend b =>
+  InCaseOrInApply -> ColorStyle -> NodeName -> Port -> String -> Drawing b
 makeLabelledPort inType colorStyle name port str
   = choosePortDiagram str portAndSymbol portSymbolAndLabel where
     portAndSymbol = makeQualifiedPort port name
@@ -124,8 +124,8 @@ makeLabelledPort inType colorStyle name port str
       InCase -> portAndSymbol === label
       _ -> if isArgPort port then portAndSymbol === label else label === portAndSymbol
 
-choosePortDiagram :: SpecialBackend b =>
-  String -> SpecialDiagram b -> SpecialDiagram b ->SpecialDiagram b
+choosePortDiagram :: DrawingBackend b =>
+  String -> Drawing b -> Drawing b ->Drawing b
 choosePortDiagram str portAndSymbol portSymbolAndLabel
   = centerX symbol where
     symbol
@@ -134,38 +134,38 @@ choosePortDiagram str portAndSymbol portSymbolAndLabel
       | otherwise = portAndSymbol
       
 
-makeInputDiagram :: SpecialBackend b
+makeInputDiagram :: DrawingBackend b
   => IconInfo
   -> DrawingInfo
   -> Labeled (Maybe NamedIcon)
   -> NodeName
-  -> SpecialDiagram b
+  -> Drawing b
 makeInputDiagram = makeInputDiagram' InputPort
 
-makeInputDiagram' :: SpecialBackend b
+makeInputDiagram' :: DrawingBackend b
   => Port
   -> IconInfo
   -> DrawingInfo
   -> Labeled (Maybe NamedIcon)
   -> NodeName
-  -> SpecialDiagram b
+  -> Drawing b
 makeInputDiagram' port iconInfo di maybeFunText name = if isJust $ maybeFunText ^. laValue
   then makeAppInnerIcon iconInfo di None port maybeFunText
   else makeQualifiedPort port name
       -- becaues it can only be [function name, lambda, imputPort]
 
-makeResultDiagram :: SpecialBackend b
+makeResultDiagram :: DrawingBackend b
   => NodeName
-  -> SpecialDiagram b
+  -> Drawing b
 makeResultDiagram = makeQualifiedPort ResultPort
 
-makeAppInnerIcon :: SpecialBackend b
+makeAppInnerIcon :: DrawingBackend b
   => IconInfo
   -> DrawingInfo
   -> InCaseOrInApply  -- parrent 
   -> Port  -- Port number (if the NamedIcon is Nothing)
   -> Labeled (Maybe NamedIcon) -- The icon 
-  -> SpecialDiagram b
+  -> Drawing b
 makeAppInnerIcon _iconInfo di inType  port
   (Labeled str Nothing)
   = makeLabelledPort inType colorStyle name port str where
@@ -184,23 +184,23 @@ makeAppInnerIcon iconInfo di inType _port
       InApply -> nestingLevel + 1
       _ -> nestingLevel
 
-makePassthroughIcon :: SpecialBackend b
+makePassthroughIcon :: DrawingBackend b
   => IconInfo
   -> DrawingInfo
   -> InCaseOrInApply  -- If False then add one to the nesting level. 
   -> (Port,Port)  -- Port number (if the NamedIcon is Nothing)
   -> Labeled (Maybe NamedIcon) -- The icon 
-  -> SpecialDiagram b
+  -> Drawing b
 makePassthroughIcon iconInfo di inType (inPort,outPort) labledMaybeNamedIcon 
   = inIcon === valuePort where
     inIcon = makeAppInnerIcon iconInfo di inType inPort labledMaybeNamedIcon
     valuePort = makeQualifiedPort outPort name
     name = diName di
 
-lambdaBodySymbol :: SpecialBackend b
+lambdaBodySymbol :: DrawingBackend b
   => String
   -> ColorStyle 
-  -> SpecialDiagram b
+  -> Drawing b
 lambdaBodySymbol label colorStyle = if isTempLabel label
   then mempty
   else coloredTextBox (textBoxTextC colorStyle) label
@@ -211,7 +211,7 @@ lambdaBodySymbol label colorStyle = if isTempLabel label
 -- | Make an identity TransformableDia
 
 
-iconToDiagram :: SpecialBackend b
+iconToDiagram :: DrawingBackend b
   => IconInfo
   -> Icon
   -> TransformableDia b
@@ -239,14 +239,14 @@ iconToDiagram iconInfo (Icon icon _) = case icon of
     (findMaybeIconsFromNames iconInfo qualsNames)
   ListLitIcon flavor args delimiters -> listLitDiagram iconInfo flavor (findMaybeIconsFromNames iconInfo args) delimiters
 
-caseResultDiagram :: SpecialBackend b => TransformableDia b
+caseResultDiagram :: DrawingBackend b => TransformableDia b
 caseResultDiagram drawingInfo = finalDia where
   name = diName drawingInfo
   caseResultDia = nameDiagram name memptyWithPosition
   output = makeQualifiedPort ResultPort name
   finalDia = caseResultDia === output
 
-bindDiagram :: SpecialBackend b =>
+bindDiagram :: DrawingBackend b =>
   String -> TransformableDia b
 bindDiagram _bindName drawingInfo = finalDia where
   name = diName drawingInfo
@@ -255,7 +255,7 @@ bindDiagram _bindName drawingInfo = finalDia where
   input = makeQualifiedPort InputPort name
   finalDia = input === bindDia
 
-literalDiagram :: SpecialBackend b =>
+literalDiagram :: DrawingBackend b =>
   IconInfo
   -> String  
   -> TransformableDia b
@@ -267,7 +267,7 @@ literalDiagram iconInfo t drawingInfo = finalDia where
   outputDia = makeResultDiagram name
   bindText = coloredTextBox (textBoxTextC colorStyle) t
 
-patternDiagram :: forall b. SpecialBackend b
+patternDiagram :: forall b. DrawingBackend b
   => IconInfo
   -> (ColorStyle -> Colour NumericType)
   -> String
@@ -290,7 +290,7 @@ patternDiagram
 
     subscribedValueDia = alignT $ makeAppInnerIcon iconInfo di None PatternUnpackingPort (Labeled patternSubscribedValueStr rhsNodeName)
 
-    patterns::[SpecialDiagram b]
+    patterns::[Drawing b]
     patterns = map alignB $ zipWith (makeAppInnerIcon iconInfo di inType) valuePortList subIcons
     patternDia = constructor ||| subscribedValueDia ||| hsep portSeparationSize patterns
 
@@ -300,7 +300,7 @@ patternDiagram
 
     finalDia = patternDiagramInBox  === resultDia
 
-applyDiagram :: SpecialBackend b
+applyDiagram :: DrawingBackend b
   => IconInfo
   -> ApplyFlavor
   -> Maybe NamedIcon
@@ -316,7 +316,7 @@ applyDiagram iconInfo flavor icon icons di =
 -- InputPort: Function
 -- ResultPort: Result
 -- Ports 2,3..: Arguments
-generalApplyDia :: SpecialBackend b
+generalApplyDia :: DrawingBackend b
   => IconInfo
   -> ApplyFlavor
   -> [Colour Double]
@@ -356,7 +356,7 @@ generalApplyDia
 
     finalDia = vcat $ argsAndFunctionDiagram ++ [resultDiagram]
 
-listCompDiagram :: SpecialBackend b
+listCompDiagram :: DrawingBackend b
   => IconInfo
   -> Maybe NamedIcon
   -> [Maybe NamedIcon]
@@ -395,7 +395,7 @@ listCompDiagram
     finalDia = vcat [argsDiagram, qualDiagramWithLine, listCompItemDiagram, resultDiagram]
     
 
-listLitDiagram :: SpecialBackend b
+listLitDiagram :: DrawingBackend b
   => IconInfo
   -> ListLitFlavor
   -> [Maybe NamedIcon]
@@ -417,7 +417,7 @@ listLitDiagram iconInfo flavor literals delimiters drawingInfo = finalDia where
 -- 1 -> bottom
 -- odds -> left
 -- evens -> right
-caseDiagram ::forall b. SpecialBackend b
+caseDiagram ::forall b. DrawingBackend b
   => IconInfo
   -> Maybe NamedIcon
   -> [(Maybe NamedIcon,Maybe NamedIcon)]
@@ -454,7 +454,7 @@ caseDiagram iconInfo input condsAndVals flavor di
     allCasesAtRight = inputLambdaLine <> alignTL allCases
     finalDia = vcat [allCasesAtRight, resultDia]
 
-functionArgDia :: SpecialBackend b
+functionArgDia :: DrawingBackend b
   => [String]
   -> TransformableDia b
 functionArgDia argumentNames drawingInfo
@@ -467,7 +467,7 @@ functionArgDia argumentNames drawingInfo
   -- argumetsInBox = inFrame combinedArgumetPort (lambdaC colorScheme) (width combinedArgumetPort) (height combinedArgumetPort)
   finalDiagram = combinedArgumetPort
 
-functionDefDia :: SpecialBackend b
+functionDefDia :: DrawingBackend b
   => IconInfo
   -> String
   -> Maybe NamedIcon 
@@ -485,12 +485,12 @@ functionDefDia iconInfo functionName input drawingInfo = finalDiagram where
 -- 0: Result icon
 -- 1: The lambda function value
 -- 2,3.. : The parameters
-lambdaRegionToDiagram :: SpecialBackend b
+lambdaRegionToDiagram :: DrawingBackend b
   => ColorStyle
-  -> [SpecialDiagram b]
+  -> [Drawing b]
   -> NodeName
   -> Int
-  -> SpecialDiagram b
+  -> Drawing b
 lambdaRegionToDiagram colorStyle enclosedDiagarms (NodeName nameInt) level
   = regionSymbol
   where

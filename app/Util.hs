@@ -88,7 +88,7 @@ hasSrcRef _ = True
 
 getSrcRef :: View -> SrcRef
 getSrcRef (_, Just nodeQV) = srcRef where
-  srcRef = nodeSrcRef nodeQV
+  srcRef = srcRefNQV nodeQV
 getSrcRef (Just declQV, _) = srcRef where
   srcRef = srcRefDQV declQV
 getSrcRef _ = error "No source in View"

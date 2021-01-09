@@ -21,8 +21,8 @@ import DrawingColors (dummyColorStyle)
 
 
 import Types(
-  SpecialDiagram
-  , SpecialBackend
+  Drawing
+  , DrawingBackend
   , AnnotatedFGR
   )
 
@@ -423,9 +423,9 @@ testDecls = mconcat [
   ]
 
 
-translateStringToDrawing :: SpecialBackend b =>
+translateStringToDrawing :: DrawingBackend b =>
   String
-  -> IO (SpecialDiagram b)
+  -> IO (Drawing b)
 translateStringToDrawing s = do
   putStrLn $ "Translating string: " ++ s
   let
@@ -451,8 +451,8 @@ translateStringToDrawing s = do
   declarationDiagrams <- renderIngSyntaxGraph dummyColorStyle (collapsedGraph, collapsedGraph)
   pure $ clearValue declarationDiagrams
 
-visualTranslateTests :: (HasCallStack, SpecialBackend b)
-                     => IO (SpecialDiagram b)
+visualTranslateTests :: (HasCallStack, DrawingBackend b)
+                     => IO (Drawing b)
 visualTranslateTests = do
   drawings <- traverse translateStringToDrawing testDecls
   let
@@ -460,6 +460,6 @@ visualTranslateTests = do
     vCattedDrawings = vsep 1 $ zipWith (===) (fmap alignL drawings) textDrawings
   pure vCattedDrawings
 
-textBox :: SpecialBackend b =>
-  String -> SpecialDiagram b
+textBox :: DrawingBackend b =>
+  String -> Drawing b
 textBox = multilineComment dummyColorStyle

@@ -125,6 +125,7 @@ getPortAngleHelper embeddedIn iconInfo (Named iconName (Icon icon _)) port nodeN
 newEmbededIn :: EmbeddedIn -> DiagramIcon -> EmbeddedIn
 newEmbededIn _ NestedCaseIcon {} = Just Case 
 newEmbededIn _ CaseResultIcon {} = Just Case 
+newEmbededIn _ ListCompIcon {} = Nothing
 newEmbededIn (Just Case) _ = Just Case
 newEmbededIn _ _ = Just Some
 

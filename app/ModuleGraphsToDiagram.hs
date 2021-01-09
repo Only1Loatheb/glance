@@ -21,8 +21,8 @@ import           Data.Function( on )
 
 import Rendering(renderIngSyntaxGraph)
 import           Types  (
-  SpecialQDiagram
-  , SpecialBackend
+  QueryableDrawing
+  , DrawingBackend
   , SrcRef
   , NodeQueryValue(..)
   , ModuleGraphs
@@ -41,8 +41,8 @@ import PartialView (neighborsSubgraph)
 import TextBox (multilineComment, sourceCodeDiagram)
 import CollapseGraph(syntaxGraphToCollapsedGraph, syntaxGraphToLessCollapsedGraph)
 -- before loop
-diagramFromModule :: SpecialBackend b =>
-  (SrcRef -> SourceCode) -> ColorStyle -> Bool -> ModuleGraphs -> SpecialQDiagram b
+diagramFromModule :: DrawingBackend b =>
+  (SrcRef -> SourceCode) -> ColorStyle -> Bool -> ModuleGraphs -> QueryableDrawing b
 diagramFromModule getCodeFragment colorStyle includeComments (declSpansAndGraphs, comments) = moduleDiagram where
   selectedComments = selectComments includeComments comments
   moduleDiagram = getModuleDiagram getCodeFragment colorStyle declSpansAndGraphs selectedComments
@@ -50,8 +50,8 @@ diagramFromModule getCodeFragment colorStyle includeComments (declSpansAndGraphs
 selectComments :: Bool -> [Exts.Comment] -> [Exts.Comment]
 selectComments includeComments comments = if includeComments then comments else []
 
-getModuleDiagram :: SpecialBackend b
-  => (SrcRef -> SourceCode) -> ColorStyle -> [(SrcRef, SyntaxGraph)] -> [Exts.Comment] -> SpecialQDiagram b
+getModuleDiagram :: DrawingBackend b
+  => (SrcRef -> SourceCode) -> ColorStyle -> [(SrcRef, SyntaxGraph)] -> [Exts.Comment] -> QueryableDrawing b
 getModuleDiagram getCodeFragment colorStyle declSpansAndGraphs selectedComments = diagram where
   chunks = getDeclChunks declSpansAndGraphs
   diagram = placeDiagrams $ map (declIconDiagram getCodeFragment colorStyle selectedComments) chunks 
@@ -59,18 +59,18 @@ getModuleDiagram getCodeFragment colorStyle declSpansAndGraphs selectedComments 
 diagramSeparation :: Fractional p => p
 diagramSeparation = 1.0
 
-placeDiagrams :: SpecialBackend b
-  => [SpecialQDiagram b]
-  -> SpecialQDiagram b
+placeDiagrams :: DrawingBackend b
+  => [QueryableDrawing b]
+  -> QueryableDrawing b
 placeDiagrams diagrams = finalDia where
   finalDia = Dia.vsep diagramSeparation diagrams
 
-declIconDiagram :: SpecialBackend b
+declIconDiagram :: DrawingBackend b
   => (Exts.SrcSpan -> String) 
   -> ColorStyle 
   -> [Exts.Comment] 
   -> [(Exts.SrcSpan, SyntaxGraph)] 
-  -> SpecialQDiagram b
+  -> QueryableDrawing b
 declIconDiagram getCodeFragment colorStyle comments [(srcRefBefore,_),(srcRef, graph), (srcRefAfter,_)] = diagram where
   diagram = Dia.value queryValue
     $ (multilineComment colorStyle . head . lines . getCodeFragment) srcRef
@@ -103,7 +103,7 @@ filterComments comments (srcSpanBefore, srcSpanAfter) = nerbyComments where
   nerbyComments = filter (\((Exts.Comment _ srcSpan _))-> srcSpan > srcSpanBefore && srcSpan < srcSpanAfter) comments
 
 -- in loop 
-declDiagram :: SpecialBackend b => ColorStyle -> DeclQueryValue -> IO (SpecialQDiagram b)
+declDiagram :: DrawingBackend b => ColorStyle -> DeclQueryValue -> IO (QueryableDrawing b)
 declDiagram colorStyle declQV@(DeclQueryValue _ declGraph _ _) = do
   let 
     (topComments, bottomComments) = viewDiagramBase colorStyle declQV
@@ -112,12 +112,12 @@ declDiagram colorStyle declQV@(DeclQueryValue _ declGraph _ _) = do
   let diagram = topComments Dia.=== Dia.alignL declDia Dia.=== bottomComments
   pure diagram
 
-viewDiagramBase :: SpecialBackend b => ColorStyle -> DeclQueryValue -> (SpecialQDiagram b, SpecialQDiagram b)
+viewDiagramBase :: DrawingBackend b => ColorStyle -> DeclQueryValue -> (QueryableDrawing b, QueryableDrawing b)
 viewDiagramBase colorStyle (DeclQueryValue _ _ commentsBefore commentsAfter) = (topComments, bottomComments) where
   topComments = placeDiagrams $ map (commentToDiagram colorStyle) commentsBefore
   bottomComments = placeDiagrams $ map (commentToDiagram colorStyle) commentsAfter
 
-nodeDiagram :: SpecialBackend b => ColorStyle -> DeclQueryValue -> NodeQueryValue -> IO (SpecialQDiagram b)
+nodeDiagram :: DrawingBackend b => ColorStyle -> DeclQueryValue -> NodeQueryValue -> IO (QueryableDrawing b)
 nodeDiagram colorStyle declQV@(DeclQueryValue _ declGraph _ _) (NodeQueryValue _ name) = do
   let
     collapsedDeclGraph = syntaxGraphToLessCollapsedGraph declGraph
@@ -127,15 +127,15 @@ nodeDiagram colorStyle declQV@(DeclQueryValue _ declGraph _ _) (NodeQueryValue _
   let diagram = topComments Dia.=== Dia.alignL nodeDia Dia.=== bottomComments
   pure diagram
 
-commentToDiagram :: SpecialBackend b
+commentToDiagram :: DrawingBackend b
   => ColorStyle
   -> Exts.Comment
-  -> SpecialQDiagram b
+  -> QueryableDrawing b
 commentToDiagram colorStyle (Exts.Comment _ _ c) = Dia.value mempty $ multilineComment colorStyle c
 
 -- Not queryable diagram
-staticDiagramFromModule :: SpecialBackend b =>
-  Bool -> ModuleGraphs -> ColorStyle -> IO(SpecialQDiagram b)
+staticDiagramFromModule :: DrawingBackend b =>
+  Bool -> ModuleGraphs -> ColorStyle -> IO(QueryableDrawing b)
 staticDiagramFromModule includeComments (declSpansAndGraphs, comments) colorStyle = do
   let 
     (declarationSpans, graphs) = unzip declSpansAndGraphs
@@ -152,27 +152,27 @@ staticDiagramFromModule includeComments (declSpansAndGraphs, comments) colorStyl
   --print comments
   pure moduleDiagramWithBg
 
-composeDiagrams :: SpecialBackend b
-  => [(Exts.SrcSpan, SpecialQDiagram b)]
-  -> SpecialQDiagram b
+composeDiagrams :: DrawingBackend b
+  => [(Exts.SrcSpan, QueryableDrawing b)]
+  -> QueryableDrawing b
 composeDiagrams diagrams = finalDiagram where
   sortedDiagarms = snd <$> sortBy (compare `on` fst) diagrams
   finalDiagram = placeDiagrams sortedDiagarms
 
-commentToSpanAndDiagram :: SpecialBackend b
+commentToSpanAndDiagram :: DrawingBackend b
   => ColorStyle
   -> Exts.Comment
-  -> (Exts.SrcSpan, SpecialQDiagram b)
+  -> (Exts.SrcSpan, QueryableDrawing b)
 commentToSpanAndDiagram colorStyle comment@(Exts.Comment _ srcSpan _) = (srcSpan, commentToDiagram colorStyle comment)
 
 moduleGraphsToViewGraphs :: AnnotatedFGR -> (AnnotatedFGR, AnnotatedFGR)
 moduleGraphsToViewGraphs graph = (graph, graph) 
 
-addSourceCodeDiagram :: SpecialBackend b
+addSourceCodeDiagram :: DrawingBackend b
   => ColorStyle
-  -> SpecialQDiagram b
+  -> QueryableDrawing b
   -> SourceCode
-  -> SpecialQDiagram b
+  -> QueryableDrawing b
 addSourceCodeDiagram colorStyle diagram codeString = diagramWithsourceCode where
   sourceCodeDia = Dia.value mempty $ sourceCodeDiagram  codeString colorStyle
   diagramWithsourceCode = diagram Dia.=== sourceCodeDia
