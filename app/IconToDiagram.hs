@@ -337,12 +337,12 @@ generalApplyDia
     nestingLevel = diNestingLevel di
 
     borderColor = borderColors !! nestingLevel
-    boxWidth =  max (width transformedName) (width argPorts)
+    boxWidth =  max (width transformedName) (defaultLineWidth + width argPorts)
 
     argPortsUncentred =  zipWith ( makeAppInnerIcon iconInfo di InApply) argPortList (fmap pure args)
     argPortsCentred  = fmap alignB argPortsUncentred
     argPorts = centerX $ hsep portSeparationSize argPortsCentred
-    argsDiagram = inFrame argPorts borderColor boxWidth (height argPorts)
+    argsDiagram = inFrame argPorts borderColor boxWidth (defaultLineWidth + height argPorts)
 
     resultDiagram =  makeResultDiagram name
 

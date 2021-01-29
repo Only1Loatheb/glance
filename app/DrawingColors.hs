@@ -43,6 +43,8 @@ colorsOnBlackScheme = ColorStyle {
 
 slightlyGreenYellow :: (Floating a, Ord a) => Colour a
 slightlyGreenYellow = sRGB24 212 255 0
+slightlyOrangeYellow :: (Floating a, Ord a) => Colour a
+slightlyOrangeYellow = sRGB24 255 226 0
 lightMagenta :: (Floating a, Ord a) => Colour a
 lightMagenta = sRGB24 255 94 255
 lightSlightlyPurpleBlue :: (Floating a, Ord a) => Colour a
@@ -69,8 +71,8 @@ colorsOnWhiteScheme = ColorStyle {
   caseRhsC = orange,
   patternC = lightMagenta,
   bindTextBoxTextC = lightGreen,
-  edgeListC = [black, red, reddishOrange, lightPurple, yellow, lightBlue, cyan, coral,maroon,lightpink, green],
-  nestingC = cycle [red, reddishOrange, yellow],
+  edgeListC = [black, red, reddishOrange, lightPurple, slightlyOrangeYellow, lightBlue, cyan, coral,maroon,lightpink, green],
+  nestingC = cycle [red, reddishOrange, slightlyOrangeYellow],
   listC = lightBlue,
   tupleC = lightPurple
 }

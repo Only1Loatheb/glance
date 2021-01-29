@@ -10,23 +10,16 @@ module Icons
     findMaybeIconsFromNames
     ) where
 
-import qualified Control.Arrow as Arrow
 import qualified Data.IntMap as IMap
-import Data.List(find)
-import Data.Maybe(listToMaybe, isJust, fromJust, mapMaybe)
 
 import           Types(
-  Icon(..)
-  , NodeName(..)
+  NodeName(..)
   , NamedIcon
-  , Labeled(..)
   , IconInfo
   , Named(..)
-  , DiagramIcon(..)
-  , laValue
-  , naVal
   )
-import Diagrams.Prelude
+  
+import Diagrams.Prelude ( _Just, mapped, over )
 
 findMaybeIconsFromNames :: IconInfo -> [Maybe NodeName] -> [Maybe NamedIcon]
 findMaybeIconsFromNames iconInfo args = over (mapped . _Just) (findIconFromName iconInfo) args
