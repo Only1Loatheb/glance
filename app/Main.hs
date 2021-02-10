@@ -13,6 +13,9 @@ import qualified Diagrams.Prelude as Dia hiding ((#), (&))
 
 import SVGrender(customRenderSVG')
 
+
+
+
 import Types (
   QueryableDrawing
   , DrawingBackend
@@ -24,6 +27,8 @@ import Types (
   , View
   , PointType
   , ColorStyle
+  , ModuleGraphs
+  , NumericType
   )
 import DrawingColors (getColorStyle)
 
@@ -59,6 +64,7 @@ prepareDiagram (CMD.CmdLineOptions
       portNumber
       imageScale
       doIncludeComments
+      isHorizontalLayout
     )
     colorStyleType
     )
@@ -69,20 +75,27 @@ prepareDiagram (CMD.CmdLineOptions
   if CMD.isBatch mode 
   then do
     let outputFilename = CMD.getFilename mode
-    diagram <- staticDiagramFromModule doIncludeComments moduleGraphs colorStyle
-    customRenderSVG' outputFilename imageScale diagram
-    putStrLn $ "Saving file: " ++ outputFilename
+    saveToFile outputFilename doIncludeComments isHorizontalLayout moduleGraphs colorStyle imageScale
   else pure ()
   if CMD.isInteractive mode
-  then do
-    source <- readFile inputFilename
-    let
-      getCodeFragment = srcRefToSourceCode source
-      moduleDiagram = diagramFromModule getCodeFragment colorStyle doIncludeComments moduleGraphs
-      selectViewWithSourceCode' = selectViewWithSourceCode getCodeFragment colorStyle
-      loopControl = (selectViewWithSourceCode', sampleDiagram, progressView, withdrawView)
-    blankCanvasLoop moduleDiagram portNumber loopControl imageScale colorStyle
+  then runInteractiveSession inputFilename colorStyle doIncludeComments moduleGraphs portNumber imageScale 
   else pure ()
+
+saveToFile :: FilePath -> Bool -> Bool -> Types.ModuleGraphs -> ColorStyle -> Types.NumericType -> IO ()
+saveToFile outputFilename doIncludeComments isHorizontalLayout moduleGraphs colorStyle imageScale = do
+  diagram <- staticDiagramFromModule doIncludeComments isHorizontalLayout moduleGraphs colorStyle
+  customRenderSVG' outputFilename imageScale diagram
+  putStrLn $ "Saving file: " ++ outputFilename
+
+runInteractiveSession :: FilePath -> ColorStyle -> Bool -> ModuleGraphs -> Int -> Double -> IO ()
+runInteractiveSession inputFilename colorStyle doIncludeComments moduleGraphs portNumber imageScale = do
+  source <- readFile inputFilename
+  let
+    getCodeFragment = srcRefToSourceCode source
+    moduleDiagram = diagramFromModule getCodeFragment colorStyle doIncludeComments moduleGraphs
+    selectViewWithSourceCode' = selectViewWithSourceCode getCodeFragment colorStyle
+    loopControl = (selectViewWithSourceCode', sampleDiagram, progressView, withdrawView)
+  blankCanvasLoop moduleDiagram portNumber loopControl imageScale colorStyle
 
 selectViewWithSourceCode :: DrawingBackend b =>
   (SrcRef -> SourceCode) -> ColorStyle -> QueryableDrawing b -> View -> IO(QueryableDrawing b)

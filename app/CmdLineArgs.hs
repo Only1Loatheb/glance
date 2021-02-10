@@ -49,6 +49,7 @@ data BasicOptions = BasicOptions {
   , portNumberOpt :: Int
   , imageWidthOpt :: Double
   , doIncludeCommentsOpt :: Bool
+  , isHorizontalLayout :: Bool
   }
 
 data Mode = Mode (Maybe String) Bool
@@ -100,6 +101,8 @@ basicOptsParser = BasicOptions
     <> help ("Output image scale. Defaults to " ++ show defaultScale))
   <*> switch (long "comments" <> short 'c' 
     <> help "Include comments between top level declarations.")
+  <*> switch (long "flip" <> short 'f' 
+    <> help "Arrange diagrams horizontally.")
   
 colorParser :: Parser ColorStyleType
 colorParser = subparser (

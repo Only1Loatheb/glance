@@ -54,16 +54,21 @@ getModuleDiagram :: DrawingBackend b
   => (SrcRef -> SourceCode) -> ColorStyle -> [(SrcRef, SyntaxGraph)] -> [Exts.Comment] -> QueryableDrawing b
 getModuleDiagram getCodeFragment colorStyle declSpansAndGraphs selectedComments = diagram where
   chunks = getDeclChunks declSpansAndGraphs
-  diagram = placeDiagrams $ map (declIconDiagram getCodeFragment colorStyle selectedComments) chunks 
+  diagram = placeDiagramsV $ map (declIconDiagram getCodeFragment colorStyle selectedComments) chunks 
 
 diagramSeparation :: Fractional p => p
 diagramSeparation = 1.0
 
 placeDiagrams :: DrawingBackend b
-  => [QueryableDrawing b]
+  => Bool
+  -> [QueryableDrawing b]
   -> QueryableDrawing b
-placeDiagrams diagrams = finalDia where
-  finalDia = Dia.vsep diagramSeparation diagrams
+placeDiagrams isHorizontalLayout diagrams = finalDia where
+  finalDia = layout diagramSeparation diagrams
+  layout = if isHorizontalLayout then Dia.hsep else Dia.vsep
+
+placeDiagramsV :: DrawingBackend b => [QueryableDrawing b] -> QueryableDrawing b
+placeDiagramsV = placeDiagrams False
 
 declIconDiagram :: DrawingBackend b
   => (Exts.SrcSpan -> String) 
@@ -114,8 +119,8 @@ declDiagram colorStyle declQV@(DeclQueryValue _ declGraph _ _) = do
 
 viewDiagramBase :: DrawingBackend b => ColorStyle -> DeclQueryValue -> (QueryableDrawing b, QueryableDrawing b)
 viewDiagramBase colorStyle (DeclQueryValue _ _ commentsBefore commentsAfter) = (topComments, bottomComments) where
-  topComments = placeDiagrams $ map (commentToDiagram colorStyle) commentsBefore
-  bottomComments = placeDiagrams $ map (commentToDiagram colorStyle) commentsAfter
+  topComments = placeDiagramsV $ map (commentToDiagram colorStyle) commentsBefore
+  bottomComments = placeDiagramsV $ map (commentToDiagram colorStyle) commentsAfter
 
 nodeDiagram :: DrawingBackend b => ColorStyle -> DeclQueryValue -> NodeQueryValue -> IO (QueryableDrawing b)
 nodeDiagram colorStyle declQV@(DeclQueryValue _ declGraph _ _) (NodeQueryValue _ name) = do
@@ -135,8 +140,8 @@ commentToDiagram colorStyle (Exts.Comment _ _ c) = Dia.value mempty $ multilineC
 
 -- Not queryable diagram
 staticDiagramFromModule :: DrawingBackend b =>
-  Bool -> ModuleGraphs -> ColorStyle -> IO(QueryableDrawing b)
-staticDiagramFromModule includeComments (declSpansAndGraphs, comments) colorStyle = do
+  Bool -> Bool -> ModuleGraphs -> ColorStyle -> IO(QueryableDrawing b)
+staticDiagramFromModule includeComments isHorizontalLayout (declSpansAndGraphs, comments) colorStyle = do
   let 
     (declarationSpans, graphs) = unzip declSpansAndGraphs
     fullGraphs = map (moduleGraphsToViewGraphs . syntaxGraphToCollapsedGraph) graphs
@@ -147,17 +152,18 @@ staticDiagramFromModule includeComments (declSpansAndGraphs, comments) colorStyl
     selectedComments = selectComments includeComments comments
     spanAndcomments = map (commentToSpanAndDiagram colorStyle) selectedComments
     spanAndDiagrams = spanAndcomments ++ spanAndDeclarations
-    moduleDiagram = composeDiagrams spanAndDiagrams
+    moduleDiagram = composeDiagrams isHorizontalLayout spanAndDiagrams
     moduleDiagramWithBg = Dia.bg (backgroundC colorStyle) moduleDiagram
   --print comments
   pure moduleDiagramWithBg
 
 composeDiagrams :: DrawingBackend b
-  => [(Exts.SrcSpan, QueryableDrawing b)]
+  => Bool
+  -> [(Exts.SrcSpan, QueryableDrawing b)]
   -> QueryableDrawing b
-composeDiagrams diagrams = finalDiagram where
+composeDiagrams isHorizontalLayout diagrams = finalDiagram where
   sortedDiagarms = snd <$> sortBy (compare `on` fst) diagrams
-  finalDiagram = placeDiagrams sortedDiagarms
+  finalDiagram = placeDiagrams isHorizontalLayout sortedDiagarms
 
 commentToSpanAndDiagram :: DrawingBackend b
   => ColorStyle

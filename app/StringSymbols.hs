@@ -207,12 +207,8 @@ qNameToString qName = case qName of
     -- Exts.ExprHole _ -> "_" -- TODO find out why it is not there
     _ -> error $ "Unsupported syntax in qNameToSrting: " <> show qName
 
-showFracLiteral :: Rational -> String
-showFracLiteral = concat . words . show
 
 -- TODO: Test the unboxed literals
--- TODO: Print the Rational as a floating point.
-
 showLiteral :: Exts.Sign l -> Exts.Literal l -> String
 showLiteral (Exts.Signless _) lit = showSignlessLit lit
 showLiteral (Exts.Negative _) lit = negativeLiteralStr ++ showSignlessLit lit
@@ -221,10 +217,10 @@ showSignlessLit :: Exts.Literal l -> String
 showSignlessLit (Exts.Int _ x _) = show x
 showSignlessLit (Exts.Char _ x _) = show x
 showSignlessLit (Exts.String _ x _) = show x
-showSignlessLit (Exts.Frac _ x _) = showFracLiteral x
+showSignlessLit (Exts.Frac _ x _) = show (fromRational x :: Double)
 showSignlessLit (Exts.PrimInt _ x _) = show x
 showSignlessLit (Exts.PrimWord _ x _) = show x
-showSignlessLit (Exts.PrimFloat _ x _) = show x
-showSignlessLit (Exts.PrimDouble _ x _) = show x
+showSignlessLit (Exts.PrimFloat _ x _) = show (fromRational x :: Float)
+showSignlessLit (Exts.PrimDouble _ x _) = show (fromRational x :: Double)
 showSignlessLit (Exts.PrimChar _ x _) = show x
 showSignlessLit (Exts.PrimString _ x _) = show x
