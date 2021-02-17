@@ -4,9 +4,11 @@
 module EdgeToDiagram(
   getArrowShadowOpts
   , getArrowBaseOpts
+  , ArrowPoints
   ) where
 
 import Diagrams.Prelude hiding ((&), (#), Name)
+import Diagrams.TwoD.Path.Metafont
 import Data.Maybe(fromMaybe)
 import Data.Typeable(Typeable)
 
@@ -27,6 +29,7 @@ import Types(
   , NumericType
   , ColorStyle
   , ColorStyle'(..)
+  , PointType
   )
 
 import DiagramSymbols(
@@ -36,12 +39,14 @@ import DiagramSymbols(
   , symbolSize
   )
 
+type ArrowPoints = ((PointType, PointType), Maybe (PointType, PointType))
+
 edgeControlVectorLen :: NumericType
 edgeControlVectorLen = symbolSize * 4.0
 
 getArrowShadowOpts ::
   (NameAndPort,NameAndPort)
-  -> (Point V2 NumericType, Point V2 NumericType)
+  -> ArrowPoints
   -> (Angle NumericType, Angle NumericType)
   -> ColorStyle 
   -> ArrowOpts NumericType
@@ -56,7 +61,7 @@ getArrowShadowOpts
 
 getArrowBaseOpts :: 
   (NameAndPort,NameAndPort)
-  -> (Point V2 NumericType, Point V2 NumericType)
+  -> ArrowPoints
   -> (Angle NumericType, Angle NumericType)
   -> (NamedIcon, NamedIcon)
   -> ColorStyle
@@ -88,17 +93,17 @@ hashedShaftColor nodeNum portNum edgeColors = shaftColor where
   shaftColor = edgeColors !! namePortHash
 
 getArrowOpts :: 
-  (Point V2 NumericType, Point V2 NumericType)
+  ArrowPoints
   -> (Angle NumericType, Angle NumericType)
   -> NameAndPort
   -> ArrowOpts NumericType
-getArrowOpts (formPoint, toPoint) (anglesFrom,anglesTo) namedPortTo
+getArrowOpts points (anglesFrom,anglesTo) namedPortTo
   = arrowOptions where
     arrowOptions =
       -- arrowHead .~ noHead
       arrowHead .~ getArrowHead namedPortTo
       $ arrowTail .~ noTail
-      $ arrowShaft .~ edgeSymbol formPoint toPoint anglesFrom anglesTo
+      $ arrowShaft .~ edgeSymbol points anglesFrom anglesTo
       $ lengths .~ global symbolSize
       $ with
 
@@ -109,18 +114,21 @@ getArrowHead _ = tri
 -- https://archives.haskell.org/projects.haskell.org/diagrams/doc/arrow.html
 
 edgeSymbol :: 
-    Point V2 NumericType
-  -> Point V2 NumericType
+  ArrowPoints
   -> Angle NumericType
   -> Angle NumericType
   -> Trail V2 NumericType
-edgeSymbol formPoint toPoint angleFrom angleTo = fromSegments [bezier3 offsetToControl1 offsetToControl2 offsetToEnd] where
-  offsetToEnd = toPoint .-. formPoint
-  xOfTheOffset  = offsetToEnd ^. _x
-  angleFromFlipped = flipIfOnOtherSide xOfTheOffset angleFrom
-  angleToFlipped =   flipIfOnOtherSide xOfTheOffset angleTo
-  offsetToControl1 = rotate angleFromFlipped (scale edgeControlVectorLen unitY)
-  offsetToControl2 = rotate angleToFlipped (scale edgeControlVectorLen unitY) ^+^ offsetToEnd
+edgeSymbol ((formPoint, toPoint), middle) angleFrom angleTo = edge where
+  edge = case middle of
+    Just (mp1,mp2) -> metafont $ formPoint .- leaving offsetToControl1 -. mp1 .- tension 1.2 -. mp2 .- arriving (- offsetToControl2) -. endpt toPoint
+    _ ->  fromSegments [bezier3 offsetToControl1 (offsetToControl2 ^+^ offsetToEnd) offsetToEnd]
+    where
+      offsetToEnd = toPoint .-. formPoint
+      xOfTheOffset  = offsetToEnd ^. _x
+      angleFromFlipped = flipIfOnOtherSide xOfTheOffset angleFrom
+      angleToFlipped =   flipIfOnOtherSide xOfTheOffset angleTo
+      offsetToControl1 = rotate angleFromFlipped (scale edgeControlVectorLen unitY)
+      offsetToControl2 = rotate angleToFlipped (scale edgeControlVectorLen unitY) 
 
 flipIfOnOtherSide :: NumericType -> Angle NumericType -> Angle Double
 flipIfOnOtherSide xOfTheOffset angle = if xOfTheOffset < 0 then  (- angle ^. turn) @@ turn else angle 

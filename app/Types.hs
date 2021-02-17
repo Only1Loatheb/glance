@@ -181,7 +181,8 @@ data DiagramIcon =
   | ListLitIcon
     ListLitFlavor
     [Maybe NodeName]
-    Delimiters 
+    Delimiters
+  | Concentrator
   deriving (Show, Eq, Ord)
 
 data ApplyFlavor = ApplyFlavor | ComposeFlavor deriving (Show, Eq, Ord)
@@ -245,6 +246,7 @@ data EdgeOption =
   | DrawAndNotConstraint
   | DoNotDrawButConstraint Int -- length in number of ranks
   | DrawAsImportant
+  | DrawThrough (NameAndPort, NameAndPort)
   deriving (Show, Eq, Ord)
 
 -- | An Edge has an name of the source icon, and its optional port number,

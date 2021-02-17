@@ -23,6 +23,7 @@ import Control.Arrow(first)
 import EdgeToDiagram( 
   getArrowShadowOpts
   , getArrowBaseOpts
+  , ArrowPoints
   )
 import EdgeAngles(getPortAngle)
 
@@ -64,6 +65,7 @@ edgeGraphVizAttrs (_, _, EmbedInfo _ (Edge option connection)) = attrs where
 constrainAttrs :: EdgeOption -> [GVA.Attribute]
 constrainAttrs (DoNotDrawButConstraint len) = [GVA.MinLen len]
 constrainAttrs DrawAndNotConstraint {} = dontConstrainAttrs
+constrainAttrs DrawThrough {}  = dontConstrainAttrs
 constrainAttrs DrawAsImportant = importantAttrs
 constrainAttrs _  = []
 
@@ -103,18 +105,23 @@ connectMaybePorts
   labeledEdge@(
     _node0,
     _node1, 
-    EmbedInfo _ (Edge _ namedPorts))
+    EmbedInfo _ (Edge option namedPorts))
   = let 
       mPointFromAndPointTo  = getPoints origDia namedPorts
+      mMiddlePoints = getMiddle origDia option
     in case mPointFromAndPointTo of
-      (Nothing, _) -> mempty
-      (_, Nothing) -> mempty
-      (Just pointFrom, Just pointTo) -> makeArrowDiagram colorStyle iconInfo (pointFrom,pointTo) labeledEdge
+      Nothing -> mempty
+      (Just points) -> makeArrowDiagram colorStyle iconInfo (points, mMiddlePoints) labeledEdge
 
-getPoints :: DrawingBackend b => Drawing b-> (NameAndPort, NameAndPort) -> (Maybe PointType, Maybe PointType)
-getPoints origDia (fromNamePort, toNamePort) = (pointFrom, pointTo) where
-  pointFrom  = getPositionOfNamed origDia fromNamePort
-  pointTo = getPositionOfNamed origDia toNamePort
+getPoints :: DrawingBackend b => Drawing b-> (NameAndPort, NameAndPort) -> Maybe(PointType, PointType)
+getPoints origDia (fromNamePort, toNamePort) =  do
+  pointFrom  <- getPositionOfNamed origDia fromNamePort
+  pointTo <- getPositionOfNamed origDia toNamePort
+  return (pointFrom, pointTo)
+
+getMiddle :: DrawingBackend b => Drawing b -> EdgeOption -> Maybe (PointType, PointType)
+getMiddle origDia (DrawThrough middleNamePorts) = getPoints origDia middleNamePorts
+getMiddle _ _ = Nothing
 
 getPositionOfNamed :: DrawingBackend b => Drawing b-> NameAndPort ->  Maybe PointType
 getPositionOfNamed origDia (Named name port) = case Dia.lookupName (name .> port) origDia of
@@ -125,14 +132,14 @@ getPositionOfNamed origDia (Named name port) = case Dia.lookupName (name .> port
 makeArrowDiagram :: (DrawingBackend b)=> 
   ColorStyle 
   -> IconInfo 
-  -> (PointType, PointType) 
+  -> ArrowPoints 
   -> (Int, Int, EmbedInfo Edge) 
   -> Drawing b
-makeArrowDiagram colorStyle iconInfo pointFromAndPointTo labeledEdge
-  = Dia.atop arrowShaft arrowShadow where 
-    (arrowBaseOpts, arrowShadowOpts) = getArrowsOpts colorStyle iconInfo labeledEdge pointFromAndPointTo
-    arrowShaft = drawArrowFunc arrowBaseOpts pointFromAndPointTo
-    arrowShadow = drawArrowFunc arrowShadowOpts pointFromAndPointTo
+makeArrowDiagram colorStyle iconInfo points@(fromAndTo,_) labeledEdge = arrowDia where
+  arrowDia =  Dia.atop arrowShaft arrowShadow 
+  (arrowBaseOpts, arrowShadowOpts) = getArrowsOpts colorStyle iconInfo labeledEdge points
+  arrowShaft = drawArrowFunc arrowBaseOpts fromAndTo
+  arrowShadow = drawArrowFunc arrowShadowOpts fromAndTo
 -- In order to give arrows a "shadow" effect, draw a thicker semi-transparent
 -- line shaft the same color as the background underneath the normal line
 -- shaft.
@@ -145,24 +152,20 @@ getArrowsOpts ::
   ColorStyle 
   -> IconInfo 
   -> (Int, Int, EmbedInfo Edge) 
-  -> (Dia.Point Dia.V2 NumericType, Dia.Point Dia.V2 NumericType) 
+  -> ArrowPoints
   -> (Dia.ArrowOpts NumericType, Dia.ArrowOpts NumericType)
-getArrowsOpts
-  colorStyle
-  iconInfo
-  (node0, node1, EmbedInfo _ e@(Edge  _la namePorts@(fromNamePort, toNamePort))
-  )
-  points
-  = (arrowBaseOpts, arrowShadowOpts) where
-    namedIconFrom = findIconFromName iconInfo (NodeName node0)
-    namedIconTo = findIconFromName iconInfo (NodeName node1)
+getArrowsOpts colorStyle iconInfo (node0, node1, EmbedInfo _ edge) points = (arrowBaseOpts, arrowShadowOpts) where
+  Edge _ namePorts@(fromNamePort, toNamePort) = edge
 
-    angleFrom = getPortAngle iconInfo (NodeName node0) fromNamePort
-    angleTo = getPortAngle iconInfo (NodeName node1) toNamePort
+  namedIconFrom = findIconFromName iconInfo (NodeName node0)
+  namedIconTo = findIconFromName iconInfo (NodeName node1)
 
-    arrowBaseOpts{-'-} = getArrowBaseOpts namePorts points  (angleFrom, angleTo) (namedIconFrom, namedIconTo) colorStyle
-    -- arrowBaseOpts = viewArrowBaseOpts e arrowBaseOpts'
-    arrowShadowOpts = getArrowShadowOpts namePorts points  (angleFrom, angleTo) colorStyle
+  angleFrom = getPortAngle iconInfo (NodeName node0) fromNamePort
+  angleTo = getPortAngle iconInfo (NodeName node1) toNamePort
+
+  arrowBaseOpts{-'-} = getArrowBaseOpts namePorts points (angleFrom, angleTo) (namedIconFrom, namedIconTo) colorStyle
+  -- arrowBaseOpts = viewArrowBaseOpts e arrowBaseOpts'
+  arrowShadowOpts = getArrowShadowOpts namePorts points (angleFrom, angleTo) colorStyle
 
 -- viewArrowBaseOpts e arrowBaseOpts' = Dia.shaftStyle Dia.%~ (Dia.opacity 1 $ Dia.lc (shaftColor e))  $ arrowBaseOpts' where
 --   shaftColor (Edge DrawAndNotConstraint _ ) = Dia.red

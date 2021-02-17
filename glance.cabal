@@ -80,6 +80,7 @@ executable glance-exe
                , EdgeToDiagram
                , DiagramSymbols
                , NodeRecordLabels
+               , ConcentrateEdges
 
 test-suite glance-test
   type:                exitcode-stdio-1.0
@@ -145,6 +146,7 @@ test-suite glance-test
                , DiagramSymbols
                , NodeRecordLabels
                , StringSymbolsTests
+               , ConcentrateEdges
 source-repository head
   type:     git
   location: https://github.com/rgleichman/glance

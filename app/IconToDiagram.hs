@@ -238,6 +238,12 @@ iconToDiagram iconInfo (Icon icon _) = case icon of
     (findMaybeIconsFromNames iconInfo gensNames)
     (findMaybeIconsFromNames iconInfo qualsNames)
   ListLitIcon flavor args delimiters -> listLitDiagram iconInfo flavor (findMaybeIconsFromNames iconInfo args) delimiters
+  Concentrator -> concentratotDia
+
+concentratotDia :: DrawingBackend b => DrawingInfo -> Drawing b
+concentratotDia drawingInfo = finalDia where 
+  name = diName drawingInfo
+  finalDia = makeResultDiagram name 
 
 caseResultDiagram :: DrawingBackend b => TransformableDia b
 caseResultDiagram drawingInfo = finalDia where

@@ -18,13 +18,11 @@ import Control.Arrow(first)
 import qualified Data.Graph.Inductive as ING
 import Data.Graph.Inductive.PatriciaTree (Gr) 
 import Data.List(find)
-import           Data.Maybe
 import GHC.Stack(HasCallStack)
 
 --import qualified Data.GraphViz.Types
 --import Data.GraphViz.Commands
 
-import Icons(findMaybeIconFromName)
 import IconToDiagram( iconToDiagram, lambdaRegionToDiagram)
 import NodeRecordLabels(recordLabels) 
 import SyntaxNodeToIcon(nodeToIcon)
@@ -60,6 +58,8 @@ import NodePlacementMap (
   ) 
 import DrawingColors (dummyColorStyle)
 import TextBox ( letterHeight)
+
+import ConcentrateEdges(concentrateEdges)
 -- If the inferred types for these functions becomes unweildy,
 -- try using PartialTypeSignitures.
 
@@ -152,13 +152,9 @@ renderIconGraph colorStyle fullGraphWithInfo viewGraph = do
     -- gve = Dia.value mempty $ graphVizEdges layoutResult
   pure  ( Dia.atop placedNodesAny placedEdges <> queryRects <> placedRegions)
   where
-    parentGraph = ING.nmap niVal $ ING.labfilter (isNothing . niParent) viewGraph
-    parentGraphNoLoops = ING.delEdges loopEdges parentGraph
-    loopEdges = filter (uncurry (==)) $ ING.edges parentGraph
-    fullGraph = ING.nmap niVal fullGraphWithInfo
-    iconInfo = IMap.fromList
-                $ first nodeNameToInt . namedToTuple . snd
-                <$> ING.labNodes fullGraph
+    (parentGraph, fullGraph) = concentrateEdges (viewGraph,fullGraphWithInfo)
+    parentGraphNoLoops =  deleteLoopEdges parentGraph
+    iconInfo = getIconInfo fullGraph
 
     layoutParams :: GV.GraphvizParams ING.Node NamedIcon (EmbedInfo Edge) ClusterT NamedIcon
     layoutParams = customLayoutParams{
@@ -179,6 +175,16 @@ renderIconGraph colorStyle fullGraphWithInfo viewGraph = do
         dummyDiagram = iconToDiagram iconInfo nodeIcon (DrawingInfo (NodeName (-1)) 0 None dummyColorStyle)
 
         recordFields = recordLabels iconInfo nodeIcon name
+
+deleteLoopEdges :: ING.DynGraph gr => gr a b -> gr a b
+deleteLoopEdges graph = ING.delEdges loopEdges graph where
+  loopEdges = filter (uncurry (==)) $ ING.edges graph
+
+getIconInfo :: ING.DynGraph gr => gr ( Named a) b -> IMap.IntMap a
+getIconInfo fullGraph = iconInfo where
+  iconInfo = IMap.fromList
+            $ first nodeNameToInt . namedToTuple . snd
+            <$> ING.labNodes fullGraph
 
 renderIngSyntaxGraph :: (HasCallStack, DrawingBackend b)
   => ColorStyle

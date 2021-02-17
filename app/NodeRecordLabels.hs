@@ -110,3 +110,4 @@ recordLabels iconInfo (Icon icon _) name = case icon of
   ListLitIcon _ argNodes _ -> records where
     records = [GVA.FlipFields [patternUnpackingRecord name, args, resultRecord name]]
     args = GVA.FlipFields $ mconcat $ zipWith (nestedRecordLabels iconInfo) (argRecords name) argNodes
+  Concentrator -> [resultRecord name]

@@ -17,6 +17,7 @@ module Util (
   , hasSrcRef
   , getSrcRef
   , fmapMaybeM
+  , namedToInt
   ) where
 
 import qualified Language.Haskell.Exts.SrcLoc as SrcLoc
@@ -35,6 +36,7 @@ import           Types (
   , DeclQueryValue(..)
   , SrcRef
   , View
+  , _naName
   )
 
 
@@ -70,6 +72,9 @@ maybeBoolToBool = or
 
 nodeNameToInt :: NodeName -> Int
 nodeNameToInt (NodeName x) = x
+
+namedToInt :: Named a -> Int
+namedToInt = nodeNameToInt . _naName 
 
 namedToTuple :: Named a -> (NodeName, a)
 namedToTuple (Named x y) = (x, y)

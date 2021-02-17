@@ -118,6 +118,7 @@ getPortAngleHelper embeddedIn iconInfo (Named iconName (Icon icon _)) port nodeN
       CaseResultIcon {}-> defaultDirection port
       ListCompIcon {} -> listCompPortAngle port 
       ListLitIcon {} -> listLitPortAngle port
+      Concentrator {} -> 0 @@ turn 
     | otherwise = nestedPortAngle newEmbedded iconInfo defaultAngle port (Just nodeName) where
       defaultAngle = defaultEmbeddedAngle newEmbedded port
       newEmbedded = newEmbededIn embeddedIn icon

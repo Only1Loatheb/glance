@@ -14,6 +14,7 @@ import Data.List(foldl', find)
 import qualified Data.Set as Set
 import Data.Tuple(swap)
 import GHC.Stack(HasCallStack)
+import Diagrams.Prelude ( _Just, over )
 
 import PortConstants(
   isInputPort
@@ -46,7 +47,6 @@ import Util(
   nodeNameToInt
   , fromMaybeError
   )
-import Diagrams.Prelude
 
 type IsEmbeddableTest = (ParentType -> SyntaxNode -> Port -> Port -> Bool) 
 data ParentType = ApplyParent
