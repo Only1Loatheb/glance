@@ -76,7 +76,7 @@ minialGVADimention = 0.01
 nodeSeparationX :: Double
 nodeSeparationX = 1.5 * letterHeight * drawingToGraphvizScaleFactor
 nodeSeparationY :: Double
-nodeSeparationY = 2.38 * letterHeight * drawingToGraphvizScaleFactor
+nodeSeparationY = 2.35 * letterHeight * drawingToGraphvizScaleFactor
 
 drawLambdaRegions :: forall b . DrawingBackend b =>
   ColorStyle 
@@ -152,14 +152,14 @@ renderIconGraph colorStyle fullGraphWithInfo viewGraph = do
     -- gve = Dia.value mempty $ graphVizEdges layoutResult
   pure  ( Dia.atop placedNodesAny placedEdges <> queryRects <> placedRegions)
   where
-    (parentGraph, fullGraph) = concentrateEdges (viewGraph,fullGraphWithInfo)
+    (parentGraph, fullGraph, edgeConcentratorNameOffset) = concentrateEdges (viewGraph,fullGraphWithInfo)
     parentGraphNoLoops =  deleteLoopEdges parentGraph
     iconInfo = getIconInfo fullGraph
 
     layoutParams :: GV.GraphvizParams ING.Node NamedIcon (EmbedInfo Edge) ClusterT NamedIcon
     layoutParams = customLayoutParams{
       GV.fmtNode = nodeAttribute
-      , GV.clusterBy = clusterNodesBy iconInfo
+      , GV.clusterBy = clusterNodesBy iconInfo edgeConcentratorNameOffset
       , GV.fmtEdge = edgeGraphVizAttrs
       -- , GV.fmtCluster = const [ GV.GraphAttrs [GVA.Margin $ GVA.PVal $ GVA.createPoint 0.0 0.0]]
       }

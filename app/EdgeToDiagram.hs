@@ -9,12 +9,9 @@ module EdgeToDiagram(
 
 import Diagrams.Prelude hiding ((&), (#), Name)
 import Diagrams.TwoD.Path.Metafont
-import Data.Maybe(fromMaybe)
-import Data.Typeable(Typeable)
 
 import PortConstants(
-  pattern InputPort
-  , pattern ResultPort
+    pattern ResultPort
   , pattern FunDefValuePort
   )
 
@@ -25,7 +22,7 @@ import Types(
   , Port(..)
   , NamedIcon
   , Named(..)
-  , NameAndPort(..)
+  , NameAndPort
   , NumericType
   , ColorStyle
   , ColorStyle'(..)
@@ -104,8 +101,11 @@ getArrowOpts points (anglesFrom,anglesTo) namedPortTo
       arrowHead .~ getArrowHead namedPortTo
       $ arrowTail .~ noTail
       $ arrowShaft .~ edgeSymbol points anglesFrom anglesTo
-      $ lengths .~ global symbolSize
+      $ headLength .~ global symbolSize
       $ with
+
+arrowHeadLen :: NumericType
+arrowHeadLen = symbolSize
 
 -- getArrowHead :: Icon -> 
 getArrowHead :: NameAndPort -> ArrowHT NumericType
@@ -120,15 +120,22 @@ edgeSymbol ::
   -> Trail V2 NumericType
 edgeSymbol ((formPoint, toPoint), middle) angleFrom angleTo = edge where
   edge = case middle of
-    Just (mp1,mp2) -> metafont $ formPoint .- leaving offsetToControl1 -. mp1 .- tension 1.2 -. mp2 .- arriving (- offsetToControl2) -. endpt toPoint
+    Just (mp1,mp2) -> metafont $ formPoint .- leaving offsetToControl1 <> tension firstSegmentTension -. mp1 .- tension middleSegmentTension -. mp2 .- arriving (- offsetToControl2) -. endpt shaftEnd
     _ ->  fromSegments [bezier3 offsetToControl1 (offsetToControl2 ^+^ offsetToEnd) offsetToEnd]
     where
+      shaftEnd =  toPoint .+^ rotate angleToFlipped (scale arrowHeadLen unitY)
       offsetToEnd = toPoint .-. formPoint
       xOfTheOffset  = offsetToEnd ^. _x
       angleFromFlipped = flipIfOnOtherSide xOfTheOffset angleFrom
       angleToFlipped =   flipIfOnOtherSide xOfTheOffset angleTo
       offsetToControl1 = rotate angleFromFlipped (scale edgeControlVectorLen unitY)
-      offsetToControl2 = rotate angleToFlipped (scale edgeControlVectorLen unitY) 
+      offsetToControl2 = rotate angleToFlipped (scale edgeControlVectorLen unitY)
 
 flipIfOnOtherSide :: NumericType -> Angle NumericType -> Angle Double
 flipIfOnOtherSide xOfTheOffset angle = if xOfTheOffset < 0 then  (- angle ^. turn) @@ turn else angle 
+
+firstSegmentTension :: NumericType
+firstSegmentTension = 2
+
+middleSegmentTension :: NumericType
+middleSegmentTension = 3

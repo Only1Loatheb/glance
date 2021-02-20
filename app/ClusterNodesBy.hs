@@ -23,19 +23,24 @@ type ClusterT = Int
 
 clusterNodesBy ::
   IconInfo
-  -> ((ING.Node , NamedIcon) -> GV.NodeCluster ClusterT  (ING.Node , NamedIcon))
-clusterNodesBy iconInfo  = clusterBy where
+  -> Int
+  -> ((ING.Node , NamedIcon)
+  -> GV.NodeCluster ClusterT  (ING.Node , NamedIcon))
+clusterNodesBy iconInfo edgeConcentratorNameOffset = clusterBy where
   clusterBy :: (ING.Node , NamedIcon) -> GV.NodeCluster ClusterT  (ING.Node , NamedIcon)
-  clusterBy (nodeName, namedIcon) = 
-    GV.C (IMap.findWithDefault nodeName nodeName clusterMap) 
-    $ GV.N (nodeName,namedIcon)
-    -- Also draw the region around the icon the lambda is in.
-  clusterMap :: IMap.IntMap ClusterT
-  clusterMap = foldr (combineClusterMaps . iconClusterMap) IMap.empty (IMap.toList iconInfo)
+  clusterBy (nodeName, namedIcon) = GV.C (getCluster nodeName) $ GV.N (nodeName,namedIcon)
+
+  clusterMap = getClusterMap iconInfo
+
+  getCluster nodeName = IMap.findWithDefault name name clusterMap where
+    name = if nodeName >= edgeConcentratorNameOffset then nodeName - edgeConcentratorNameOffset else nodeName
+
+getClusterMap :: IMap.IntMap Icon -> IMap.IntMap ClusterT
+getClusterMap iconInfo = foldr (combineClusterMaps . iconClusterMap) IMap.empty (IMap.toList iconInfo)
 
 iconClusterMap :: (IMap.Key, Icon) -> IMap.IntMap ClusterT
 iconClusterMap (name, Icon (FunctionArgIcon _ (nodesInside,_) _) _) = lambdaClusterMap where
-  lambdaClusterMap = IMap.fromAscList $ map (\x -> (nodeNameToInt x, -name)) (Set.toAscList nodesInside)
+  lambdaClusterMap = IMap.fromAscList $ map (\x -> (nodeNameToInt x, name)) (Set.toAscList nodesInside)
 iconClusterMap _ = IMap.empty -- TODO other nested nodes
 
 combineClusterMaps :: IMap.IntMap ClusterT -> IMap.IntMap ClusterT -> IMap.IntMap ClusterT

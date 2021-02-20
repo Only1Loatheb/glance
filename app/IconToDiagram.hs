@@ -457,8 +457,7 @@ caseDiagram iconInfo input condsAndVals flavor di
       | flavor == MultiIfFlavor = alignB $ coloredTextBox (textBoxTextC colorStyle) ifConditionConst
       | otherwise = centerX $ alignB $ makeInputDiagram iconInfo di (pure input) name
 
-    allCasesAtRight = inputLambdaLine <> alignTL allCases
-    finalDia = vcat [allCasesAtRight, resultDia]
+    finalDia = centerX $ inputLambdaLine <> alignTL (allCases === resultDia)
 
 functionArgDia :: DrawingBackend b
   => [String]
